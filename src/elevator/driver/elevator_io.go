@@ -25,9 +25,9 @@ const (
 type ButtonType int
 
 const (
-	BT_HallUp   ButtonType = 0
-	BT_HallDown            = 1
-	BT_Cab                 = 2
+	BT_HallUp   ButtonType = iota 
+	BT_HallDown              
+	BT_Cab                 
 )
 
 type ButtonEvent struct {

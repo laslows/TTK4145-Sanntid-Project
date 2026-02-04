@@ -10,3 +10,7 @@ const (
 	Moving
 	MotorStop
 )
+
+func Fsm() {
+	//Tilstandsmaskin
+}
