@@ -7,6 +7,8 @@ import (
 	"strings"
 )
 
+// TODO: Decide to only use config.go OR con_load.go. Learn how to use bufio
+
 // LoadConfig reads a config file using the same "--key value" lines.
 // Keys and enum values are treated case-insensitively.
 func LoadConfig(path string) (map[string]string, error) {
