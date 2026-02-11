@@ -1,14 +1,14 @@
 package fsm
 
-import(
-	"elevator"
-	"requests"
-	"timer"
+import (
+	"Sanntid/elevator"
+	"Sanntid/requests"
+	"Sanntid/timer"
 )
 
-func setAllLights(Elevator e){
-	for(floor := 0; floor < elevator.N_FLOORS; floor++){
-		for(btn := 0; btn < elevator.N_BUTTONS; btn++){
+func setAllLights(e elevator.Elevator) {
+	for floor := 0; floor < elevator.N_FLOORS; floor++ {
+		for btn := 0; btn < elevator.N_BUTTONS; btn++ {
 			elevio.RequestButtonLight(btn, floor, e.GetRequest(floor, btn))
 		}
 	}
@@ -22,51 +22,50 @@ func onInitBetweenFloors(e *elevator.Elevator) {
 
 func onRequestButtonPress(e *elevator.Elevator, floor int, button elevator.Button) {
 
-	switch(e.GetBehaviour()){
+	switch e.GetBehaviour() {
 	case elevator.DoorOpen:
 		if requests.ShouldClearImmediately(e, floor, button) {
 			timer.Start(e.GetDoorOpenDuration())
 		} else {
 			e.SetRequest(floor, button, true)
 		}
-		break;
+		break
 	case elevator.Moving:
 		e.SetRequest(floor, button, true)
-		break;
+		break
 	case elevator.Idle:
 		e.SetRequest(floor, button, true)
 		pair := requests.ChooseDrection(*e)
 		e.SetDirection(pair.GetDirection())
 		e.SetBehaviour(pair.GetBehaviour())
 
-		switch(pair.GetDirection()){
+		switch pair.GetDirection() {
 		case elevator.DoorOpen:
 			elevio.DoorOpenLight(true)
 			timer.Start(e.GetDoorOpenDuration())
 			*e = requests.ClearAtCurrentFloor(*e)
-			break;
+			break
 
 		case elevator.Moving:
 			elevator.MotorDirection(pair.GetDirection())
-			break;
+			break
 
 		case elevator.Idle:
-			break;
+			break
 
-		break;
+		}
+
+		setAllLights(*e)
+
 	}
-
-	setAllLights(*e)
-
 }
 
-
-func onFloorArrival(e *elevator.Elevator, floor int){
+func onFloorArrival(e *elevator.Elevator, floor int) {
 
 	e.SetFloor(floor)
 	elevator.FloorIndicator(floor)
 
-	switch(e.GetBehaviour()){
+	switch e.GetBehaviour() {
 	case elevator.Moving:
 		if requests.ShouldStop(*e) {
 			elevator.MotorDirection(elevator.Stop)
@@ -76,10 +75,10 @@ func onFloorArrival(e *elevator.Elevator, floor int){
 			setAllLights(*e)
 			e.SetBehaviour(elevator.DoorOpen)
 		}
-		break;
+		break
 
 	default:
-		break;
+		break
 	}
 }
 
