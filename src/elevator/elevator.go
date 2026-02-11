@@ -1,8 +1,9 @@
 package elevator
 
 import (
-	"../Driver-go/elevio"
 	"time"
+
+	elevio "../elevio"
 )
 
 const N_FLOORS int = 4
@@ -11,7 +12,7 @@ const N_BUTTONS int = 3
 type Direction int
 
 const (
-	Dwon Direction = -1
+	Down Direction = -1
 	Stop           = 0
 	Up             = 1
 )

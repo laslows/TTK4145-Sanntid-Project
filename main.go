@@ -11,6 +11,7 @@ import (
 	timer "./src/timer"
 )
 
+// This is the main function translated from the C code. TODO: Implement elsewhere
 func pollLoop(inputPollRate_ms int, elev *elevator.Elevator, tmr *timer.Timer) {
 	var prevBtn [elevator.N_FLOORS][elevator.N_BUTTONS]bool
 	prevFloor := -1
@@ -62,7 +63,7 @@ func main() {
 	+ BUTTON_HANDLER?
 	*/
 
-	go fsm.Fsm()
+	go fsm.FSM()
 	go network.Network()
 	go timer.New() //timer.Timer()?
 
