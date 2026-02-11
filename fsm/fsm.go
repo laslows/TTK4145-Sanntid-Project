@@ -2,6 +2,7 @@ package fsm
 
 import (
 	"Sanntid/elevator"
+	"Sanntid/elevio"
 	"Sanntid/requests"
 	"Sanntid/timer"
 )
@@ -9,13 +10,13 @@ import (
 func setAllLights(e elevator.Elevator) {
 	for floor := 0; floor < elevator.N_FLOORS; floor++ {
 		for btn := 0; btn < elevator.N_BUTTONS; btn++ {
-			elevio.RequestButtonLight(btn, floor, e.GetRequest(floor, btn))
+			elevator.RequestButtonLight(floor, (elevio.ButtonType)(btn), e.GetRequest(floor, (elevio.ButtonType)(btn)))
 		}
 	}
 }
 
 func onInitBetweenFloors(e *elevator.Elevator) {
-	elevio.SetMotorDirection(elevator.Down)
+	elevio.SetMotorDirection(elevio.MD_DOWN)
 	e.SetDirection(elevator.Down)
 	e.SetBehaviour(elevator.Moving)
 }
@@ -24,7 +25,7 @@ func onRequestButtonPress(e *elevator.Elevator, floor int, button elevator.Butto
 
 	switch e.GetBehaviour() {
 	case elevator.DoorOpen:
-		if requests.ShouldClearImmediately(e, floor, button) {
+		if requests.ShouldClearImmediately(*e, floor, button) {
 			timer.Start(e.GetDoorOpenDuration())
 		} else {
 			e.SetRequest(floor, button, true)

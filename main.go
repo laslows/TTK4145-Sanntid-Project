@@ -1,18 +1,9 @@
 package main
 
-import (
-	"./src/init"
-	"./src/network"
-	"./src/fsm"
-)
-
 func main() {
-	initialize.Initialize()
+	//initialize.Initialize()
 
-	go fsm.Fsm()
-	go network.Network()
+	//go fsm.Fsm()
+	//go network.Network()
 
-	
 }
-
-
