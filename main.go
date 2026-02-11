@@ -5,13 +5,13 @@ import (
 	"time"
 
 	elevator "./src/elevator"
-	"./src/fsm"
+	fsm "./src/fsm"
 	initialize "./src/init"
 	"./src/network"
-	"./src/timer"
+	timer "./src/timer"
 )
 
-func pollLoop(inputPollRate_ms int, elev *elevator.Elevator) {
+func pollLoop(inputPollRate_ms int, elev *elevator.Elevator, tmr *timer.Timer) {
 	var prevBtn [elevator.N_FLOORS][elevator.N_BUTTONS]bool
 	prevFloor := -1
 
@@ -20,7 +20,7 @@ func pollLoop(inputPollRate_ms int, elev *elevator.Elevator) {
 		for btn := 0; btn < elevator.N_BUTTONS; btn++ {
 			v := elevator.RequestButton(f, elevator.ButtonType(btn))
 			if v && v != prevBtn[f][btn] {
-				fsm.onRequestButtonPress(elev, f, btn)
+				fsm.OnRequestButtonPress(elev, f, elevator.ButtonType(btn))
 			}
 			prevBtn[f][btn] = v
 		}
@@ -29,14 +29,14 @@ func pollLoop(inputPollRate_ms int, elev *elevator.Elevator) {
 	// Floor Sensor TODO
 	f := elevator.FloorSensor()
 	if f != -1 && f != prevFloor {
-		fsm.onFloorArrival(elev, f)
+		fsm.OnFloorArrival(elev, f)
 	}
 	prevFloor = f
 
 	// Door Timeout TODO
-	if Timer_timedOut() {
-		timer.stop()
-		fsm.onDoorTimeout(elev)
+	if tmr.TimedOut() {
+		tmr.Stop()
+		fsm.OnDoorTimeout(elev)
 	}
 
 	time.Sleep(time.Duration(inputPollRate_ms) * time.Millisecond)
@@ -47,6 +47,7 @@ func main() {
 
 	initialize.Initialize()
 	elev := elevator.New()
+	tmr := timer.New()
 	// -- Code Under --
 	/* LoadConfig("elevator.con",
 		ConVal("doorOpenDuration_s", "%d", &elevator.doorOpenDuration_s),
@@ -55,7 +56,7 @@ func main() {
 	)
 
 	if(elevator.FloorSensor() == -1) {
-		Fsm_onInitBetweenFloors(elev);
+		fsm.OnInitBetweenFloors(elev);
 	}
 
 	+ BUTTON_HANDLER?
@@ -63,7 +64,7 @@ func main() {
 
 	go fsm.Fsm()
 	go network.Network()
-	go timer.Timer()
+	go timer.New() //timer.Timer()?
 
-	go pollLoop(25, elev) // function translated from main.c in given code
+	go pollLoop(25, elev, tmr) // function translated from main.c in given code
 }

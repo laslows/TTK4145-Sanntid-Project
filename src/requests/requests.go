@@ -1,12 +1,22 @@
 package requests
 
 import (
-	"elevator"
+	elevator "../elevator"
+	request "../requests"
+	timer "../timer"
 )
 
 type DirnBehaviourPair struct {
 	m_dirn 	     elevator.Direction
 	m_behaviour  elevator.ElevatorBehaviour
+}
+
+func (p DirnBehaviourPair) GetDirection() elevator.Direction {
+	return p.m_dirn
+}
+
+func (p DirnBehaviourPair) GetBehaviour() elevator.ElevatorBehaviour {
+	return p.m_behaviour
 }
 
 //Hjelpefunksjoner. 
@@ -88,7 +98,7 @@ func ShouldStop(e Elevator) bool {
 			e.getRequest(e.GetFloor(), elevator.Cab) ||
 			!requestsAbove(e)
 	default:
-		return true;;
+		return true
 	}
 }
 
