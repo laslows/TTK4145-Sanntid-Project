@@ -45,7 +45,7 @@ import (
 //      )
 //      printf("%s, %d, %d\n", s, i, en);   // Should print "hello, 5, 1"
 
-func Con_load(file string, handler func(key, val string)) error {
+func ConLoad(file string, handler func(key, val string)) error {
 	f, err := os.Open(file)
 	if err != nil {
 		fmt.Printf("Unable to open config file %s\n", file)

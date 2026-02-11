@@ -16,7 +16,7 @@ func SetAllLights(e *elevator.Elevator) {
 }
 
 func OnInitBetweenFloors(e *elevator.Elevator) {
-	elevio.SetMotorDirection(elevator.Down)
+	elevio.SetMotorDirection(elevio.MD_Down)
 	e.SetDirection(elevator.Down)
 	e.SetBehaviour(elevator.Moving)
 }

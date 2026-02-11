@@ -12,9 +12,9 @@ const N_BUTTONS int = 3
 type Direction int
 
 const (
-	Down Direction = -1
-	Stop           = 0
-	Up             = 1
+	Down Direction = iota - 1
+	Stop
+	Up
 )
 
 type ButtonType int
@@ -99,7 +99,7 @@ func FloorSensor() int {
 }
 
 func RequestButton(floor int, btn ButtonType) bool {
-	return elevio.GetButton(btn, floor)
+	return elevio.GetButton(elevio.ButtonType(btn), floor)
 }
 
 func StopButton() bool {
@@ -115,7 +115,7 @@ func FloorIndicator(floor int) {
 }
 
 func RequestButtonLight(floor int, btn ButtonType, on bool) {
-	elevio.SetButtonLamp(btn, floor, on)
+	elevio.SetButtonLamp(elevio.ButtonType(btn), floor, on)
 }
 
 func DoorOpenLight(on bool) {
@@ -127,5 +127,5 @@ func StopLight(on bool) {
 }
 
 func MotorDirection(dir Direction) {
-	elevio.SetMotorDirection(MotorDirection(dir))
+	elevio.SetMotorDirection(elevio.MotorDirection(dir))
 }
