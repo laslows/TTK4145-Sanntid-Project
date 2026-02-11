@@ -9,6 +9,14 @@ type DirnBehaviourPair struct {
 	m_behaviour  elevator.ElevatorBehaviour
 }
 
+func (p DirnBehaviourPair) GetDirection() elevator.Direction {
+	return p.m_dirn
+}
+
+func (p DirnBehaviourPair) GetBehaviour() elevator.ElevatorBehaviour {
+	return p.m_behaviour
+}
+
 //Hjelpefunksjoner. 
 func requestsAbove(e Elevator) bool {
     for f := e.GetFloor() + 1; f < elevator.N_FLOORS; f++ {
@@ -88,7 +96,7 @@ func ShouldStop(e Elevator) bool {
 			e.getRequest(e.GetFloor(), elevator.Cab) ||
 			!requestsAbove(e)
 	default:
-		return true;;
+		return true
 	}
 }
 
