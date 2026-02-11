@@ -5,7 +5,7 @@ import "sync"
 import "net"
 import "fmt"
 
-//TODO: Fix naming conventions
+
 
 const _pollRate = 20 * time.Millisecond
 
@@ -25,9 +25,9 @@ const (
 type ButtonType int
 
 const (
-	BT_HallUp   ButtonType = iota 
-	BT_HallDown              
-	BT_Cab                 
+	BT_HallUp   ButtonType = 0
+	BT_HallDown            = 1
+	BT_Cab                 = 2
 )
 
 type ButtonEvent struct {
