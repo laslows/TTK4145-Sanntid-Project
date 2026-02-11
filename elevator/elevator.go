@@ -1,12 +1,10 @@
 package elevator
 
 import (
+	"Sanntid/config"
 	"Sanntid/elevio"
 	"time"
 )
-
-const N_FLOORS int = 4
-const N_BUTTONS int = 3
 
 type Direction int
 
@@ -35,7 +33,7 @@ const (
 type Elevator struct {
 	m_floor     int
 	m_direction Direction
-	m_requests  [N_FLOORS][N_BUTTONS]bool
+	m_requests  [config.N_FLOORS][config.N_BUTTONS]bool
 	m_behaviour ElevatorBehaviour
 
 	m_Config struct {

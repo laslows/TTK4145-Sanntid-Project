@@ -1,6 +1,7 @@
 package requests
 
 import (
+	"Sanntid/config"
 	"Sanntid/elevator"
 	"Sanntid/elevio"
 )
@@ -20,8 +21,8 @@ func (p DirnBehaviourPair) GetBehaviour() elevator.ElevatorBehaviour {
 
 // Hjelpefunksjoner.
 func requestsAbove(e elevator.Elevator) bool {
-	for f := e.GetFloor() + 1; f < elevator.N_FLOORS; f++ {
-		for btn := 0; btn < elevator.N_BUTTONS; btn++ {
+	for f := e.GetFloor() + 1; f < config.N_FLOORS; f++ {
+		for btn := 0; btn < config.N_BUTTONS; btn++ {
 			if e.GetRequest(f, (elevio.ButtonType)(btn)) {
 				return true
 			}
@@ -32,7 +33,7 @@ func requestsAbove(e elevator.Elevator) bool {
 
 func requestsBelow(e elevator.Elevator) bool {
 	for f := 0; f < e.GetFloor(); f++ {
-		for btn := 0; btn < elevator.N_BUTTONS; btn++ {
+		for btn := 0; btn < config.N_BUTTONS; btn++ {
 			if e.GetRequest(f, (elevio.ButtonType)(btn)) {
 				return true
 			}
@@ -42,7 +43,7 @@ func requestsBelow(e elevator.Elevator) bool {
 }
 
 func requestsHere(e elevator.Elevator) bool {
-	for btn := 0; btn < elevator.N_BUTTONS; btn++ {
+	for btn := 0; btn < config.N_BUTTONS; btn++ {
 		if e.GetRequest(e.GetFloor(), (elevio.ButtonType)(btn)) {
 			return true
 		}
@@ -119,13 +120,13 @@ func ClearAtCurrentFloor(e elevator.Elevator) elevator.Elevator {
 			e.SetRequest(e.GetFloor(), elevio.BT_HallDown, false)
 		}
 		e.SetRequest(e.GetFloor(), elevio.BT_HallUp, false)
-		break
+
 	case elevator.Down:
 		if !requestsBelow(e) && !e.GetRequest(e.GetFloor(), elevio.BT_HallDown) {
 			e.SetRequest(e.GetFloor(), elevio.BT_HallUp, false)
 		}
 		e.SetRequest(e.GetFloor(), elevio.BT_HallDown, false)
-		break
+
 	default:
 		e.SetRequest(e.GetFloor(), elevio.BT_HallUp, false)
 		e.SetRequest(e.GetFloor(), elevio.BT_HallDown, false)

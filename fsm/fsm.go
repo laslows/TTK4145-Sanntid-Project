@@ -1,6 +1,7 @@
 package fsm
 
 import (
+	"Sanntid/config"
 	"Sanntid/elevator"
 	"Sanntid/elevio"
 	"Sanntid/requests"
@@ -8,48 +9,46 @@ import (
 )
 
 func setAllLights(e elevator.Elevator) {
-	for floor := 0; floor < elevator.N_FLOORS; floor++ {
-		for btn := 0; btn < elevator.N_BUTTONS; btn++ {
+	for floor := 0; floor < config.N_FLOORS; floor++ {
+		for btn := 0; btn < config.N_BUTTONS; btn++ {
 			elevator.RequestButtonLight(floor, (elevio.ButtonType)(btn), e.GetRequest(floor, (elevio.ButtonType)(btn)))
 		}
 	}
 }
 
-func onInitBetweenFloors(e *elevator.Elevator) {
+func OnInitBetweenFloors(e *elevator.Elevator) {
 	elevio.SetMotorDirection(elevio.MD_DOWN)
 	e.SetDirection(elevator.Down)
 	e.SetBehaviour(elevator.Moving)
 }
 
-func onRequestButtonPress(e *elevator.Elevator, floor int, button elevator.Button) {
+func OnRequestButtonPress(e *elevator.Elevator, floor int, button elevator.Button, _timer *timer.Timer) {
 
 	switch e.GetBehaviour() {
 	case elevator.DoorOpen:
 		if requests.ShouldClearImmediately(*e, floor, button) {
-			timer.Start(e.GetDoorOpenDuration())
+			_timer.Start(e.GetDoorOpenDuration())
 		} else {
-			e.SetRequest(floor, button, true)
+			e.SetRequest(floor, (elevio.ButtonType)(button), true)
 		}
-		break
+
 	case elevator.Moving:
-		e.SetRequest(floor, button, true)
-		break
+		e.SetRequest(floor, (elevio.ButtonType)(button), true)
+
 	case elevator.Idle:
-		e.SetRequest(floor, button, true)
-		pair := requests.ChooseDrection(*e)
+		e.SetRequest(floor, (elevio.ButtonType)(button), true)
+		pair := requests.ChooseDirection(*e)
 		e.SetDirection(pair.GetDirection())
 		e.SetBehaviour(pair.GetBehaviour())
 
-		switch pair.GetDirection() {
+		switch pair.GetBehaviour() {
 		case elevator.DoorOpen:
-			elevio.DoorOpenLight(true)
-			timer.Start(e.GetDoorOpenDuration())
+			elevator.DoorOpenLight(true)
+			_timer.Start(e.GetDoorOpenDuration())
 			*e = requests.ClearAtCurrentFloor(*e)
-			break
 
 		case elevator.Moving:
 			elevator.MotorDirection(pair.GetDirection())
-			break
 
 		case elevator.Idle:
 			break
@@ -61,7 +60,7 @@ func onRequestButtonPress(e *elevator.Elevator, floor int, button elevator.Butto
 	}
 }
 
-func onFloorArrival(e *elevator.Elevator, floor int) {
+func OnFloorArrival(e *elevator.Elevator, floor int, _timer *timer.Timer) {
 
 	e.SetFloor(floor)
 	elevator.FloorIndicator(floor)
@@ -72,17 +71,35 @@ func onFloorArrival(e *elevator.Elevator, floor int) {
 			elevator.MotorDirection(elevator.Stop)
 			elevator.DoorOpenLight(true)
 			*e = requests.ClearAtCurrentFloor(*e)
-			timer.Start(e.GetDoorOpenDuration())
+			_timer.Start(e.GetDoorOpenDuration())
 			setAllLights(*e)
 			e.SetBehaviour(elevator.DoorOpen)
 		}
-		break
 
 	default:
 		break
 	}
 }
 
-func onDoorTimeout(e *elevator.Elevator) {
+func OnDoorTimeout(e *elevator.Elevator, _timer *timer.Timer) {
+	switch e.GetBehaviour() {
+	case elevator.DoorOpen:
+		pair := requests.ChooseDirection(*e)
+		e.SetDirection(pair.GetDirection())
+		e.SetBehaviour(pair.GetBehaviour())
 
+		switch e.GetBehaviour() {
+		case elevator.DoorOpen:
+			_timer.Start(e.GetDoorOpenDuration())
+			*e = requests.ClearAtCurrentFloor(*e)
+			setAllLights(*e)
+		case elevator.Moving:
+		case elevator.Idle:
+			elevator.DoorOpenLight(false)
+			elevator.MotorDirection(e.GetDirection())
+		}
+
+	default:
+		break
+	}
 }
