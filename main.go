@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"time"
 
-	elevator "./src/elevator"
-	fsm "./src/fsm"
-	initialize "./src/init"
-	"./src/network"
-	timer "./src/timer"
+	elevator "./elevator"
+	fsm "./fsm"
+	initialize "./init"
+	"./network"
+	timer "./timer"
 )
 
 // This is the main function translated from the C code. TODO: Implement elsewhere

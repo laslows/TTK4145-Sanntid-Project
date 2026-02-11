@@ -3,7 +3,7 @@ package elevator
 import (
 	"time"
 
-	elevio "../elevio"
+	elevio "../driver-go/elevio"
 )
 
 const N_FLOORS int = 4

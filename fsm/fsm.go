@@ -1,6 +1,7 @@
 package fsm
 
 import (
+	elevio "../driver-go/elevio"
 	elevator "../elevator"
 	requests "../requests"
 	timer "../timer"
