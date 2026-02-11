@@ -41,15 +41,46 @@ func onRequestButtonPress(e *elevator.Elevator, floor int, button elevator.Butto
 
 		switch(pair.GetDirection()){
 		case elevator.DoorOpen:
-		case elevator.Stop:
-		case elevator.Up:
+			elevio.DoorOpenLight(true)
+			timer.Start(e.GetDoorOpenDuration())
+			*e = requests.ClearAtCurrentFloor(*e)
+			break;
+
+		case elevator.Moving:
+			elevator.MotorDirection(pair.GetDirection())
+			break;
+
+		case elevator.Idle:
+			break;
+
 		break;
 	}
+
+	setAllLights(*e)
+
 }
 
 
 func onFloorArrival(e *elevator.Elevator, floor int){
 
+	e.SetFloor(floor)
+	elevator.FloorIndicator(floor)
+
+	switch(e.GetBehaviour()){
+	case elevator.Moving:
+		if requests.ShouldStop(*e) {
+			elevator.MotorDirection(elevator.Stop)
+			elevator.DoorOpenLight(true)
+			*e = requests.ClearAtCurrentFloor(*e)
+			timer.Start(e.GetDoorOpenDuration())
+			setAllLights(*e)
+			e.SetBehaviour(elevator.DoorOpen)
+		}
+		break;
+
+	default:
+		break;
+	}
 }
 
 func onDoorTimeout(e *elevator.Elevator) {
