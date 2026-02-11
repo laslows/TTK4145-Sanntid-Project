@@ -1,9 +1,9 @@
 package main
 
 import (
-	"./src/init"
-	"./src/network"
 	"./src/fsm"
+	initialize "./src/init"
+	"./src/network"
 )
 
 func main() {
@@ -12,7 +12,4 @@ func main() {
 	go fsm.Fsm()
 	go network.Network()
 
-	
 }
-
-
