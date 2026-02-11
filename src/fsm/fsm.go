@@ -23,8 +23,9 @@ func OnInitBetweenFloors(e *elevator.Elevator) {
 func OnRequestButtonPress(e *elevator.Elevator, floor int, button elevator.ButtonType) {
 	switch e.GetBehaviour() {
 	case elevator.DoorOpen:
-		if requests.ShouldClearImmediately(e, floor, button) {
-			timer.Start(e.GetDoorOpenDuration())
+		if requests.ShouldClearImmediately(*e, floor, button) {
+			t := timer.New()
+			t.Start(e.GetDoorOpenDuration())
 		} else {
 			e.SetRequest(floor, button, true)
 		}
@@ -34,12 +35,12 @@ func OnRequestButtonPress(e *elevator.Elevator, floor int, button elevator.Butto
 		break
 	case elevator.Idle:
 		e.SetRequest(floor, button, true)
-		pair := requests.ChooseDrection(*e)
+		pair := requests.ChooseDirection(*e)
 		e.SetDirection(pair.GetDirection())
 		e.SetBehaviour(pair.GetBehaviour())
 
 		switch pair.GetDirection() {
-		case elevator.DoorOpen:
+		case elevator.Down:
 		case elevator.Stop:
 		case elevator.Up:
 			break

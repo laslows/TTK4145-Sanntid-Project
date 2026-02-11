@@ -100,7 +100,7 @@ func ShouldStop(e Elevator) bool {
 	}
 }
 
-func ShouldClearImmedeately(e Elevator, btn_floor int, btn_type elevator.ButtonType) bool {
+func ShouldClearImmediately(e Elevator, btn_floor int, btn_type elevator.ButtonType) bool {
 	return (e.GetFloor() == btn_floor &&
 		((e.GetDirection() == elevator.Up && btn_type == elevator.HallUp) ||
 			(e.GetDirection() == elevator.Down && btn_type == elevator.HallDown) ||
