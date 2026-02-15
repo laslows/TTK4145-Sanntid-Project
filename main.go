@@ -50,6 +50,10 @@ func main() {
 			timetaker.Stop()
 			fsm.OnDoorTimeout(elev, timetaker)
 		}
+
+		if elev.GetBehaviour() == elevator.DoorOpen && elevator.ObstructionSwitch() {
+			timetaker.Start(elev.GetDoorOpenDuration())
+		}
 	}
 
 }

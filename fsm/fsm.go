@@ -55,9 +55,9 @@ func OnRequestButtonPress(e *elevator.Elevator, floor int, button elevator.Butto
 
 		}
 
-		setAllLights(*e)
-
 	}
+
+	setAllLights(*e)
 }
 
 func OnFloorArrival(e *elevator.Elevator, floor int, _timer *timer.Timer) {
@@ -94,6 +94,7 @@ func OnDoorTimeout(e *elevator.Elevator, _timer *timer.Timer) {
 			*e = requests.ClearAtCurrentFloor(*e)
 			setAllLights(*e)
 		case elevator.Moving:
+			fallthrough
 		case elevator.Idle:
 			elevator.DoorOpenLight(false)
 			elevator.MotorDirection(e.GetDirection())
