@@ -1,97 +1,145 @@
 package elevator
 
-import "./driver"
+import (
+	"Sanntid/src/config"
+	"Sanntid/src/driver"
+	"fmt"
+	"net"
+	"time"
+)
 
-//TODO: Fix naming conventions
-
-const N_FLOORS int = 4
-const N_BUTTONS int = 3
-
-type Dirn int
+type Direction int
 
 const (
-	DIRN_DOWN Dirn = -1
-	DIRN_STOP      = 0
-	DIRN_UP        = 1
+	Down Direction = iota - 1
+	Stop
+	Up
 )
 
 type Button int
 
 const (
-	BUTTON_HALL_UP Button = iota
-	BUTTON_HALL_DOWN
-	BUTTON_CAB
+	HallUp Button = iota
+	HallDown
+	Cab
 )
 
 type ElevatorBehaviour int
 
 const (
-	EB_IDLE ElevatorBehaviour = iota
-	EB_DOOR_OPEN
-	EB_MOVING
+	Idle ElevatorBehaviour = iota
+	DoorOpen
+	Moving
+	MotorStop
 )
 
 type Elevator struct {
-	Floor     int
-	Dirn      Dirn
-	Requests  [N_FLOORS][N_BUTTONS]int
-	Behaviour ElevatorBehaviour
+	m_IP        string
+	m_floor     int
+	m_direction Direction
+	m_requests  [config.N_FLOORS][config.N_BUTTONS]bool
+	m_behaviour ElevatorBehaviour
 
-	Config struct {
-		doorOpenDuration_s float64
+	m_Config struct {
+		m_doorOpenDuration time.Duration
 	}
 }
 
-func Elevator_uninitialized() Elevator {
-	elevio.Init("localhost:15657", N_FLOORS)
-	return Elevator{
-		Floor:     -1,
-		Dirn:      DIRN_STOP,
-		Behaviour: EB_IDLE,
-		Config: struct {
-			doorOpenDuration_s float64
+// Constructor
+func New(port string) *Elevator {
+	return &Elevator{
+		m_IP:        getLocalIP() + port,
+		m_floor:     -1,
+		m_direction: Stop,
+		m_behaviour: Idle,
+		m_Config: struct {
+			m_doorOpenDuration time.Duration
 		}{
-			doorOpenDuration_s: 3.0,
+			m_doorOpenDuration: 3 * time.Second,
 		},
 	}
 }
 
-func Test() int {
-	return elevio.GetFloor()
+func (e *Elevator) GetFloor() int {
+	return e.m_floor
 }
 
-func Elevator_floorSensor() int {
-	return elevio.GetFloor()
+func (e *Elevator) SetFloor(f int) {
+	e.m_floor = f
 }
 
-func Elevator_requestButton(f int, b Button) bool {
-	return elevio.GetButton(elevio.ButtonType(b), f)
+func (e *Elevator) GetRequest(floor int, btn driver.ButtonType) bool {
+	return e.m_requests[floor][btn]
 }
 
-func Elevator_stopButton() bool {
-	return elevio.GetStop()
+func (e *Elevator) SetRequest(floor int, btn driver.ButtonType, active bool) {
+	e.m_requests[floor][btn] = active
 }
 
-func Elevator_obstruction() bool {
-	return elevio.GetObstruction()
+func (e *Elevator) GetDirection() Direction {
+	return e.m_direction
 }
 
-func Elevator_floorIndicator(f int) {
-	elevio.SetFloorIndicator(f)
+func (e *Elevator) SetDirection(d Direction) {
+	e.m_direction = d
 }
 
-func Elevator_requestButtonLight(f int, b Button, on bool) {
-	elevio.SetButtonLamp(elevio.ButtonType(b), f, on)
+func (e *Elevator) GetBehaviour() ElevatorBehaviour {
+	return e.m_behaviour
 }
 
-func Elevator_doorOpenLight(on bool) {
-	elevio.SetDoorOpenLamp(on)
+func (e *Elevator) SetBehaviour(b ElevatorBehaviour) {
+	e.m_behaviour = b
 }
 
-func Elevator_stopButtonLight(on bool) {
-	elevio.SetStopLamp(on)
+func (e *Elevator) GetDoorOpenDuration() time.Duration {
+	return e.m_Config.m_doorOpenDuration
 }
 
-func Elevator_motorDirection(dirn Dirn) {
-	elevio.SetMotorDirection(elevio.MotorDirection(dirn))
+func FloorSensor() int {
+	return driver.GetFloor()
+}
+
+func RequestButton(floor int, btn driver.ButtonType) bool {
+	return driver.GetButton(btn, floor)
+}
+
+func StopButton() bool {
+	return driver.GetStop()
+}
+
+func ObstructionSwitch() bool {
+	return driver.GetObstruction()
+}
+
+func FloorIndicator(floor int) {
+	driver.SetFloorIndicator(floor)
+}
+
+func RequestButtonLight(floor int, btn driver.ButtonType, on bool) {
+	driver.SetButtonLamp(btn, floor, on)
+}
+
+func DoorOpenLight(on bool) {
+	driver.SetDoorOpenLamp(on)
+}
+
+func StopLight(on bool) {
+	driver.SetStopLamp(on)
+}
+
+func MotorDirection(dir Direction) {
+	driver.SetMotorDirection(driver.MotorDirection(dir))
+}
+
+func getLocalIP() string {
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+	if err != nil {
+		panic("Failed to get local IP address")
+	}
+	defer conn.Close()
+
+	localAddress := conn.LocalAddr().(*net.UDPAddr)
+	fmt.Printf("Found IP address: %s\n", localAddress.IP.String())
+	return localAddress.IP.String()
 }

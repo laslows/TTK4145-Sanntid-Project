@@ -1,6 +1,6 @@
 package network
 
-
-func Network () {
+func Network() {
 	//Nettverk
+
 }
