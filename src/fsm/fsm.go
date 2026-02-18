@@ -24,7 +24,7 @@ func Fsm(e *elevator.Elevator, timetaker *timer.Timer, buttonCh <-chan events.Bu
 		select {
 		case buttonEvent := <-buttonCh:
 			if buttonEvent.GetButton() == elevator.Cab {
-				//Put in queue
+				NewOrder(e, buttonEvent.GetFloor(), (orders.OrderType)(buttonEvent.GetButton()), timetaker)
 			} else {
 				//Tell master
 			}
@@ -88,34 +88,34 @@ func setAllLights(e elevator.Elevator) {
 	}
 }
 
-/*
-func OnRequestButtonPress(e *elevator.Elevator, floor int, button elevator.Button, _timer *timer.Timer) {
+
+func NewOrder(e *elevator.Elevator, floor int, order_type orders.OrderType, _timer *timer.Timer) {
 
 	switch e.GetBehaviour() {
 	case elevator.DoorOpen:
-		if requests.ShouldClearImmediately(*e, floor, button) {
+		if ShouldClearImmediately(*e, floor, order_type) {
 			_timer.Start(e.GetDoorOpenDuration())
 		} else {
-			e.SetRequest(floor, (driver.ButtonType)(button), true)
+			e.SetRequest(floor, (driver.ButtonType)(order_type), true)
 		}
 
 	case elevator.Moving:
-		e.SetRequest(floor, (driver.ButtonType)(button), true)
+		e.SetRequest(floor, (driver.ButtonType)(order_type), true)
 
 	case elevator.Idle:
-		e.SetRequest(floor, (driver.ButtonType)(button), true)
-		pair := requests.ChooseDirection(*e)
-		e.SetDirection(pair.GetDirection())
-		e.SetBehaviour(pair.GetBehaviour())
+		e.SetRequest(floor, (driver.ButtonType)(order_type), true)
+		pair := ChooseDirection(*e)
+		e.SetDirection(pair.m_dirn)
+		e.SetBehaviour(pair.m_behaviour)
 
-		switch pair.GetBehaviour() {
+		switch pair.m_behaviour {
 		case elevator.DoorOpen:
 			elevator.DoorOpenLight(true)
 			_timer.Start(e.GetDoorOpenDuration())
-			*e = requests.ClearAtCurrentFloor(*e)
+			*e = ClearAtCurrentFloor(*e)
 
 		case elevator.Moving:
-			elevator.MotorDirection(pair.GetDirection())
+			elevator.MotorDirection(pair.m_dirn)
 
 		case elevator.Idle:
 			break
@@ -126,4 +126,4 @@ func OnRequestButtonPress(e *elevator.Elevator, floor int, button elevator.Butto
 
 	//setAllLights(*e)
 }
-*/
+
