@@ -18,10 +18,8 @@ func NewBackup(IP string) *Backup {
 		m_IP: IP,
 	}
 }
-*/
 
 func (b *Backup) GetIP() string {
 	return b.m_IP
 }
-
-
+*/

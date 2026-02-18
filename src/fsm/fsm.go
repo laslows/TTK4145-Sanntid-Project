@@ -1,7 +1,12 @@
 package fsm
 
 import (
+	"Sanntid/src/config"
+	"Sanntid/src/driver"
+	"Sanntid/src/elevator"
 	"Sanntid/src/events"
+	"Sanntid/src/orders"
+	"Sanntid/src/timer"
 	/*
 		"Sanntid/src/elevator"
 		"Sanntid/src/driver"
@@ -10,19 +15,24 @@ import (
 
 //TODO: Fix naming conventions
 
-func Fsm(buttonCh <-chan events.ButtonEvent, floorCh <-chan int, timerCh <-chan bool, motorStopCh <-chan bool) {
+func Fsm(buttonCh <-chan events.ButtonEvent, floorCh <-chan int, timerCh <-chan bool, motorStopCh <-chan bool,
+	assignedOrderChan <-chan orders.OrderType) {
 	//Can only receive on channels. Might have to change tho, idk
+	//Maybe make buttonevent and ordertype the samenthing
 
 	for {
 		select {
 		case buttonEvent := <-buttonCh:
-			// If cab order, put in queue
-			// If hall order, tell master
+			if buttonEvent.GetButton() == elevator.Cab {
+				//Put in queue
+			} else {
+				//Tell master
+			}
+
 			println("Received button event:", buttonEvent.GetFloor(), buttonEvent.GetButton())
+
 		case floorArrival := <-floorCh:
-			// Clear floor from queue
-			// Tell network
-			// Stop motor
+
 			println("Received floor event:", floorArrival)
 		case <-timerCh:
 			// Close door
@@ -34,10 +44,45 @@ func Fsm(buttonCh <-chan events.ButtonEvent, floorCh <-chan int, timerCh <-chan 
 			//Clear queue
 			//Try to reach new floor if between floors
 			println("Is motor stopped")
+		case assignedOrder := <-assignedOrderChan:
+
+			println("Assigned order from master: ", assignedOrder)
 		}
 
 	}
 
+}
+
+func onFloorArrival(e *elevator.Elevator, floor int, _timer *timer.Timer) {
+	// Clear floor from queue
+	// Tell network
+	// Stop motor
+
+	e.SetFloor(floor)
+	elevator.FloorIndicator(floor)
+
+	switch e.GetBehaviour() {
+	case elevator.Moving:
+		if ShouldStop(*e) {
+			elevator.MotorDirection(elevator.Stop)
+			elevator.DoorOpenLight(true)
+			*e = ClearAtCurrentFloor(*e)
+			_timer.Start(e.GetDoorOpenDuration())
+			//setAllLights(*e)
+			e.SetBehaviour(elevator.DoorOpen)
+		}
+
+	default:
+		break
+	}
+}
+
+func setAllLights(e elevator.Elevator) {
+	for floor := 0; floor < config.N_FLOORS; floor++ {
+		for btn := 0; btn < config.N_BUTTONS; btn++ {
+			elevator.RequestButtonLight(floor, (driver.ButtonType)(btn), e.GetRequestAtFloor(floor, (driver.ButtonType)(btn)))
+		}
+	}
 }
 
 /*
