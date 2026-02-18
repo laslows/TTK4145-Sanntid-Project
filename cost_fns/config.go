@@ -1,14 +1,9 @@
 package costfns
 
-import (
-	elevator_state "./elevator_state"
-	elevator_algorithm "./elevator_algorithm"
-)
-
 const (
-	DoorOpenDuration  int  = 3000;
-	TravelDuration  int    = 2500;
-	IncludeCab bool         = false;
+	DoorOpenDuration int  = 3000
+	TravelDuration   int  = 2500
+	IncludeCab       bool = false
 )
 
 type ClearRequestType int
@@ -18,5 +13,4 @@ const (
 	InDirn
 )
 
-// TODO: Fix
-ClearRequestType clearRequestType = ClearRequestType.InDirn;
+var clearRequestType ClearRequestType = InDirn
