@@ -7,6 +7,7 @@ import (
 	"Sanntid/src/events"
 	"Sanntid/src/orders"
 	"Sanntid/src/timer"
+	"fmt"
 	/*
 		"Sanntid/src/elevator"
 		"Sanntid/src/driver"
@@ -15,7 +16,7 @@ import (
 
 //TODO: Fix naming conventions
 
-func Fsm(e *elevator.Elevator, timetaker *timer.Timer, buttonCh <-chan events.ButtonEvent, floorCh <-chan int, timerCh <-chan bool, motorStopCh <-chan bool,
+func Fsm(e *elevator.Elevator, timetaker *timer.Timer, cabButtonCh <-chan events.ButtonEvent, floorCh <-chan int, timerCh <-chan bool, motorStopCh <-chan bool,
 	assignedOrderCh <-chan orders.Order) {
 	//Can only receive on channels. Might have to change tho, idk
 	//Maybe make buttonevent and ordertype the samenthing
@@ -23,32 +24,29 @@ func Fsm(e *elevator.Elevator, timetaker *timer.Timer, buttonCh <-chan events.Bu
 
 	for {
 		select {
-		case buttonEvent := <-buttonCh:
-			if buttonEvent.GetButton() == elevator.Cab {
-				NewOrder(e, buttonEvent.GetFloor(), (orders.OrderType)(buttonEvent.GetButton()), timetaker)
-			} else {
-				//Tell master
-			}
+		case buttonEvent := <-cabButtonCh:
+			NewOrder(e, buttonEvent.GetFloor(), (orders.OrderType)(buttonEvent.GetButton()), timetaker)
 
-			println("Received button event:", buttonEvent.GetFloor(), buttonEvent.GetButton())
+			fmt.Print("Received button event:", buttonEvent.GetFloor(), buttonEvent.GetButton())
 		case assignedOrder := <-assignedOrderCh:
-
-			println("Assigned order from master: ", assignedOrder)
+				NewOrder(e, assignedOrder.GetFloor(), assignedOrder.GetOrderType(), timetaker)
+			fmt.Print("Assigned order from master: ", assignedOrder)
 		case floorArrival := <-floorCh:
 			onFloorArrival(e, floorArrival, timetaker)
 
-			println("Received floor event:", floorArrival)
+			fmt.Print("Received floor event:", floorArrival)
 		case <-timerCh:
 			// Close door
+			OnDoorTimeout(e, timetaker)
 
-			println("Received timer event")
+			fmt.Print("Received timer event")
 		case <-motorStopCh:
 			//Maybe make it receive a struct (MotorStopEvent, idk)
 
 			//Inform other elevators
 			//Clear queue
 			//Try to reach new floor if between floors
-			println("Is motor stopped")
+			fmt.Print("Is motor stopped")
 
 		}
 
