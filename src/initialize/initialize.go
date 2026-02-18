@@ -17,6 +17,8 @@ func Initialize(elev *elevator.Elevator) {
 	// for å bestemme hvem av de som skal være master,
 	// og hvem som skal være slave.
 
+	// Finn ut om du er master
+
 	if elevator.FloorSensor() == -1 {
 		onInitBetweenFloors(elev)
 	}

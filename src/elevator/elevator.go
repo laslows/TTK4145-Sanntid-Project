@@ -39,6 +39,7 @@ type Elevator struct {
 	m_direction Direction
 	m_requests  [config.N_FLOORS][config.N_BUTTONS]bool
 	m_behaviour ElevatorBehaviour
+	m_isMaster  bool
 
 	m_Config struct {
 		m_doorOpenDuration time.Duration
@@ -52,6 +53,7 @@ func New(port string) *Elevator {
 		m_floor:     -1,
 		m_direction: Stop,
 		m_behaviour: Idle,
+		m_isMaster:  false,
 		m_Config: struct {
 			m_doorOpenDuration time.Duration
 		}{
@@ -94,6 +96,14 @@ func (e *Elevator) SetBehaviour(b ElevatorBehaviour) {
 
 func (e *Elevator) GetDoorOpenDuration() time.Duration {
 	return e.m_Config.m_doorOpenDuration
+}
+
+func (e *Elevator) GetIsMaster() bool {
+	return e.m_isMaster
+}
+
+func (e *Elevator) SetIsMaster(isMaster bool) {
+	e.m_isMaster = isMaster
 }
 
 func FloorSensor() int {

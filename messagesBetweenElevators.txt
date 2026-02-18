@@ -1,0 +1,14 @@
+Innhold i melding:
+- Hvem den er ment for (slave/master)
+    - De fleste meldinger er ment for alle, men slaves skal bare lagre infoen, master skal gjøre noe med den
+
+Type melding:
+- Ny hall order
+- Assigned hall order
+- Heartbeat med (kopi av) elevator struct + all known orders
+    - Ny cab order implisitt gjennom denne
+- IP-adresse
+- Har motorstopp
+- Redistribusjon av order
+- Sende backupen tilbake til en gjenoppstått node
+- 
