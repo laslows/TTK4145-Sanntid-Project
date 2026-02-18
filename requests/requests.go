@@ -116,13 +116,11 @@ func ClearAtCurrentFloor(e Elevator) Elevator {
 			e.SetRequest(e.GetFloor(), elevator.HallDown, false)
 		}
 		e.SetRequest(e.GetFloor(), elevator.HallUp, false)
-		break
 	case elevator.Down:
 		if !requestsBelow(e) && !e.GetRequest(e.GetFloor(), elevator.HallDown) {
 			e.SetRequest(e.GetFloor(), elevator.HallUp, false)
 		}
 		e.SetRequest(e.GetFloor(), elevator.HallDown, false)
-		break
 	default:
 		e.SetRequest(e.GetFloor(), elevator.HallUp, false)
 		e.SetRequest(e.GetFloor(), elevator.HallDown, false)

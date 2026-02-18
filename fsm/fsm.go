@@ -30,10 +30,8 @@ func OnRequestButtonPress(e *elevator.Elevator, floor int, button elevator.Butto
 		} else {
 			e.SetRequest(floor, button, true)
 		}
-		break
 	case elevator.Moving:
 		e.SetRequest(floor, button, true)
-		break
 	case elevator.Idle:
 		e.SetRequest(floor, button, true)
 		pair := requests.ChooseDirection(*e)
@@ -44,7 +42,6 @@ func OnRequestButtonPress(e *elevator.Elevator, floor int, button elevator.Butto
 		case elevator.Down:
 		case elevator.Stop:
 		case elevator.Up:
-			break
 		}
 	}
 }

@@ -13,4 +13,5 @@ const (
 	inDirn
 )
 
+// TODO: Fix
 ClearRequestType clearRequestType = ClearRequestType.inDirn;
