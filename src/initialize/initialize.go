@@ -23,6 +23,8 @@ func Initialize(elev *elevator.Elevator) {
 		onInitBetweenFloors(elev)
 	}
 
+	//Maybe listen for lost cab orders
+
 	fmt.Print("Initialiser heisen")
 }
 

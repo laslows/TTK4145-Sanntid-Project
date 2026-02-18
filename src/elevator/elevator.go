@@ -55,7 +55,7 @@ func New(port string) *Elevator {
 		m_floor:     -1,
 		m_direction: Stop,
 		m_behaviour: Idle,
-		m_isMaster:  false,
+		m_isMaster:  true,
 
 		m_worldView: [config.N_ELEVATORS]*Backup{},
 
