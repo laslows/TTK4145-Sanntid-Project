@@ -123,16 +123,32 @@ func (e *Elevator) GetIP() string {
 	return e.m_IP
 }
 
+func (e *Elevator) GetGlobalLights() [config.N_FLOORS][config.N_BUTTONS]bool {
+	lights := e.m_requests
+
+	for _, b := range e.m_worldView {
+		if b != nil {
+			for f := 0; f < config.N_FLOORS; f++ {
+				for btn := 0; btn < 2; btn++ {
+					// Local elevator should not turn on global cab lights
+					lights[f][btn] = lights[f][btn] || b.m_requests[f][btn]
+				}
+			}
+		}
+	}
+
+	return lights
+}
+
 func (e *Elevator) UpdateWorldView(backup *Backup) {
 	for i, b := range e.m_worldView {
-		if b == nil || b.GetIP() == backup.GetIP() {
+		if b == nil || b.m_IP == backup.m_IP {
 			e.m_worldView[i] = backup
 			return
 		}
 	}
 }
-
-func (e* Elevator) UpdateOwnBackup() {
+func (e *Elevator) UpdateOwnBackup() {
 	for _, b := range e.m_worldView {
 		if b.m_IP == e.m_IP {
 			b.m_direction = e.m_direction

@@ -29,7 +29,7 @@ func main() {
 
 	initialize.Initialize(elev)
 
-	go fsm.Fsm(buttonCh, floorCh, timerCh, motorStopCh)
+	go fsm.Fsm(elev, timetaker, buttonCh, floorCh, timerCh, motorStopCh)
 	go events.InputPoller(buttonCh, floorCh, timerCh, motorStopCh, timetaker)
 
 	for {

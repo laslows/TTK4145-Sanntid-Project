@@ -15,8 +15,8 @@ import (
 
 //TODO: Fix naming conventions
 
-func Fsm(buttonCh <-chan events.ButtonEvent, floorCh <-chan int, timerCh <-chan bool, motorStopCh <-chan bool,
-	assignedOrderChan <-chan orders.OrderType) {
+func Fsm(e *elevator.Elevator, timetaker *timer.Timer, buttonCh <-chan events.ButtonEvent, floorCh <-chan int, timerCh <-chan bool, motorStopCh <-chan bool,
+	assignedOrderCh <-chan orders.OrderType) {
 	//Can only receive on channels. Might have to change tho, idk
 	//Maybe make buttonevent and ordertype the samenthing
 
@@ -30,8 +30,11 @@ func Fsm(buttonCh <-chan events.ButtonEvent, floorCh <-chan int, timerCh <-chan 
 			}
 
 			println("Received button event:", buttonEvent.GetFloor(), buttonEvent.GetButton())
+		case assignedOrder := <-assignedOrderCh:
 
+			println("Assigned order from master: ", assignedOrder)
 		case floorArrival := <-floorCh:
+			onFloorArrival(e, floorArrival, timetaker)
 
 			println("Received floor event:", floorArrival)
 		case <-timerCh:
@@ -44,9 +47,7 @@ func Fsm(buttonCh <-chan events.ButtonEvent, floorCh <-chan int, timerCh <-chan 
 			//Clear queue
 			//Try to reach new floor if between floors
 			println("Is motor stopped")
-		case assignedOrder := <-assignedOrderChan:
 
-			println("Assigned order from master: ", assignedOrder)
 		}
 
 	}
@@ -68,7 +69,7 @@ func onFloorArrival(e *elevator.Elevator, floor int, _timer *timer.Timer) {
 			elevator.DoorOpenLight(true)
 			*e = ClearAtCurrentFloor(*e)
 			_timer.Start(e.GetDoorOpenDuration())
-			//setAllLights(*e)
+			setAllLights(*e)
 			e.SetBehaviour(elevator.DoorOpen)
 		}
 
@@ -78,9 +79,11 @@ func onFloorArrival(e *elevator.Elevator, floor int, _timer *timer.Timer) {
 }
 
 func setAllLights(e elevator.Elevator) {
+	globalLights := e.GetGlobalLights()
+
 	for floor := 0; floor < config.N_FLOORS; floor++ {
 		for btn := 0; btn < config.N_BUTTONS; btn++ {
-			elevator.RequestButtonLight(floor, (driver.ButtonType)(btn), e.GetRequestAtFloor(floor, (driver.ButtonType)(btn)))
+			elevator.RequestButtonLight(floor, (driver.ButtonType)(btn), globalLights[floor][btn])
 		}
 	}
 }
