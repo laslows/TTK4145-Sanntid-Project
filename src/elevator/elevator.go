@@ -41,6 +41,8 @@ type Elevator struct {
 	m_behaviour ElevatorBehaviour
 	m_isMaster  bool
 
+	m_worldView [config.N_ELEVATORS]*Backup
+
 	m_Config struct {
 		m_doorOpenDuration time.Duration
 	}
@@ -48,18 +50,25 @@ type Elevator struct {
 
 // Constructor
 func New(port string) *Elevator {
-	return &Elevator{
+	e := &Elevator{
 		m_IP:        getLocalIP() + port,
 		m_floor:     -1,
 		m_direction: Stop,
 		m_behaviour: Idle,
 		m_isMaster:  false,
+
+		m_worldView: [config.N_ELEVATORS]*Backup{},
+
 		m_Config: struct {
 			m_doorOpenDuration time.Duration
 		}{
 			m_doorOpenDuration: 3 * time.Second,
 		},
 	}
+
+	e.UpdateWorldView(&Backup{m_IP: e.m_IP})
+
+	return e
 }
 
 func (e *Elevator) GetFloor() int {
@@ -70,8 +79,12 @@ func (e *Elevator) SetFloor(f int) {
 	e.m_floor = f
 }
 
-func (e *Elevator) GetRequest(floor int, btn driver.ButtonType) bool {
+func (e *Elevator) GetRequestAtFloor(floor int, btn driver.ButtonType) bool {
 	return e.m_requests[floor][btn]
+}
+
+func (e *Elevator) GetRequests() [config.N_FLOORS][config.N_BUTTONS]bool {
+	return e.m_requests
 }
 
 func (e *Elevator) SetRequest(floor int, btn driver.ButtonType, active bool) {
@@ -104,6 +117,19 @@ func (e *Elevator) GetIsMaster() bool {
 
 func (e *Elevator) SetIsMaster(isMaster bool) {
 	e.m_isMaster = isMaster
+}
+
+func (e *Elevator) GetIP() string {
+	return e.m_IP
+}
+
+func (e *Elevator) UpdateWorldView(backup *Backup) {
+	for i, b := range e.m_worldView {
+		if b == nil || b.GetIP() == backup.GetIP() {
+			e.m_worldView[i] = backup
+			return
+		}
+	}
 }
 
 func FloorSensor() int {

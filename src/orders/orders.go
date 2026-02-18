@@ -11,6 +11,22 @@ const (
 )
 
 type Order struct {
-	Floor int
-	OrderType OrderType
+	m_floor     int
+	m_orderType OrderType
+}
+
+// Continue on this
+func New(floor int, orderType OrderType) Order {
+	return Order{
+		m_floor:     floor,
+		m_orderType: orderType,
+	}
+}
+
+func (o Order) GetFloor() int {
+	return o.m_floor
+}
+
+func (o Order) GetOrderType() OrderType {
+	return o.m_orderType
 }
