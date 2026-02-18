@@ -132,6 +132,18 @@ func (e *Elevator) UpdateWorldView(backup *Backup) {
 	}
 }
 
+func (e* Elevator) UpdateOwnBackup() {
+	for _, b := range e.m_worldView {
+		if b.m_IP == e.m_IP {
+			b.m_direction = e.m_direction
+			b.m_floor = e.m_floor
+			b.m_isMaster = e.m_isMaster
+			b.m_requests = e.m_requests
+			return
+		}
+	}
+}
+
 func FloorSensor() int {
 	return driver.GetFloor()
 }

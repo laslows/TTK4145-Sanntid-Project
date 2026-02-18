@@ -23,3 +23,5 @@ func NewBackup(IP string) *Backup {
 func (b *Backup) GetIP() string {
 	return b.m_IP
 }
+
+
