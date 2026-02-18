@@ -6,6 +6,11 @@ import (
 	"Sanntid/src/elevator"
 )
 
+type DirnBehaviourPair struct {
+	m_dirn      elevator.Direction
+	m_behaviour elevator.ElevatorBehaviour
+}
+
 func requestsAbove(e elevator.Elevator) bool {
 	for f := e.GetFloor() + 1; f < config.N_FLOORS; f++ {
 		for btn := 0; btn < config.N_BUTTONS; btn++ {
@@ -74,4 +79,48 @@ func ShouldStop(e elevator.Elevator) bool {
 	default:
 		return true
 	}
+}
+
+func ShouldClearImmediately(e elevator.Elevator, btn_floor int, btn_type elevator.Button) bool {
+	return (e.GetFloor() == btn_floor &&
+		((e.GetDirection() == elevator.Up && btn_type == elevator.HallUp) ||
+			(e.GetDirection() == elevator.Down && btn_type == elevator.HallDown) ||
+			e.GetDirection() == elevator.Stop ||
+			btn_type == elevator.Cab))
+}
+
+func ChooseDirection(e elevator.Elevator) DirnBehaviourPair {
+	switch e.GetDirection() {
+	case elevator.Up:
+		if requestsAbove(e) {
+			return DirnBehaviourPair{elevator.Up, elevator.Moving}
+		} else if requestsHere(e) {
+			return DirnBehaviourPair{elevator.Down, elevator.DoorOpen}
+		} else if requestsBelow(e) {
+			return DirnBehaviourPair{elevator.Down, elevator.Moving}
+		}
+		return DirnBehaviourPair{elevator.Stop, elevator.Idle}
+	case elevator.Down:
+		if requestsBelow(e) {
+			return DirnBehaviourPair{elevator.Down, elevator.Moving}
+		} else if requestsHere(e) {
+			return DirnBehaviourPair{elevator.Up, elevator.DoorOpen}
+		} else if requestsAbove(e) {
+			return DirnBehaviourPair{elevator.Up, elevator.Moving}
+		}
+		return DirnBehaviourPair{elevator.Stop, elevator.Idle}
+	case elevator.Stop:
+		if requestsHere(e) {
+			return DirnBehaviourPair{elevator.Stop, elevator.DoorOpen}
+		}
+		if requestsAbove(e) {
+			return DirnBehaviourPair{elevator.Up, elevator.Moving}
+		} else if requestsBelow(e) {
+			return DirnBehaviourPair{elevator.Down, elevator.Moving}
+		}
+	default:
+		return DirnBehaviourPair{elevator.Stop, elevator.Idle}
+	}
+
+	return DirnBehaviourPair{elevator.Stop, elevator.Idle}
 }

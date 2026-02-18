@@ -9,6 +9,7 @@ import (
 	"Sanntid/src/events"
 	"Sanntid/src/fsm"
 	"Sanntid/src/initialize"
+	"Sanntid/src/orders"
 	"Sanntid/src/timer"
 )
 
@@ -22,15 +23,18 @@ func main() {
 	elev := elevator.New(*elevatorPort)
 	timetaker := timer.New()
 
-	buttonCh := make(chan events.ButtonEvent)
+	cabButtonCh := make(chan events.ButtonEvent)
+	hallButtonCh := make(chan events.ButtonEvent)
+	assignedOrderCh := make(chan orders.Order)
 	floorCh := make(chan int)
 	timerCh := make(chan bool)
 	motorStopCh := make(chan bool)
 
 	initialize.Initialize(elev)
 
-	go fsm.Fsm(elev, timetaker, buttonCh, floorCh, timerCh, motorStopCh)
-	go events.InputPoller(buttonCh, floorCh, timerCh, motorStopCh, timetaker)
+	go fsm.Fsm(elev, timetaker, cabButtonCh, floorCh, timerCh, motorStopCh, assignedOrderCh)
+	go fsm.MasterSlaveFsm(hallButtonCh, assignedOrderCh)
+	go events.InputPoller(cabButtonCh, hallButtonCh, floorCh, timerCh, motorStopCh, timetaker)
 
 	for {
 		// Keep main goroutine alive

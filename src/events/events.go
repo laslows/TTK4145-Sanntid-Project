@@ -23,8 +23,8 @@ func (e ButtonEvent) GetButton() elevator.Button {
 	return e.m_button
 }
 
-func InputPoller(buttonCh chan<- ButtonEvent, floorCh chan<- int, timerCh chan<- bool,
-	motorStopCh chan<- bool, timetaker *timer.Timer) {
+func InputPoller(cabButtonCh chan<- ButtonEvent, hallButtonCh chan<- ButtonEvent, floorCh chan<- int, 
+	timerCh chan<- bool, motorStopCh chan<- bool, timetaker *timer.Timer) {
 	//Can only send on channels, not receive.
 
 	var prevButtons [config.N_FLOORS][config.N_BUTTONS]bool
@@ -39,7 +39,12 @@ func InputPoller(buttonCh chan<- ButtonEvent, floorCh chan<- int, timerCh chan<-
 			for btn := 0; btn < config.N_BUTTONS; btn++ {
 				v := elevator.RequestButton(f, (driver.ButtonType)(btn))
 				if v && v != prevButtons[f][btn] {
-					buttonCh <- ButtonEvent{f, (elevator.Button)(btn)}
+					
+					if btn == int(elevator.Cab) {
+						cabButtonCh <- ButtonEvent{f, (elevator.Button)(btn)}
+					} else {
+						hallButtonCh <- ButtonEvent{f, (elevator.Button)(btn)}
+					}
 					//Should trigger OnRequestButtonPress
 					fmt.Printf("Button %d on floor %d pressed\n", btn, f)
 				}

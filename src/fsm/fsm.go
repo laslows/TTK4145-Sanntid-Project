@@ -16,9 +16,10 @@ import (
 //TODO: Fix naming conventions
 
 func Fsm(e *elevator.Elevator, timetaker *timer.Timer, buttonCh <-chan events.ButtonEvent, floorCh <-chan int, timerCh <-chan bool, motorStopCh <-chan bool,
-	assignedOrderCh <-chan orders.OrderType) {
+	assignedOrderCh <-chan orders.Order) {
 	//Can only receive on channels. Might have to change tho, idk
 	//Maybe make buttonevent and ordertype the samenthing
+	//Putt update backup overalt lol
 
 	for {
 		select {
@@ -39,6 +40,7 @@ func Fsm(e *elevator.Elevator, timetaker *timer.Timer, buttonCh <-chan events.Bu
 			println("Received floor event:", floorArrival)
 		case <-timerCh:
 			// Close door
+
 			println("Received timer event")
 		case <-motorStopCh:
 			//Maybe make it receive a struct (MotorStopEvent, idk)
@@ -88,12 +90,35 @@ func setAllLights(e elevator.Elevator) {
 	}
 }
 
-/*
+func OnDoorTimeout(e *elevator.Elevator, _timer *timer.Timer) {
+	switch e.GetBehaviour() {
+	case elevator.DoorOpen:
+		pair := ChooseDirection(*e)
+		e.SetDirection(pair.m_dirn)
+		e.SetBehaviour(pair.m_behaviour)
+
+		switch e.GetBehaviour() {
+		case elevator.DoorOpen:
+			_timer.Start(e.GetDoorOpenDuration())
+			*e = ClearAtCurrentFloor(*e)
+			setAllLights(*e)
+		case elevator.Moving:
+			fallthrough
+		case elevator.Idle:
+			elevator.DoorOpenLight(false)
+			elevator.MotorDirection(e.GetDirection())
+		}
+
+	default:
+		break
+	}
+}
+
 func OnRequestButtonPress(e *elevator.Elevator, floor int, button elevator.Button, _timer *timer.Timer) {
 
 	switch e.GetBehaviour() {
 	case elevator.DoorOpen:
-		if requests.ShouldClearImmediately(*e, floor, button) {
+		if ShouldClearImmediately(*e, floor, button) {
 			_timer.Start(e.GetDoorOpenDuration())
 		} else {
 			e.SetRequest(floor, (driver.ButtonType)(button), true)
@@ -104,18 +129,18 @@ func OnRequestButtonPress(e *elevator.Elevator, floor int, button elevator.Butto
 
 	case elevator.Idle:
 		e.SetRequest(floor, (driver.ButtonType)(button), true)
-		pair := requests.ChooseDirection(*e)
-		e.SetDirection(pair.GetDirection())
-		e.SetBehaviour(pair.GetBehaviour())
+		pair := ChooseDirection(*e)
+		e.SetDirection(pair.m_dirn)
+		e.SetBehaviour(pair.m_behaviour)
 
-		switch pair.GetBehaviour() {
+		switch pair.m_behaviour {
 		case elevator.DoorOpen:
 			elevator.DoorOpenLight(true)
 			_timer.Start(e.GetDoorOpenDuration())
-			*e = requests.ClearAtCurrentFloor(*e)
+			*e = ClearAtCurrentFloor(*e)
 
 		case elevator.Moving:
-			elevator.MotorDirection(pair.GetDirection())
+			elevator.MotorDirection(pair.m_dirn)
 
 		case elevator.Idle:
 			break
@@ -124,6 +149,5 @@ func OnRequestButtonPress(e *elevator.Elevator, floor int, button elevator.Butto
 
 	}
 
-	//setAllLights(*e)
+	setAllLights(*e)
 }
-*/
