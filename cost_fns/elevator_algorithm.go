@@ -2,6 +2,7 @@ package costfns
 
 import (
 	elevator_state "./elevator_state"
+	elevator_algorithm "./elevator_algorithm"
 )
 
 func requestsAbove(e elevator_state.ElevatorState) bool {
