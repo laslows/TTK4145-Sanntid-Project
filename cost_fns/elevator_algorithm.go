@@ -95,7 +95,7 @@ func ChooseDirection(e elevator_state.ElevatorState) Dirn {
 	}
 }
 
-func ClearReqsAtFloor(e *elevator_state.ElevatorState, delegate( CallType c) OnClearedRequest = null){
+func ClearReqsAtFloor(e *elevator_state.ElevatorState, delegate( CallType c ) OnClearedRequest = null){
 	auto e2 = e;
 
 	clear(Calltype c) void{

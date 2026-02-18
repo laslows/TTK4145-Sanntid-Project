@@ -1,17 +1,22 @@
 package costfns
 
+import (
+	elevator_state "./elevator_state"
+	elevator_algorithm "./elevator_algorithm"
+)
+
 const (
-	doorOpenDuration  int  = 3000;
-	travelDuration  int    = 2500;
-	includeCab bool         = false;
+	DoorOpenDuration  int  = 3000;
+	TravelDuration  int    = 2500;
+	IncludeCab bool         = false;
 )
 
 type ClearRequestType int
 
 const (
-	all ClearRequestType = iota
-	inDirn
+	All ClearRequestType = iota
+	InDirn
 )
 
 // TODO: Fix
-ClearRequestType clearRequestType = ClearRequestType.inDirn;
+ClearRequestType clearRequestType = ClearRequestType.InDirn;
