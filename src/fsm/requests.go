@@ -4,6 +4,7 @@ import (
 	"Sanntid/src/config"
 	"Sanntid/src/driver"
 	"Sanntid/src/elevator"
+	"Sanntid/src/orders"
 )
 
 type DirnBehaviourPair struct {
@@ -81,12 +82,12 @@ func ShouldStop(e elevator.Elevator) bool {
 	}
 }
 
-func ShouldClearImmediately(e elevator.Elevator, btn_floor int, btn_type elevator.Button) bool {
+func ShouldClearImmediately(e elevator.Elevator, btn_floor int, order_type orders.OrderType) bool {
 	return (e.GetFloor() == btn_floor &&
-		((e.GetDirection() == elevator.Up && btn_type == elevator.HallUp) ||
-			(e.GetDirection() == elevator.Down && btn_type == elevator.HallDown) ||
+		((e.GetDirection() == elevator.Up && order_type == orders.HALL_UP) ||
+			(e.GetDirection() == elevator.Down && order_type == orders.HALL_DOWN) ||
 			e.GetDirection() == elevator.Stop ||
-			btn_type == elevator.Cab))
+			order_type == orders.CAB))
 }
 
 func ChooseDirection(e elevator.Elevator) DirnBehaviourPair {
