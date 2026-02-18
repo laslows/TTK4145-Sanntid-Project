@@ -34,7 +34,7 @@ func main() {
 
 	go fsm.Fsm(elev, timetaker, cabButtonCh, floorCh, timerCh, motorStopCh, assignedOrderCh)
 	go fsm.MasterSlaveFsm(hallButtonCh, assignedOrderCh)
-	go events.InputPoller(cabButtonCh, hallButtonCh, floorCh, timerCh, motorStopCh, timetaker)
+	go events.InputPoller(cabButtonCh, hallButtonCh, floorCh, timerCh, motorStopCh, elev, timetaker)
 
 	for {
 		// Keep main goroutine alive

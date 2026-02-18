@@ -24,7 +24,7 @@ func (e ButtonEvent) GetButton() elevator.Button {
 }
 
 func InputPoller(cabButtonCh chan<- ButtonEvent, hallButtonCh chan<- ButtonEvent, floorCh chan<- int, 
-	timerCh chan<- bool, motorStopCh chan<- bool, timetaker *timer.Timer) {
+	timerCh chan<- bool, motorStopCh chan<- bool, e *elevator.Elevator, timetaker *timer.Timer) {
 	//Can only send on channels, not receive.
 
 	var prevButtons [config.N_FLOORS][config.N_BUTTONS]bool
@@ -39,7 +39,7 @@ func InputPoller(cabButtonCh chan<- ButtonEvent, hallButtonCh chan<- ButtonEvent
 			for btn := 0; btn < config.N_BUTTONS; btn++ {
 				v := elevator.RequestButton(f, (driver.ButtonType)(btn))
 				if v && v != prevButtons[f][btn] {
-					
+
 					if btn == int(elevator.Cab) {
 						cabButtonCh <- ButtonEvent{f, (elevator.Button)(btn)}
 					} else {
@@ -76,6 +76,10 @@ func InputPoller(cabButtonCh chan<- ButtonEvent, hallButtonCh chan<- ButtonEvent
 			timetaker.Stop()
 			//Can make timerEvent struct if we later find out that we need it
 			timerCh <- true
+		}
+
+		if e.GetBehaviour() == elevator.DoorOpen && elevator.ObstructionSwitch() {
+			timetaker.Start(e.GetDoorOpenDuration())
 		}
 
 		time.Sleep(time.Duration(config.INPUT_POLL_RATE) * time.Millisecond)
