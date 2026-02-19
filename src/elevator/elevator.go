@@ -5,8 +5,13 @@ import (
 	"Sanntid/src/driver"
 	"fmt"
 	"net"
+	"strconv"
+	"strings"
 	"time"
 )
+
+//Should tidy up this file a lot. Maybe separate the get/set-functions, the driver functions and
+// the smart functions
 
 type Direction int
 
@@ -34,12 +39,15 @@ const (
 )
 
 type Elevator struct {
+	//Can maybe remove IP
 	m_IP        string
+	m_port      string
 	m_floor     int
 	m_direction Direction
 	m_requests  [config.N_FLOORS][config.N_BUTTONS]bool
 	m_behaviour ElevatorBehaviour
 	m_isMaster  bool
+	m_myBackup   *Backup
 
 	m_worldView [config.N_ELEVATORS]*Backup
 
@@ -51,7 +59,8 @@ type Elevator struct {
 // Constructor
 func New(port string) *Elevator {
 	e := &Elevator{
-		m_IP:        getLocalIP() + port,
+		m_IP:        getLocalIP(),
+		m_port:      port,
 		m_floor:     -1,
 		m_direction: Stop,
 		m_behaviour: Idle,
@@ -66,9 +75,101 @@ func New(port string) *Elevator {
 		},
 	}
 
-	e.UpdateWorldView(&Backup{m_IP: e.m_IP})
+	e.m_myBackup = &Backup{
+		m_IP: e.m_IP,
+		m_port: e.m_port,
+		m_floor: e.m_floor,
+		m_direction: e.m_direction,
+		m_isMaster: e.m_isMaster,
+	}
+
+	e.UpdateWorldView(e.m_myBackup)
 
 	return e
+}
+
+
+func (e *Elevator) GetGlobalLights() [config.N_FLOORS][config.N_BUTTONS]bool {
+	lights := e.m_requests
+
+	for _, b := range e.m_worldView {
+		if b != nil {
+			for f := 0; f < config.N_FLOORS; f++ {
+				for btn := 0; btn < 2; btn++ {
+					// Local elevator should not turn on global cab lights
+					lights[f][btn] = lights[f][btn] || b.m_requests[f][btn]
+				}
+			}
+		}
+	}
+
+	return lights
+}
+
+//Maybe this is all we need, and we dont need a function that cheks if new backup == old backup
+//Should maybe use a message id instead, to check if we have already received the message
+func (e *Elevator) UpdateWorldView(backup *Backup) {
+	for i, b := range e.m_worldView {
+		if b == nil || (b.m_IP == backup.m_IP && b.m_port == backup.m_port) {
+			e.m_worldView[i] = backup
+			return
+		}
+	}
+}
+
+
+func getIPandPortAsInt(ip, port string) int {
+	ipString := strings.ReplaceAll(ip, ".", "")
+	ipPort := ipString + port
+	ipInt, err := strconv.Atoi(ipPort)
+
+	if err != nil {
+		panic(fmt.Sprintf("Failed to convert IP to int: %v", err))
+	}
+
+	return ipInt
+}
+
+
+func checkIsMaster(e Elevator) bool {
+	myId := getIPandPortAsInt(e.m_IP, e.m_port)
+	master := true
+
+	for _, b := range e.m_worldView {
+		if b != nil {
+			master = master && (myId >= getIPandPortAsInt(b.m_IP, b.m_port))
+		}
+	}
+
+	//Remove this lol
+	if master {
+		fmt.Printf("I am master!")
+	}
+
+	return master
+}
+
+func getLocalIP() string {
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+	if err != nil {
+		panic("Failed to get local IP address")
+	}
+	defer conn.Close()
+
+	localAddress := conn.LocalAddr().(*net.UDPAddr)
+	fmt.Printf("Found IP address: %s\n", localAddress.IP.String())
+	return localAddress.IP.String()
+}
+
+func (e *Elevator) GetBackup() *Backup {
+	//Would maybe be easier to store a pointer to own backup in elevator struct, and update it every time we update the worldview
+
+	for _, b := range e.m_worldView {
+		if b != nil && b.m_IP == e.m_IP && b.m_port == e.m_port {
+			return b
+		}
+	}
+	return nil
 }
 
 func (e *Elevator) GetFloor() int {
@@ -123,41 +224,8 @@ func (e *Elevator) GetIP() string {
 	return e.m_IP
 }
 
-func (e *Elevator) GetGlobalLights() [config.N_FLOORS][config.N_BUTTONS]bool {
-	lights := e.m_requests
-
-	for _, b := range e.m_worldView {
-		if b != nil {
-			for f := 0; f < config.N_FLOORS; f++ {
-				for btn := 0; btn < 2; btn++ {
-					// Local elevator should not turn on global cab lights
-					lights[f][btn] = lights[f][btn] || b.m_requests[f][btn]
-				}
-			}
-		}
-	}
-
-	return lights
-}
-
-func (e *Elevator) UpdateWorldView(backup *Backup) {
-	for i, b := range e.m_worldView {
-		if b == nil || b.m_IP == backup.m_IP {
-			e.m_worldView[i] = backup
-			return
-		}
-	}
-}
-func (e *Elevator) UpdateOwnBackup() {
-	for _, b := range e.m_worldView {
-		if b.m_IP == e.m_IP {
-			b.m_direction = e.m_direction
-			b.m_floor = e.m_floor
-			b.m_isMaster = e.m_isMaster
-			b.m_requests = e.m_requests
-			return
-		}
-	}
+func (e *Elevator) GetPort() string {
+	return e.m_port
 }
 
 func FloorSensor() int {
@@ -194,16 +262,4 @@ func StopLight(on bool) {
 
 func MotorDirection(dir Direction) {
 	driver.SetMotorDirection(driver.MotorDirection(dir))
-}
-
-func getLocalIP() string {
-	conn, err := net.Dial("udp", "8.8.8.8:80")
-	if err != nil {
-		panic("Failed to get local IP address")
-	}
-	defer conn.Close()
-
-	localAddress := conn.LocalAddr().(*net.UDPAddr)
-	fmt.Printf("Found IP address: %s\n", localAddress.IP.String())
-	return localAddress.IP.String()
 }
