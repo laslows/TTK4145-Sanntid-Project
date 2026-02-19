@@ -35,7 +35,7 @@ func ListenForHeartbeats(elev *elevator.Elevator) {
 
 	for {
 		//n is number of bytes received, remoteAddr is the address of the sender, err is error :(
-		n, remoteAddr, err := conn.ReadFromUDP(buffer)
+		n, _, err := conn.ReadFromUDP(buffer)
 
 		if err != nil {
 			fmt.Println("Error reading heartbeat:", err)
@@ -56,8 +56,9 @@ func ListenForHeartbeats(elev *elevator.Elevator) {
 		// blir vi slave
 
 		//Do stuff with heartbeat now
+		//Reset heartbeat-timer
 
-		fmt.Printf("Heartbeat from %s\n", remoteAddr.String())
+		//fmt.Printf("Heartbeat from %s\n", remoteAddr.String())
 	}
 }
 
@@ -95,4 +96,8 @@ func BroadcastHeartbeat(e *elevator.Elevator) {
 			continue
 		}
 	}
+}
+
+func heartbeatMonitor(){
+	
 }

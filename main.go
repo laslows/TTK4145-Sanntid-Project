@@ -31,11 +31,12 @@ func main() {
 	floorCh := make(chan int)
 	timerCh := make(chan bool)
 	motorStopCh := make(chan bool)
+	changeMasterSlaveCh := make(chan bool)
 
 	initialize.Initialize(elev)
 
 	go fsm.Fsm(elev, timetaker, cabButtonCh, floorCh, timerCh, motorStopCh, assignedOrderCh)
-	go fsm.MasterSlaveFsm(hallButtonCh, assignedOrderCh)
+	go fsm.MasterFsm(hallButtonCh, assignedOrderCh, changeMasterSlaveCh)
 	go events.InputPoller(cabButtonCh, hallButtonCh, floorCh, timerCh, motorStopCh, elev, timetaker)
 	go network.ListenForHeartbeats(elev)
 	go network.BroadcastHeartbeat(elev)
