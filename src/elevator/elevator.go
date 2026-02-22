@@ -47,7 +47,7 @@ type Elevator struct {
 	m_requests  [config.N_FLOORS][config.N_BUTTONS]bool
 	m_behaviour ElevatorBehaviour
 	m_isMaster  bool
-	m_myBackup   *Backup
+	m_myBackup  *Backup
 
 	m_worldView [config.N_ELEVATORS]*Backup
 
@@ -76,18 +76,17 @@ func New(port string) *Elevator {
 	}
 
 	e.m_myBackup = &Backup{
-		m_IP: e.m_IP,
-		m_port: e.m_port,
-		m_floor: e.m_floor,
+		m_IP:        e.m_IP,
+		m_port:      e.m_port,
+		m_floor:     e.m_floor,
 		m_direction: e.m_direction,
-		m_isMaster: e.m_isMaster,
+		m_isMaster:  e.m_isMaster,
 	}
 
 	e.UpdateWorldView(e.m_myBackup)
 
 	return e
 }
-
 
 func (e *Elevator) GetGlobalLights() [config.N_FLOORS][config.N_BUTTONS]bool {
 	lights := e.m_requests
@@ -106,8 +105,8 @@ func (e *Elevator) GetGlobalLights() [config.N_FLOORS][config.N_BUTTONS]bool {
 	return lights
 }
 
-//Maybe this is all we need, and we dont need a function that cheks if new backup == old backup
-//Should maybe use a message id instead, to check if we have already received the message
+// Maybe this is all we need, and we dont need a function that cheks if new backup == old backup
+// Should maybe use a message id instead, to check if we have already received the message
 func (e *Elevator) UpdateWorldView(backup *Backup) {
 	for i, b := range e.m_worldView {
 		if b == nil || (b.m_IP == backup.m_IP && b.m_port == backup.m_port) {
@@ -117,6 +116,12 @@ func (e *Elevator) UpdateWorldView(backup *Backup) {
 	}
 }
 
+func (e *Elevator) TryUpdateWorldView(backup *Backup) bool {
+	//Check if backup is already in worldview, and if it is, check if information is different from the one we have
+	return false //Change this
+
+	//SHould also implement some functionality for when two elevators both think they are master
+}
 
 func getIPandPortAsInt(ip, port string) int {
 	ipString := strings.ReplaceAll(ip, ".", "")
@@ -129,7 +134,6 @@ func getIPandPortAsInt(ip, port string) int {
 
 	return ipInt
 }
-
 
 func checkIsMaster(e Elevator) bool {
 	myId := getIPandPortAsInt(e.m_IP, e.m_port)

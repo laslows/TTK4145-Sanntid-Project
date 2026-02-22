@@ -58,7 +58,7 @@ func ListenForHeartbeats(elev *elevator.Elevator) {
 		//Do stuff with heartbeat now
 		//Reset heartbeat-timer
 
-		//fmt.Printf("Heartbeat from %s\n", remoteAddr.String())
+		fmt.Printf("Heartbeat from %s received to %s\n", heartBeat.GetPort(), elev.GetPort())
 	}
 }
 
@@ -98,6 +98,9 @@ func BroadcastHeartbeat(e *elevator.Elevator) {
 	}
 }
 
-func heartbeatMonitor(){
-	
+func heartbeatMonitor() {
+
+	//Make list/dictionary with len(N_elevators) of timers. Reset timer every time worldview is changed
+	//Update timer from heartbeatListener. Make channels for this
+
 }

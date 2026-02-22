@@ -1,7 +1,7 @@
 package timer
 
 import (
-	"fmt"
+	//"fmt"
 	"time"
 )
 
@@ -16,19 +16,19 @@ func New() *Timer {
 }
 
 func (t *Timer) Start(duration time.Duration) {
-	fmt.Println("Start timer")
+	//fmt.Println("Start timer")
 	t.m_endTime = time.Now().Add(duration)
 	t.m_timerActive = true
 }
 
 func (t *Timer) RequestReset(duration time.Duration) {
-	fmt.Println("Reset timer")
+	//fmt.Println("Reset timer")
 	t.m_endTime = time.Now().Add(duration)
 	t.m_timerActive = true
 }
 
 func (t *Timer) Stop() {
-	fmt.Println("Stopped timer")
+	//fmt.Println("Stopped timer")
 	t.m_timerActive = false
 }
 

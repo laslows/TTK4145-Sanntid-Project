@@ -17,6 +17,7 @@ import (
 func main() {
 
 	//Run program with "go run main.go -port=#####
+	//Run simulator with "./SimElevatorServer --port #####"
 	elevatorPort := flag.String("port", "15657", "port number of the elevator server")
 	flag.Parse()
 
