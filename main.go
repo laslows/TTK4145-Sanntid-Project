@@ -16,7 +16,7 @@ import (
 
 func main() {
 
-	//Run program with "go run main.go -port=#####
+	//Run program with "go run main.go -port=##### (default is 15657)"
 	//Run simulator with "./SimElevatorServer --port #####"
 	elevatorPort := flag.String("port", "15657", "port number of the elevator server")
 	flag.Parse()
@@ -39,10 +39,10 @@ func main() {
 	go fsm.Fsm(elev, timetaker, cabButtonCh, floorCh, timerCh, motorStopCh, assignedOrderCh)
 	go fsm.MasterFsm(hallButtonCh, assignedOrderCh, changeMasterSlaveCh)
 	go events.InputPoller(cabButtonCh, hallButtonCh, floorCh, timerCh, motorStopCh, elev, timetaker)
-	go network.ListenForHeartbeats(elev)
+	go network.ListenForHeartbeats(elev, changeMasterSlaveCh)
 	go network.BroadcastHeartbeat(elev)
 
-	for {
-		// Keep main goroutine alive
+	select {
+		// Keep main alive
 	}
 }

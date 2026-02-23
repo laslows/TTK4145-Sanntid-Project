@@ -27,19 +27,16 @@ func Fsm(e *elevator.Elevator, timetaker *timer.Timer, cabButtonCh <-chan events
 		case buttonEvent := <-cabButtonCh:
 			NewOrder(e, buttonEvent.GetFloor(), (orders.OrderType)(buttonEvent.GetButton()), timetaker)
 
-			fmt.Print("Received button event:", buttonEvent.GetFloor(), buttonEvent.GetButton())
 		case assignedOrder := <-assignedOrderCh:
-				NewOrder(e, assignedOrder.GetFloor(), assignedOrder.GetOrderType(), timetaker)
-			fmt.Print("Assigned order from master: ", assignedOrder)
+			NewOrder(e, assignedOrder.GetFloor(), assignedOrder.GetOrderType(), timetaker)
+			fmt.Printf("Assigned order from master: %v \n", assignedOrder)
 		case floorArrival := <-floorCh:
 			onFloorArrival(e, floorArrival, timetaker)
 
-			fmt.Print("Received floor event:", floorArrival)
 		case <-timerCh:
 			// Close door
 			OnDoorTimeout(e, timetaker)
 
-			fmt.Print("Received timer event")
 		case <-motorStopCh:
 			//Maybe make it receive a struct (MotorStopEvent, idk)
 

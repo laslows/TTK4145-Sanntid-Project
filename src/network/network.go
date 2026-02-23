@@ -1,106 +1,69 @@
 package network
 
 import (
-	"Sanntid/src/elevator"
+	"Sanntid/src/orders"
 	"encoding/json"
 	"fmt"
 	"net"
-	"time"
 )
 
-const HEARTBEAT_PORT = "15555"
-const HEARTBEAT_RATE = 500 * time.Millisecond
-const MULTICAST_ADDR = "224.0.0.1:15555"
+const MESSAGE_PORT = "16666"
 
-func ListenForHeartbeats(elev *elevator.Elevator) {
-	//heartbeatAddrReceiver, err := net.ResolveUDPAddr("udp", ":" + HEARTBEAT_PORT)
-	heartbeatAddrReceiver, err := net.ResolveUDPAddr("udp4", MULTICAST_ADDR)
+// Maybe change to not multicast??
+const MESSAGE_ADDR = "224.0.0.1:16666"
 
-	if err != nil {
-		fmt.Println("Error resolving UDP address:", err)
-		return
-	}
+type messageType int
 
-	//conn, err := net.ListenUDP("udp", heartbeatAddrReceiver)
-	conn, err := net.ListenMulticastUDP("udp4", nil, heartbeatAddrReceiver)
+const (
+	hallOrder messageType = iota
+)
 
-	if err != nil {
-		fmt.Println("Error listening for heartbeats:", err)
-		return
-	}
-	defer conn.Close()
-
-	//Buffer to read incoming heartbeats into
-	buffer := make([]byte, 1024)
-
-	for {
-		//n is number of bytes received, remoteAddr is the address of the sender, err is error :(
-		n, _, err := conn.ReadFromUDP(buffer)
-
-		if err != nil {
-			fmt.Println("Error reading heartbeat:", err)
-			//Jump to next iteration of for
-			continue
-		}
-
-		var heartBeat elevator.Backup
-
-		err = json.Unmarshal(buffer[:n], &heartBeat)
-
-		if err != nil {
-			fmt.Println("Error unmarshaling heartbeat:", err)
-			continue
-		}
-
-		// Hvis vi mottar heartbeat fra noen med lavere port og de er master
-		// blir vi slave
-
-		//Do stuff with heartbeat now
-		//Reset heartbeat-timer
-
-		fmt.Printf("Heartbeat from %s received to %s\n", heartBeat.GetPort(), elev.GetPort())
-	}
+type Message struct {
+	m_messageType messageType
+	m_payload     json.RawMessage
 }
 
-func BroadcastHeartbeat(e *elevator.Elevator) {
-	//heartbeatAddrSender, err := net.ResolveUDPAddr("udp", "255.255.255.255:"+HEARTBEAT_PORT)
-	heartbeatAddrSender, err := net.ResolveUDPAddr("udp4", MULTICAST_ADDR)
+func BroadcastMessage(message Message) {
+	//Send message to multicast address
+	messageAddrSender, err := net.ResolveUDPAddr("udp4", MESSAGE_ADDR)
 
 	if err != nil {
 		fmt.Println("Error resolving multicast address:", err)
 		return
 	}
 
-	conn, err := net.DialUDP("udp", nil, heartbeatAddrSender)
+	conn, err := net.DialUDP("udp", nil, messageAddrSender)
 	if err != nil {
 		fmt.Println("Error creating UDP connection:", err)
 		return
 	}
 	defer conn.Close()
 
-	ticker := time.NewTicker(HEARTBEAT_RATE)
-	defer ticker.Stop()
-
-	for range ticker.C {
-
-		heartbeatPacket, err := json.Marshal(e.GetBackup())
-		if err != nil {
-			fmt.Println("Error marshaling heartbeat:", err)
-			continue
-		}
-
-		_, err = conn.Write(heartbeatPacket)
-
-		if err != nil {
-			fmt.Println("Error sending heartbeat:", err)
-			continue
-		}
+	messageBytes, err := json.Marshal(message)
+	if err != nil {
+		fmt.Println("Error marshaling message:", err)
+		return
 	}
+
+	_, err = conn.Write(messageBytes)
+	if err != nil {
+		fmt.Println("Error writing to UDP connection:", err)
+		return
+	}
+
 }
 
-func heartbeatMonitor() {
+func SendHallOrderToMaster(order orders.Order) {
+	hallOrderMessage := Message{
+		m_messageType: hallOrder,
+	}
 
-	//Make list/dictionary with len(N_elevators) of timers. Reset timer every time worldview is changed
-	//Update timer from heartbeatListener. Make channels for this
+	payload, err := json.Marshal(order)
+	if err != nil {
+		//Handle error
+		return
+	}
 
+	hallOrderMessage.m_payload = payload
+	BroadcastMessage(hallOrderMessage)
 }

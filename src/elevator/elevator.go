@@ -81,6 +81,7 @@ func New(port string) *Elevator {
 		m_floor:     e.m_floor,
 		m_direction: e.m_direction,
 		m_isMaster:  e.m_isMaster,
+		m_version:   0,
 	}
 
 	e.UpdateWorldView(e.m_myBackup)
@@ -117,10 +118,14 @@ func (e *Elevator) UpdateWorldView(backup *Backup) {
 }
 
 func (e *Elevator) TryUpdateWorldView(backup *Backup) bool {
-	//Check if backup is already in worldview, and if it is, check if information is different from the one we have
-	return false //Change this
+	// Update if new elevator, or if the incoming backup is newer.
 
-	//SHould also implement some functionality for when two elevators both think they are master
+	for _, b := range e.m_worldView {
+		if b != nil && b.m_IP == backup.m_IP && b.m_port == backup.m_port {
+			return backup.m_version > b.m_version
+		}
+	}
+	return true
 }
 
 func getIPandPortAsInt(ip, port string) int {
@@ -135,7 +140,18 @@ func getIPandPortAsInt(ip, port string) int {
 	return ipInt
 }
 
-func checkIsMaster(e Elevator) bool {
+func (e *Elevator) TryUpdateIsMaster() bool {
+	//If we are master and should be slave, or if we are slave and should be master, 
+	// update isMaster and return true. Else return false
+	if (e.m_isMaster && !CheckIsMaster(*e)) || (!e.m_isMaster && CheckIsMaster(*e)) {
+		e.m_isMaster = CheckIsMaster(*e)
+		return true
+	}
+	return false
+	
+}
+
+func CheckIsMaster(e Elevator) bool {
 	myId := getIPandPortAsInt(e.m_IP, e.m_port)
 	master := true
 

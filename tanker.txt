@@ -1,0 +1,19 @@
+- Vi må passe på at en heis ikke tar over som master med en gang, hvis den har vært disconnected, for den
+den kan risikere å ta over med gammel informasjon om systemet
+    - Kanskje dette probelmet løses av spamming (??)
+    - Nvm, all known orders ligger jo i backupen
+
+- Kanskje gjør elevator sin medlemsvariabel isMaster til enum
+
+- Fjern buttonevent eller ordertype
+
+- Legg til motorstopp-bool i elev og backup, slik at ny master får vite det fort. 
+
+- Kun master trenger å lytte etter meldinger som ikke er backup (??)
+    - Nvm, slaves må lytte etter assigned order
+    - Kanskje disse kan gjøres i to ulike goroutines og starte de fra masterSlaveFsm?? Idk?? Alternativet
+    er å starte dem fra main
+
+
+ToDO:
+    - Få master til å ta imot meldinger og dele ut hall orders

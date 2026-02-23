@@ -5,10 +5,12 @@ Innhold i melding:
 Type melding:
 - Ny hall order
 - Assigned hall order
+- Har motorstopp
+- Redistribusjon av order
+- Sende backupen tilbake til en gjenoppstått node 
+
+
 - Heartbeat med (kopi av) elevator struct + all known orders
     - Ny cab order implisitt gjennom denne
 - IP-adresse
-- Har motorstopp
-- Redistribusjon av order
-- Sende backupen tilbake til en gjenoppstått node
-- 
+    - Gjennom heartbeat (?)

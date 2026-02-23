@@ -1,7 +1,6 @@
 package events
 
 import (
-	"fmt"
 	"time"
 
 	"Sanntid/src/config"
@@ -23,7 +22,7 @@ func (e ButtonEvent) GetButton() elevator.Button {
 	return e.m_button
 }
 
-func InputPoller(cabButtonCh chan<- ButtonEvent, hallButtonCh chan<- ButtonEvent, floorCh chan<- int, 
+func InputPoller(cabButtonCh chan<- ButtonEvent, hallButtonCh chan<- ButtonEvent, floorCh chan<- int,
 	timerCh chan<- bool, motorStopCh chan<- bool, e *elevator.Elevator, timetaker *timer.Timer) {
 	//Can only send on channels, not receive.
 
@@ -46,7 +45,7 @@ func InputPoller(cabButtonCh chan<- ButtonEvent, hallButtonCh chan<- ButtonEvent
 						hallButtonCh <- ButtonEvent{f, (elevator.Button)(btn)}
 					}
 					//Should trigger OnRequestButtonPress
-					fmt.Printf("Button %d on floor %d pressed\n", btn, f)
+					//fmt.Printf("Button %d on floor %d pressed\n", btn, f)
 				}
 				prevButtons[f][btn] = v
 			}

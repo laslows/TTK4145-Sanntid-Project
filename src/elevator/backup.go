@@ -12,6 +12,7 @@ type Backup struct {
 	m_direction          Direction
 	m_requests           [config.N_FLOORS][config.N_BUTTONS]bool
 	m_isMaster           bool
+	m_version            int
 	m_connectedToNetwork bool
 }
 
@@ -26,6 +27,7 @@ func (b *Backup) MarshalJSON() ([]byte, error) {
 		Direction          int
 		Requests           [config.N_FLOORS][config.N_BUTTONS]bool
 		IsMaster           bool
+		Version            int
 		ConnectedToNetwork bool
 	}
 
@@ -36,6 +38,7 @@ func (b *Backup) MarshalJSON() ([]byte, error) {
 		Direction:          int(b.m_direction),
 		Requests:           b.m_requests,
 		IsMaster:           b.m_isMaster,
+		Version:            b.m_version,
 		ConnectedToNetwork: b.m_connectedToNetwork,
 	})
 }
@@ -49,6 +52,7 @@ func (b *Backup) UnmarshalJSON(data []byte) error {
 		Direction          int
 		Requests           [config.N_FLOORS][config.N_BUTTONS]bool
 		IsMaster           bool
+		Version            int
 		ConnectedToNetwork bool
 	}
 
@@ -64,6 +68,7 @@ func (b *Backup) UnmarshalJSON(data []byte) error {
 	b.m_direction = Direction(backupJSON.Direction)
 	b.m_requests = backupJSON.Requests
 	b.m_isMaster = backupJSON.IsMaster
+	b.m_version = backupJSON.Version
 	b.m_connectedToNetwork = backupJSON.ConnectedToNetwork
 
 	return nil
@@ -72,6 +77,7 @@ func (b *Backup) UnmarshalJSON(data []byte) error {
 // This is ugly..
 // We will tidy up later :D
 func (e *Elevator) UpdateOwnBackup() {
+	e.m_myBackup.m_version++
 	e.m_myBackup.m_isMaster = e.m_isMaster
 	e.m_myBackup.m_direction = e.m_direction
 	e.m_myBackup.m_floor = e.m_floor
