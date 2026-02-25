@@ -19,11 +19,24 @@ type messageType int
 const (
 	hallOrderRequest messageType = iota
 	hallOrderAssignment
+	motorStop
+	orderRedistribution
+	backup
 )
 
 type Message struct {
 	m_messageType messageType
 	m_payload     json.RawMessage
+}
+
+type assignedOrderMessage struct {
+	m_ID int 
+	m_order orders.Order
+}
+
+type motorStopMessage struct {
+	m_ID int
+	m_hasMotorstop bool
 }
 
 func BroadcastMessage(message Message) {
@@ -69,6 +82,21 @@ func SendHallOrderToMaster(order orders.Order) {
 
 	hallOrderMessage.m_payload = payload
 	BroadcastMessage(hallOrderMessage)
+}
+
+func SendBackupToRestoredElevator(b elevator.Backup) {
+	backupMessage := Message{
+		m_messageType: backup,
+	}
+
+	payload, err := json.Marshal(b)
+	if err != nil {
+		//Handle error
+		return
+	}
+
+	backupMessage.m_payload = payload
+	BroadcastMessage(backupMessage)
 }
 
 func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- events.ButtonEvent) {
