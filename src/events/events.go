@@ -22,6 +22,8 @@ func (e ButtonEvent) GetButton() elevator.Button {
 	return e.m_button
 }
 
+
+
 func InputPoller(cabButtonCh chan<- ButtonEvent, hallButtonCh chan<- ButtonEvent, floorCh chan<- int,
 	timerCh chan<- bool, motorStopCh chan<- bool, e *elevator.Elevator, timetaker *timer.Timer) {
 	//Can only send on channels, not receive.
