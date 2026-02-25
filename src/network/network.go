@@ -1,6 +1,7 @@
 package network
 
 import (
+	"Sanntid/src/config"
 	"Sanntid/src/elevator"
 	"Sanntid/src/orders"
 	"encoding/json"
@@ -36,6 +37,11 @@ type assignedOrderMessage struct {
 type motorStopMessage struct {
 	m_ID int
 	m_hasMotorstop bool
+}
+
+type orderRedistributionMessage struct {
+	m_ID int
+	m_orders [config.N_BUTTONS][config.N_FLOORS]bool //Sends new order list to each elevator
 }
 
 func BroadcastMessage(message Message) {
@@ -111,6 +117,21 @@ func SendMotorStopMessage(m motorStopMessage) {
 
 	motorStopMessage.m_payload = payload
 	BroadcastMessage(motorStopMessage)
+}
+
+func SendOrderRedistribution(orders orderRedistributionMessage) {
+	orderRedistributionMessage := Message{
+		m_messageType: motorStop,
+	}
+
+	payload, err := json.Marshal(orders)
+	if err != nil {
+		//Handle error
+		return
+	}
+
+	orderRedistributionMessage.m_payload = payload
+	BroadcastMessage(orderRedistributionMessage)
 }
 
 func SendBackupToRestoredElevator(b elevator.Backup) {
