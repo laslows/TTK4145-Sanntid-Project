@@ -123,9 +123,9 @@ func anyUnassigned(reqs [][2]Req) bool {
 }
 
 // Produces a [][]bool grid of hall requests matching fn(req).
-func filterReq(reqs [][2]Req, fn func(Req) bool) [][2]bool {
-	out := make([][2]bool, len(reqs))
-	for f := range reqs {
+func filterReq(reqs [][2]Req, fn func(Req) bool) [config.N_FLOORS][2]bool {
+	var out [config.N_FLOORS][2]bool
+	for f := 0; f < config.N_FLOORS && f < len(reqs); f++ {
 		out[f][0] = fn(reqs[f][0])
 		out[f][1] = fn(reqs[f][1])
 	}
@@ -187,7 +187,7 @@ func performInitialMove(s *State, reqs [][2]Req) {
 	}
 }
 
-func performSingleMove(s *State, reqs [][2]Req) {
+func performSingleMove(s *State, reqs [][2]Req) { //TODO: Fix, fix withRequests
 	e := elevator.WithRequests(s.State, filterReq(reqs, isUnassigned))
 
 	onClear := func(c elevator.Button) {
@@ -195,38 +195,41 @@ func performSingleMove(s *State, reqs [][2]Req) {
 		case elevator.HallUp, elevator.HallDown:
 			reqs[s.State.GetFloor()][int(c)].m_assignedTo = s.ID
 		case elevator.Cab:
-			cab := s.State.GetRequests() //splice to cab
-			cab[s.State.GetFloor()] = false
-			s.State.SetRequest(e.GetFloor(), driver.BT_Cab, false) //set cab request
+			s.State.SetRequest(s.State.GetFloor(), driver.BT_Cab, false)
 		}
 	}
 
 	switch s.State.GetBehaviour() {
 	case elevator.Moving:
-		if elevator.ShouldStop(e) {
+		if ShouldStop(e) {
 			s.State.SetBehaviour(elevator.DoorOpen)
 			s.Time += time.Duration(config.DOOR_OPEN_DURATION) * time.Millisecond
-			elevator.ClearReqsAtFloor(onClear)
+			s.State = ClearAtCurrentFloor(s.State, onClear)
 		} else {
 			s.State.SetFloor(s.State.GetFloor() + int(s.State.GetDirection()))
 			s.Time += time.Duration(config.TRAVEL_DURATION) * time.Millisecond
 		}
 
 	case elevator.Idle, elevator.DoorOpen:
-		s.State.SetDirection(Direction)
+		pair := ChooseDirection(e)
+		s.State.SetDirection(pair.m_dirn)
 
-		if s.State.GetDirection() == elevator.Stop {
-			if elevator.AnyRequestsAtFloor() {
-				elevator.ClearReqsAtFloor(onClear)
-				s.Time += time.Duration(config.DOOR_OPEN_DURATION) * time.Millisecond
-				s.State.SetBehaviour(elevator.DoorOpen)
-			} else {
-				s.State.SetBehaviour(elevator.Idle)
-			}
-		} else {
+		switch pair.m_behaviour {
+		case elevator.DoorOpen:
+			s.State.SetBehaviour(elevator.DoorOpen)
+			s.Time += time.Duration(config.DOOR_OPEN_DURATION) * time.Millisecond
+			s.State = ClearAtCurrentFloor(s.State, onClear)
+
+		case elevator.Moving:
 			s.State.SetBehaviour(elevator.Moving)
 			s.State.SetFloor(s.State.GetFloor() + int(s.State.GetDirection()))
 			s.Time += time.Duration(config.TRAVEL_DURATION) * time.Millisecond
+
+		case elevator.Idle:
+			s.State.SetBehaviour(elevator.Idle)
+
+		default:
+			s.State.SetBehaviour(pair.m_behaviour)
 		}
 	}
 }
