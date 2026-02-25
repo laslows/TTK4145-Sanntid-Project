@@ -83,6 +83,21 @@ func SendHallOrderToMaster(order orders.Order) {
 	BroadcastMessage(hallOrderMessage)
 }
 
+func SendMotorStopMessage(m motorStopMessage) {
+	motorStopMessage := Message{
+		m_messageType: motorStop,
+	}
+
+	payload, err := json.Marshal(m)
+	if err != nil {
+		//Handle error
+		return
+	}
+
+	motorStopMessage.m_payload = payload
+	BroadcastMessage(motorStopMessage)
+}
+
 func SendBackupToRestoredElevator(b elevator.Backup) {
 	backupMessage := Message{
 		m_messageType: backup,
