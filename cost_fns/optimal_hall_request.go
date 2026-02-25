@@ -10,10 +10,6 @@ import (
 	es "./elevator_state"
 )
 
-// ------------------------------------------------------------
-// Types
-// ------------------------------------------------------------
-
 type Req struct {
 	Active     bool
 	AssignedTo string
@@ -24,10 +20,6 @@ type State struct {
 	State es.LocalElevatorState
 	Time  time.Duration
 }
-
-// ------------------------------------------------------------
-// Public entry
-// ------------------------------------------------------------
 
 func OptimalHallRequests(hallReqs [][2]bool, elevatorStates map[string]es.LocalElevatorState) map[string][][]bool {
 	validateInputs(hallReqs, elevatorStates)
@@ -91,10 +83,6 @@ func OptimalHallRequests(hallReqs [][2]bool, elevatorStates map[string]es.LocalE
 	return result
 }
 
-// ------------------------------------------------------------
-// Validation
-// ------------------------------------------------------------
-
 func validateInputs(hallReqs [][2]bool, elevatorStates map[string]es.LocalElevatorState) {
 	numFloors := len(hallReqs)
 
@@ -116,10 +104,6 @@ func validateInputs(hallReqs [][2]bool, elevatorStates map[string]es.LocalElevat
 		}
 	}
 }
-
-// ------------------------------------------------------------
-// Req helpers
-// ------------------------------------------------------------
 
 func isUnassigned(r Req) bool {
 	return r.Active && r.AssignedTo == ""
@@ -157,10 +141,6 @@ func toReqs(hallReqs [][2]bool) [][2]Req {
 	return reqs
 }
 
-// ------------------------------------------------------------
-// State initialization
-// ------------------------------------------------------------
-
 func initialStates(states map[string]es.LocalElevatorState) []State {
 	keys := make([]string, 0, len(states))
 	for k := range states {
@@ -180,10 +160,6 @@ func initialStates(states map[string]es.LocalElevatorState) []State {
 	}
 	return out
 }
-
-// ------------------------------------------------------------
-// Simulation steps
-// ------------------------------------------------------------
 
 func performInitialMove(s *State, reqs [][2]Req) {
 	doIdle := func() {
@@ -208,7 +184,6 @@ func performInitialMove(s *State, reqs [][2]Req) {
 }
 
 func performSingleMove(s *State, reqs [][2]Req) {
-	// Only consider unassigned hall reqs as "active" for decision-making
 	e := ea.WithRequests(s.State, filterReq(reqs, isUnassigned))
 
 	onClear := func(c es.CallType) {
@@ -328,12 +303,8 @@ func assignImmediate(reqs [][2]Req, states []State) {
 	}
 }
 
-// ------------------------------------------------------------
-// Optional debug helper (your original had debug(...) calls)
-// ------------------------------------------------------------
-
 func dbg(tag string, format string, args ...any) {
-	_ = debug.Stack // keeps import if you want stack dumps later
+	_ = debug.Stack
 	_ = tag
 	fmt.Printf(format+"\n", args...)
 }
