@@ -96,7 +96,7 @@ func BroadcastHeartbeat(e *elevator.Elevator) {
 
 	for range ticker.C {
 
-		heartbeatPacket, err := json.Marshal(e.GetBackup())
+		heartbeatPacket, err := json.Marshal(e.GetMyBackup())
 		if err != nil {
 			fmt.Println("Error marshaling heartbeat:", err)
 			continue

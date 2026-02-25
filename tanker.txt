@@ -17,3 +17,7 @@ den kan risikere å ta over med gammel informasjon om systemet
 
 ToDO:
     - Få master til å ta imot meldinger og dele ut hall orders
+
+
+Edge cases å tenke å:
+    - Ved motorstopp pass på at gammel master rekekr å redistribuere ordre før ny master tar over

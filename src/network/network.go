@@ -17,15 +17,16 @@ const MESSAGE_ADDR = "224.0.0.1:16666"
 type messageType int
 
 const (
-	hallOrderRequest messageType = iota
-	hallOrderAssignment
-	motorStop
-	orderRedistribution
-	backup
+	HallOrderRequest messageType = iota
+	HallOrderAssignment
+	MotorStop
+	OrderRedistribution
+	Backup
 )
 
 type Message struct {
 	m_messageType messageType
+	m_ID          int
 	m_payload     json.RawMessage
 }
 
@@ -40,7 +41,7 @@ type motorStopMessage struct {
 }
 
 type orderRedistributionMessage struct {
-	m_ID int
+	m_ID     int
 	m_orders [config.N_BUTTONS][config.N_FLOORS]bool //Sends new order list to each elevator
 }
 
@@ -75,9 +76,10 @@ func BroadcastMessage(message Message) {
 
 }
 
-func SendHallOrderToMaster(order orders.Order) {
+func SendHallOrder(order orders.Order, id int, messageType messageType) {
 	hallOrderMessage := Message{
-		m_messageType: hallOrderRequest,
+		m_messageType: messageType,
+		m_ID:          id,
 	}
 
 	payload, err := json.Marshal(&order)
@@ -90,24 +92,9 @@ func SendHallOrderToMaster(order orders.Order) {
 	BroadcastMessage(hallOrderMessage)
 }
 
-func SendAssignedOrderToSlave(order assignedOrderMessage) {
-	assignedOrderMessage := Message{
-		m_messageType: hallOrderAssignment,
-	}
-
-	payload, err := json.Marshal(order)
-	if err != nil {
-		//Handle error
-		return
-	}
-
-	assignedOrderMessage.m_payload = payload
-	BroadcastMessage(assignedOrderMessage)
-}
-
 func SendMotorStopMessage(m motorStopMessage) {
 	motorStopMessage := Message{
-		m_messageType: motorStop,
+		m_messageType: MotorStop,
 	}
 
 	payload, err := json.Marshal(m)
@@ -122,10 +109,10 @@ func SendMotorStopMessage(m motorStopMessage) {
 
 func SendOrderRedistribution(orders orderRedistributionMessage) {
 	orderRedistributionMessage := Message{
-		m_messageType: orderRedistribution,
+		m_messageType: OrderRedistribution,
 	}
 
-	payload, err := json.Marshal(orders)
+	payload, err := json.Marshal(&orders)
 	if err != nil {
 		//Handle error
 		return
@@ -137,7 +124,7 @@ func SendOrderRedistribution(orders orderRedistributionMessage) {
 
 func SendBackupToRestoredElevator(b *elevator.Backup) {
 	backupMessage := Message{
-		m_messageType: backup,
+		m_messageType: Backup,
 	}
 
 	payload, err := json.Marshal(b)
@@ -150,7 +137,8 @@ func SendBackupToRestoredElevator(b *elevator.Backup) {
 	BroadcastMessage(backupMessage)
 }
 
-func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order) {
+func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
+	assignedOrderCh chan<- orders.Order) {
 	//heartbeatAddrReceiver, err := net.ResolveUDPAddr("udp", ":" + HEARTBEAT_PORT)
 	messageAddrReceiver, err := net.ResolveUDPAddr("udp4", MESSAGE_ADDR)
 
@@ -179,8 +167,6 @@ func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order) {
 			continue
 		}
 
-		fmt.Println("Received message of length", n, "bytes")
-
 		var message Message
 
 		err = json.Unmarshal(buffer[:n], &message)
@@ -190,8 +176,12 @@ func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order) {
 			continue
 		}
 
+		if message.m_ID != elevator.GetIPandPortAsInt(e.GetIP(), e.GetPort()) {
+			continue
+		}
+
 		switch message.m_messageType {
-		case hallOrderRequest:
+		case HallOrderRequest:
 			var hallOrderRequest orders.Order
 			err = json.Unmarshal(message.m_payload, &hallOrderRequest)
 
@@ -201,15 +191,19 @@ func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order) {
 			}
 			//Handle hall order. Use cost function.
 
-			if e.GetIsMaster() {
-				hallButtonCh <- hallOrderRequest
-				fmt.Printf("Received hall order request: %+v\n", hallOrderRequest)
-			} else {
-				fmt.Println("Received hall order request, but I am not master. Ignoring.")
+			hallButtonCh <- hallOrderRequest
+
+		case HallOrderAssignment:
+
+			var hallOrderAssignment orders.Order
+			err = json.Unmarshal(message.m_payload, &hallOrderAssignment)
+
+			if err != nil {
+				fmt.Println("Error unmarshaling hall order assignment:", err)
+				continue
 			}
 
-		case hallOrderAssignment:
-
+			assignedOrderCh <- hallOrderAssignment
 			//Received hall order from master. Add to local queue.
 		}
 
@@ -220,11 +214,13 @@ func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order) {
 func (m *Message) MarshalJSON() ([]byte, error) {
 	type MessageJSON struct {
 		MessageType int
+		ID          int
 		Payload     json.RawMessage
 	}
 
 	return json.Marshal(&MessageJSON{
 		MessageType: int(m.m_messageType),
+		ID:          m.m_ID,
 		Payload:     m.m_payload,
 	})
 }
@@ -232,6 +228,7 @@ func (m *Message) MarshalJSON() ([]byte, error) {
 func (message *Message) UnmarshalJSON(data []byte) error {
 	type MessageJSON struct {
 		MessageType int
+		ID          int
 		Payload     json.RawMessage
 	}
 
@@ -242,6 +239,7 @@ func (message *Message) UnmarshalJSON(data []byte) error {
 	}
 
 	message.m_messageType = messageType(messageJSON.MessageType)
+	message.m_ID = messageJSON.ID
 	message.m_payload = messageJSON.Payload
 
 	return nil

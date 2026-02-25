@@ -82,6 +82,7 @@ func New(port string) *Elevator {
 		m_direction: e.m_direction,
 		m_isMaster:  e.m_isMaster,
 		m_version:   0,
+		m_behaviour: Idle,
 	}
 
 	e.UpdateWorldView(e.m_myBackup)
@@ -128,7 +129,7 @@ func (e *Elevator) TryUpdateWorldView(backup *Backup) bool {
 	return true
 }
 
-func getIPandPortAsInt(ip, port string) int {
+func GetIPandPortAsInt(ip, port string) int {
 	ipString := strings.ReplaceAll(ip, ".", "")
 	ipPort := ipString + port
 	ipInt, err := strconv.Atoi(ipPort)
@@ -152,12 +153,12 @@ func (e *Elevator) TryUpdateIsMaster() bool {
 }
 
 func CheckIsMaster(e Elevator) bool {
-	myId := getIPandPortAsInt(e.m_IP, e.m_port)
+	myId := GetIPandPortAsInt(e.m_IP, e.m_port)
 	master := true
 
 	for _, b := range e.m_worldView {
 		if b != nil {
-			master = master && (myId >= getIPandPortAsInt(b.m_IP, b.m_port))
+			master = master && (myId >= GetIPandPortAsInt(b.m_IP, b.m_port))
 		}
 	}
 
@@ -181,7 +182,7 @@ func getLocalIP() string {
 	return localAddress.IP.String()
 }
 
-func (e *Elevator) GetBackup() *Backup {
+func (e *Elevator) GetMyBackup() *Backup {
 	//Would maybe be easier to store a pointer to own backup in elevator struct, and update it every time we update the worldview
 
 	for _, b := range e.m_worldView {
@@ -190,6 +191,21 @@ func (e *Elevator) GetBackup() *Backup {
 		}
 	}
 	return nil
+}
+
+func (e *Elevator) GetMasterID() int {
+	for _, b := range e.m_worldView {
+		if b != nil && b.m_isMaster {
+			return GetIPandPortAsInt(b.m_IP, b.m_port)
+		}
+	}
+
+	fmt.Println("No master found in worldview")
+	return -1
+}
+
+func (e *Elevator) GetWorldView() [config.N_ELEVATORS]*Backup {
+	return e.m_worldView
 }
 
 func (e *Elevator) GetFloor() int {

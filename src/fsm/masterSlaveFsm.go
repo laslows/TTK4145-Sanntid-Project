@@ -1,20 +1,31 @@
 package fsm
 
 import (
+	"Sanntid/src/elevator"
 	"Sanntid/src/network"
 	"Sanntid/src/orders"
 	"fmt"
 	"time"
 )
 
-func MasterFsm(hallButtonCh <-chan orders.Order, assignedOrderCh chan<- orders.Order, changeMasterSlaveCh <-chan bool) {
+func MasterFsm(e *elevator.Elevator, hallButtonCh <-chan orders.Order, assignedOrderCh chan<- orders.Order,
+	changeMasterSlaveCh <-chan bool) {
 Loop:
 	for {
 		select {
 		case buttonEvent := <-hallButtonCh:
 			//Should decide here who takes the order. For now it is just sent back to the fsm
-			assignedOrderCh <- buttonEvent
-			fmt.Printf("Should assign order: %v\n", buttonEvent)
+			chosenElevator := SuperOptimalOrderAssignmentAlgorithm()
+			id := elevator.GetIPandPortAsInt(e.GetWorldView()[chosenElevator].GetIP(),
+				e.GetWorldView()[chosenElevator].GetPort())
+
+			fmt.Printf("Hallorder assigned to elevator with id %d \n", id)
+			if id == elevator.GetIPandPortAsInt(e.GetIP(), e.GetPort()) {
+				assignedOrderCh <- buttonEvent
+			} else {
+				//Give to slave
+				network.SendHallOrder(buttonEvent, id, network.HallOrderAssignment)
+			}
 
 		case isMaster := <-changeMasterSlaveCh:
 			if !isMaster {
@@ -28,13 +39,13 @@ Loop:
 		time.Sleep(10 * time.Millisecond)
 	}
 
-	go SlaveFsm(hallButtonCh, assignedOrderCh, changeMasterSlaveCh)
+	go SlaveFsm(e, hallButtonCh, assignedOrderCh, changeMasterSlaveCh)
 
 }
 
 // Kanskje vi kan returne fra masterFsm om vi bli slave, og starte denne. Og så motsatt ??
 // Idk om dette er en god løsning..
-func SlaveFsm(hallButtonCh <-chan orders.Order, assignedOrderCh chan<- orders.Order, changeMasterSlaveCh <-chan bool) {
+func SlaveFsm(e *elevator.Elevator, hallButtonCh <-chan orders.Order, assignedOrderCh chan<- orders.Order, changeMasterSlaveCh <-chan bool) {
 
 	fmt.Println("I am slave")
 
@@ -50,7 +61,8 @@ Loop:
 			}
 		case buttonEvent := <-hallButtonCh:
 			//Give to master
-			network.SendHallOrderToMaster(buttonEvent)
+			network.SendHallOrder(buttonEvent, e.GetMasterID(), network.HallOrderRequest)
+			fmt.Printf("Sent hall order to master: %v \n", buttonEvent)
 
 		}
 
@@ -58,6 +70,6 @@ Loop:
 
 	}
 
-	go MasterFsm(hallButtonCh, assignedOrderCh, changeMasterSlaveCh)
+	go MasterFsm(e, hallButtonCh, assignedOrderCh, changeMasterSlaveCh)
 
 }
