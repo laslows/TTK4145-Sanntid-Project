@@ -83,6 +83,21 @@ func SendHallOrderToMaster(order orders.Order) {
 	BroadcastMessage(hallOrderMessage)
 }
 
+func SendAssignedOrderToSlave(order assignedOrderMessage) {
+	assignedOrderMessage := Message{
+		m_messageType: hallOrderAssignment,
+	}
+
+	payload, err := json.Marshal(order)
+	if err != nil {
+		//Handle error
+		return
+	}
+
+	assignedOrderMessage.m_payload = payload
+	BroadcastMessage(assignedOrderMessage)
+}
+
 func SendMotorStopMessage(m motorStopMessage) {
 	motorStopMessage := Message{
 		m_messageType: motorStop,
