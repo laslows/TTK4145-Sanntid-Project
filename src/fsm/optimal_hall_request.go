@@ -2,6 +2,7 @@ package fsm
 
 import (
 	"Sanntid/src/config"
+	costfns "Sanntid/src/cost_fns"
 	"Sanntid/src/driver"
 	elevator "Sanntid/src/elevator"
 	"sort"
@@ -186,7 +187,7 @@ func performInitialMove(s *State, reqs [][2]Req) {
 }
 
 func performSingleMove(s *State, reqs [][2]Req) {
-	e := elevator.WithRequests(s.State, filterReq(reqs, isUnassigned))
+	e := elevator.WithRequests(s.State, s.filterReq(reqs, isUnassigned))
 
 	onClear := func(c elevator.Button) {
 		switch c {
@@ -201,21 +202,21 @@ func performSingleMove(s *State, reqs [][2]Req) {
 
 	switch s.State.GetBehaviour() {
 	case elevator.Moving:
-		if elevator.ShouldStop(e) {
+		if ShouldStop(e) {
 			s.State.SetBehaviour(elevator.DoorOpen)
 			s.Time += time.Duration(config.DOOR_OPEN_DURATION) * time.Millisecond
-			e.ClearReqsAtFloor(onClear)
+			costfns.ClearReqsAtFloor(onClear)
 		} else {
 			s.State.SetFloor(s.State.GetFloor() + int(s.State.GetDirection()))
 			s.Time += time.Duration(config.TRAVEL_DURATION) * time.Millisecond
 		}
 
 	case elevator.Idle, elevator.DoorOpen:
-		s.State.SetDirection(e.ChooseDirection())
+		s.State.SetDirection(elevator.Direction(costfns.ChooseDirection(elevator.Elevator{})))
 
 		if s.State.GetDirection() == elevator.Stop {
-			if e.AnyRequestsAtFloor() {
-				e.ClearReqsAtFloor(onClear)
+			if costfns.AnyRequestsAtFloor(elevator.Elevator{}) {
+				costfns.ClearReqsAtFloor(onClear)
 				s.Time += time.Duration(config.DOOR_OPEN_DURATION) * time.Millisecond
 				s.State.SetBehaviour(elevator.DoorOpen)
 			} else {
