@@ -1,12 +1,6 @@
 package costfns
 
-import (
-	config "./config"
-)
-
 type CallType int
-
-HAllup
 
 const (
 	HallUp CallType = iota
@@ -41,7 +35,7 @@ type LocalElevatorState struct {
 	Behaviour   ElevatorBehaviour
 	Floor       int
 	Direction   Dirn
-	CabRequests [config.N_FLOORS]bool
+	CabRequests [N_FLOORS]bool
 }
 
 type ElevatorState struct {
@@ -49,12 +43,12 @@ type ElevatorState struct {
 	Floor     int
 	Direction Dirn
 
-	Requests [config.N_FLOORS][config.N_BUTTONS]bool
+	Requests [N_FLOORS][N_BUTTONS]bool
 }
 
 func ToLocalElevatorState(e ElevatorState) LocalElevatorState {
-	var cab [config.N_FLOORS]bool
-	for f := 0; f < config.N_FLOORS; f++ {
+	var cab [N_FLOORS]bool
+	for f := 0; f < N_FLOORS; f++ {
 		cab[f] = e.Requests[f][int(Cab)]
 	}
 
@@ -66,10 +60,10 @@ func ToLocalElevatorState(e ElevatorState) LocalElevatorState {
 	}
 }
 
-func WithRequests(e LocalElevatorState, hallReqs [config.N_FLOORS][2]bool) ElevatorState {
-	var reqs [config.N_FLOORS][config.N_BUTTONS]bool
+func WithRequests(e LocalElevatorState, hallReqs [N_FLOORS][2]bool) ElevatorState {
+	var reqs [N_FLOORS][N_BUTTONS]bool
 
-	for f := 0; f < config.N_FLOORS; f++ {
+	for f := 0; f < N_FLOORS; f++ {
 		reqs[f][int(HallUp)] = hallReqs[f][0]
 		reqs[f][int(HallDown)] = hallReqs[f][1]
 		reqs[f][int(Cab)] = e.CabRequests[f]
