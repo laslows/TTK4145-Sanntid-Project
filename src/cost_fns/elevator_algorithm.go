@@ -1,4 +1,4 @@
-package elevator
+/* package elevator
 
 import (
 	"Sanntid/src/config"
@@ -159,3 +159,5 @@ func ClearReqsAtFloor(
 		panic("invalid clear request mode")
 	}
 }
+
+//TODO: delete whole file */

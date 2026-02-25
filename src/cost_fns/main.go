@@ -1,4 +1,4 @@
-package costfns
+/* package costfns
 
 import (
 	"bufio"

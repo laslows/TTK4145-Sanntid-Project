@@ -4,8 +4,6 @@ import (
 	"Sanntid/src/config"
 	"Sanntid/src/driver"
 	"Sanntid/src/elevator"
-
-	//elev_algo "Sanntid/src/cost_fns"
 	"sort"
 	"time"
 )
