@@ -141,14 +141,14 @@ func getIPandPortAsInt(ip, port string) int {
 }
 
 func (e *Elevator) TryUpdateIsMaster() bool {
-	//If we are master and should be slave, or if we are slave and should be master, 
+	//If we are master and should be slave, or if we are slave and should be master,
 	// update isMaster and return true. Else return false
 	if (e.m_isMaster && !CheckIsMaster(*e)) || (!e.m_isMaster && CheckIsMaster(*e)) {
 		e.m_isMaster = CheckIsMaster(*e)
 		return true
 	}
 	return false
-	
+
 }
 
 func CheckIsMaster(e Elevator) bool {
@@ -210,6 +210,15 @@ func (e *Elevator) GetRequests() [config.N_FLOORS][config.N_BUTTONS]bool {
 
 func (e *Elevator) SetRequest(floor int, btn driver.ButtonType, active bool) {
 	e.m_requests[floor][btn] = active
+}
+
+func WithRequests(e Elevator, hallReqs [config.N_FLOORS][2]bool) Elevator {
+	for f := 0; f < config.N_FLOORS; f++ {
+		e.SetRequest(f, driver.BT_HallUp, hallReqs[f][0])
+		e.SetRequest(f, driver.BT_HallDown, hallReqs[f][1])
+		// Cab request is left unchanged (already stored in e)
+	}
+	return e
 }
 
 func (e *Elevator) GetDirection() Direction {

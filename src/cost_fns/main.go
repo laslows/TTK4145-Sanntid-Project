@@ -8,7 +8,8 @@ import (
 	"io"
 	"os"
 
-	config "./config"
+	config "Sanntid/src/config"
+	"Sanntid/src/fsm"
 )
 
 type Input struct {
@@ -21,9 +22,9 @@ func main() {
 	var inputStr string
 	var clearReq string
 
-	flag.IntVar(&config.DoorOpenDuration, "doorOpenDuration", config.DoorOpenDuration, "Duration the door is open in milliseconds")
+	flag.IntVar(&config.DOOR_OPEN_DURATION, "doorOpenDuration", int(config.DOOR_OPEN_DURATION), "Duration the door is open in milliseconds")
 	flag.IntVar(&config.TravelDuration, "travelDuration", config.TravelDuration, "Duration it takes to travel one floor in milliseconds")
-	flag.BoolVar(&config.IncludeCab, "includeCab", config.IncludeCab, "Whether to include cab requests in the cost function")
+	flag.BoolVar(&config.INCLUDE_CAB, "includeCab", config.INCLUDE_CAB, "Whether to include cab requests in the cost function")
 	flag.StringVar(&clearReq, "clearReq", "inDirn", "Whether to clear all requests or only those in the direction of travel (all/inDirn)")
 	flag.StringVar(&inputStr, "input", "", "Input string in the format '[[hallReqs]], {elevatorStates}'")
 
@@ -58,7 +59,7 @@ func main() {
 	//TODO: Fix main
 	//OptimalHallRequests := OptimalHallRequests(in.HallRequests, in.States)
 	hall := in.HallRequests
-	out := config.OptimalHallRequests(hall, in.States)
+	out := fsm.OptimalHallRequests(hall, in.States)
 
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetEscapeHTML(false)
