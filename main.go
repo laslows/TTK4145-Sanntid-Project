@@ -33,6 +33,7 @@ func main() {
 	timerCh := make(chan bool)
 	motorStopCh := make(chan bool)
 	changeMasterSlaveCh := make(chan bool)
+	incomingMessageCh := make(chan network.Message)
 
 	initialize.Initialize(elev)
 
@@ -41,6 +42,7 @@ func main() {
 	go events.InputPoller(cabButtonCh, hallButtonCh, floorCh, timerCh, motorStopCh, elev, timetaker)
 	go network.ListenForHeartbeats(elev, changeMasterSlaveCh)
 	go network.BroadcastHeartbeat(elev)
+	go network.ListenForMessages()
 
 	select {
 		// Keep main alive

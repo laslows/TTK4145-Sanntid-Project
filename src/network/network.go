@@ -1,6 +1,7 @@
 package network
 
 import (
+	"Sanntid/src/elevator"
 	"Sanntid/src/orders"
 	"encoding/json"
 	"fmt"
@@ -15,7 +16,8 @@ const MESSAGE_ADDR = "224.0.0.1:16666"
 type messageType int
 
 const (
-	hallOrder messageType = iota
+	hallOrderRequest messageType = iota
+	hallOrderAssignment
 )
 
 type Message struct {
@@ -55,7 +57,7 @@ func BroadcastMessage(message Message) {
 
 func SendHallOrderToMaster(order orders.Order) {
 	hallOrderMessage := Message{
-		m_messageType: hallOrder,
+		m_messageType: hallOrderRequest,
 	}
 
 	payload, err := json.Marshal(order)
@@ -66,4 +68,72 @@ func SendHallOrderToMaster(order orders.Order) {
 
 	hallOrderMessage.m_payload = payload
 	BroadcastMessage(hallOrderMessage)
+}
+
+func ListenForMessages(e *elevator.Elevator) {
+	//heartbeatAddrReceiver, err := net.ResolveUDPAddr("udp", ":" + HEARTBEAT_PORT)
+	messageAddrReceiver, err := net.ResolveUDPAddr("udp4", MESSAGE_ADDR)
+
+	if err != nil {
+		fmt.Println("Error resolving UDP address:", err)
+		return
+	}
+
+	//conn, err := net.ListenUDP("udp", heartbeatAddrReceiver)
+	conn, err := net.ListenMulticastUDP("udp4", nil, messageAddrReceiver)
+
+	if err != nil {
+		fmt.Println("Error listening for messages:", err)
+		return
+	}
+	defer conn.Close()
+
+	//Buffer to read incoming messages into
+	buffer := make([]byte, 1024)
+
+	for {
+		n, _, err := conn.ReadFromUDP(buffer)
+
+		if err != nil {
+			fmt.Println("Error reading message:", err)
+			continue
+		}
+
+		fmt.Println("Received message of length", n, "bytes")
+
+		var message Message
+
+		err = json.Unmarshal(buffer[:n], &message)
+
+		if err != nil {
+			fmt.Println("Error unmarshaling message:", err)
+			continue
+		}
+
+		switch message.m_messageType {
+		case hallOrderRequest:
+			var hallOrderRequest orders.Order
+			err = json.Unmarshal(message.m_payload, &hallOrderRequest)
+
+			if err != nil {
+				fmt.Println("Error unmarshaling hall order:", err)
+				continue
+			}
+
+			fmt.Printf("Received hall order request: %+v\n", hallOrderRequest)
+			//Handle hall order. Use cost function.
+
+		case hallOrderAssignment:
+			var hallOrder orders.Order
+			err = json.Unmarshal(message.m_payload, &hallOrder)
+
+			if err != nil {
+				fmt.Println("Error unmarshaling hall order assignment:", err)
+				continue
+			}
+			//Received hall order from master. Add to local queue.
+		}
+
+	}
+
 }
