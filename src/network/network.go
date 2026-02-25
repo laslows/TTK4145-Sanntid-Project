@@ -2,7 +2,6 @@ package network
 
 import (
 	"Sanntid/src/elevator"
-	"Sanntid/src/events"
 	"Sanntid/src/orders"
 	"encoding/json"
 	"fmt"
@@ -71,7 +70,7 @@ func SendHallOrderToMaster(order orders.Order) {
 	BroadcastMessage(hallOrderMessage)
 }
 
-func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- events.ButtonEvent) {
+func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order) {
 	//heartbeatAddrReceiver, err := net.ResolveUDPAddr("udp", ":" + HEARTBEAT_PORT)
 	messageAddrReceiver, err := net.ResolveUDPAddr("udp4", MESSAGE_ADDR)
 
@@ -120,12 +119,13 @@ func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- events.ButtonEv
 				fmt.Println("Error unmarshaling hall order:", err)
 				continue
 			}
-
-			fmt.Printf("Received hall order request: %+v\n", hallOrderRequest)
 			//Handle hall order. Use cost function.
 
 			if e.GetIsMaster() {
-				hallButtonCh <- events.ButtonEvent{Floor: hallOrderRequest.GetFloor(), ButtonType: events.ButtonType(hallOrderRequest.GetOrderType())}	
+				hallButtonCh <- hallOrderRequest
+				fmt.Printf("Received hall order request: %+v\n", hallOrderRequest)
+			} else {
+				fmt.Println("Received hall order request, but I am not master. Ignoring.")
 			}
 
 		case hallOrderAssignment:

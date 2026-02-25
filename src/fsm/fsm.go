@@ -16,7 +16,7 @@ import (
 
 //TODO: Fix naming conventions
 
-func Fsm(e *elevator.Elevator, timetaker *timer.Timer, cabButtonCh <-chan events.ButtonEvent, floorCh <-chan int, timerCh <-chan bool, motorStopCh <-chan bool,
+func Fsm(e *elevator.Elevator, timetaker *timer.Timer, cabButtonCh <-chan orders.Order, floorCh <-chan int, timerCh <-chan bool, motorStopCh <-chan bool,
 	assignedOrderCh <-chan orders.Order) {
 	//Can only receive on channels. Might have to change tho, idk
 	//Maybe make buttonevent and ordertype the samenthing

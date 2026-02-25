@@ -3,28 +3,15 @@ package events
 import (
 	"time"
 
+	"Sanntid/src/orders"
 	"Sanntid/src/config"
 	"Sanntid/src/driver"
 	"Sanntid/src/elevator"
 	"Sanntid/src/timer"
 )
 
-type ButtonEvent struct {
-	m_floor  int
-	m_button elevator.Button
-}
 
-func (e ButtonEvent) GetFloor() int {
-	return e.m_floor
-}
-
-func (e ButtonEvent) GetButton() elevator.Button {
-	return e.m_button
-}
-
-
-
-func InputPoller(cabButtonCh chan<- ButtonEvent, hallButtonCh chan<- ButtonEvent, floorCh chan<- int,
+func InputPoller(cabButtonCh chan<- orders.Order, hallButtonCh chan<- orders.Order, floorCh chan<- int,
 	timerCh chan<- bool, motorStopCh chan<- bool, e *elevator.Elevator, timetaker *timer.Timer) {
 	//Can only send on channels, not receive.
 
@@ -42,9 +29,9 @@ func InputPoller(cabButtonCh chan<- ButtonEvent, hallButtonCh chan<- ButtonEvent
 				if v && v != prevButtons[f][btn] {
 
 					if btn == int(elevator.Cab) {
-						cabButtonCh <- ButtonEvent{f, (elevator.Button)(btn)}
+						cabButtonCh <- orders.New(f, (orders.OrderType)(btn))
 					} else {
-						hallButtonCh <- ButtonEvent{f, (elevator.Button)(btn)}
+						hallButtonCh <- orders.New(f, (orders.OrderType)(btn))
 					}
 					//Should trigger OnRequestButtonPress
 					//fmt.Printf("Button %d on floor %d pressed\n", btn, f)

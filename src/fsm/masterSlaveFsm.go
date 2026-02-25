@@ -1,20 +1,19 @@
 package fsm
 
 import (
-	"Sanntid/src/events"
 	"Sanntid/src/network"
 	"Sanntid/src/orders"
 	"fmt"
 	"time"
 )
 
-func MasterFsm(hallButtonCh <-chan events.ButtonEvent, assignedOrderCh chan<- orders.Order, changeMasterSlaveCh <-chan bool) {
+func MasterFsm(hallButtonCh <-chan orders.Order, assignedOrderCh chan<- orders.Order, changeMasterSlaveCh <-chan bool) {
 Loop:
 	for {
 		select {
 		case buttonEvent := <-hallButtonCh:
 			//Should decide here who takes the order. For now it is just sent back to the fsm
-			assignedOrderCh <- orders.New(buttonEvent.GetFloor(), (orders.OrderType)(buttonEvent.GetButton()))
+			assignedOrderCh <- buttonEvent
 			fmt.Printf("Should assign order: %v\n", buttonEvent)
 
 		case isMaster := <-changeMasterSlaveCh:
@@ -35,7 +34,7 @@ Loop:
 
 // Kanskje vi kan returne fra masterFsm om vi bli slave, og starte denne. Og så motsatt ??
 // Idk om dette er en god løsning..
-func SlaveFsm(hallButtonCh <-chan events.ButtonEvent, assignedOrderCh chan<- orders.Order, changeMasterSlaveCh <-chan bool) {
+func SlaveFsm(hallButtonCh <-chan orders.Order, assignedOrderCh chan<- orders.Order, changeMasterSlaveCh <-chan bool) {
 
 	fmt.Println("I am slave")
 
@@ -51,7 +50,7 @@ Loop:
 			}
 		case buttonEvent := <-hallButtonCh:
 			//Give to master
-			network.SendHallOrderToMaster(orders.New(buttonEvent.GetFloor(), (orders.OrderType)(buttonEvent.GetButton())))
+			network.SendHallOrderToMaster(buttonEvent)
 
 		}
 
