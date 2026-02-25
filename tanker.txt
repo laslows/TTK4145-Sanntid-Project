@@ -16,7 +16,9 @@ den kan risikere å ta over med gammel informasjon om systemet
 
 
 ToDO:
-    - Få master til å ta imot meldinger og dele ut hall orders
+    - Putte updateOwnBackup rundt omkring
+    - Putte riktig updatelights
+    - Fiks at heisen stanser i en eetasje dersom den har hatt motorstopp og mistet alle ordrene sine
 
 
 Edge cases å tenke å:

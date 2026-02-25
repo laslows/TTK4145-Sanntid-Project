@@ -4,6 +4,7 @@ import (
 	"Sanntid/src/config"
 	"Sanntid/src/driver"
 	"Sanntid/src/elevator"
+	"Sanntid/src/network"
 	"Sanntid/src/orders"
 	"Sanntid/src/timer"
 	"fmt"
@@ -42,7 +43,9 @@ func Fsm(e *elevator.Elevator, timetaker *timer.Timer, cabButtonCh <-chan orders
 			//Inform other elevators
 			//Clear queue
 			//Try to reach new floor if between floors
-			fmt.Print("Is motor stopped")
+			e.SetBehaviour(elevator.MotorStop)
+			e.UpdateMyBackup()
+			network.SendMotorStopMessage(elevator.GetIPandPortAsInt(e.GetIP(), e.GetPort()), e.GetMasterID(), true)
 
 		}
 
@@ -59,6 +62,19 @@ func onFloorArrival(e *elevator.Elevator, floor int, _timer *timer.Timer) {
 	elevator.FloorIndicator(floor)
 
 	switch e.GetBehaviour() {
+	case elevator.MotorStop:
+		//This might be wrong, we are cooked
+
+		if !anyRequests(*e) {
+			e.SetBehaviour(elevator.Idle)
+			elevator.MotorDirection(elevator.Stop)
+		} else {
+			e.SetBehaviour(elevator.Moving)
+		}
+
+		network.SendMotorStopMessage(elevator.GetIPandPortAsInt(e.GetIP(), e.GetPort()), e.GetMasterID(), false)
+		fallthrough
+
 	case elevator.Moving:
 		if ShouldStop(*e) {
 			elevator.MotorDirection(elevator.Stop)
@@ -68,7 +84,6 @@ func onFloorArrival(e *elevator.Elevator, floor int, _timer *timer.Timer) {
 			setAllLights(*e)
 			e.SetBehaviour(elevator.DoorOpen)
 		}
-
 	default:
 		break
 	}

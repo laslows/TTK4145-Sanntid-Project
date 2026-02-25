@@ -1,7 +1,6 @@
 package network
 
 import (
-	"Sanntid/src/config"
 	"Sanntid/src/elevator"
 	"Sanntid/src/orders"
 	"encoding/json"
@@ -26,23 +25,9 @@ const (
 
 type Message struct {
 	m_messageType messageType
-	m_ID          int
+	m_senderID    int
+	m_receiverID  int
 	m_payload     json.RawMessage
-}
-
-type assignedOrderMessage struct {
-	m_ID    int
-	m_order orders.Order
-}
-
-type motorStopMessage struct {
-	m_ID           int
-	m_hasMotorstop bool
-}
-
-type orderRedistributionMessage struct {
-	m_ID     int
-	m_orders [config.N_BUTTONS][config.N_FLOORS]bool //Sends new order list to each elevator
 }
 
 func BroadcastMessage(message Message) {
@@ -67,7 +52,6 @@ func BroadcastMessage(message Message) {
 		return
 	}
 
-	print(messageBytes)
 	_, err = conn.Write(messageBytes)
 	if err != nil {
 		fmt.Println("Error writing to UDP connection:", err)
@@ -76,10 +60,11 @@ func BroadcastMessage(message Message) {
 
 }
 
-func SendHallOrder(order orders.Order, id int, messageType messageType) {
+func SendHallOrder(order orders.Order, senderID, receiverId int, messageType messageType) {
 	hallOrderMessage := Message{
 		m_messageType: messageType,
-		m_ID:          id,
+		m_senderID:    senderID,
+		m_receiverID:  receiverId,
 	}
 
 	payload, err := json.Marshal(&order)
@@ -92,12 +77,15 @@ func SendHallOrder(order orders.Order, id int, messageType messageType) {
 	BroadcastMessage(hallOrderMessage)
 }
 
-func SendMotorStopMessage(m motorStopMessage) {
+// Motpart i onfloorarrival
+func SendMotorStopMessage(senderID, receiverId int, motorStopped bool) {
 	motorStopMessage := Message{
 		m_messageType: MotorStop,
+		m_senderID:    senderID,
+		m_receiverID:  receiverId,
 	}
 
-	payload, err := json.Marshal(m)
+	payload, err := json.Marshal(&motorStopped)
 	if err != nil {
 		//Handle error
 		return
@@ -105,21 +93,6 @@ func SendMotorStopMessage(m motorStopMessage) {
 
 	motorStopMessage.m_payload = payload
 	BroadcastMessage(motorStopMessage)
-}
-
-func SendOrderRedistribution(orders orderRedistributionMessage) {
-	orderRedistributionMessage := Message{
-		m_messageType: OrderRedistribution,
-	}
-
-	payload, err := json.Marshal(&orders)
-	if err != nil {
-		//Handle error
-		return
-	}
-
-	orderRedistributionMessage.m_payload = payload
-	BroadcastMessage(orderRedistributionMessage)
 }
 
 func SendBackupToRestoredElevator(b *elevator.Backup) {
@@ -176,7 +149,7 @@ func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
 			continue
 		}
 
-		if message.m_ID != elevator.GetIPandPortAsInt(e.GetIP(), e.GetPort()) {
+		if message.m_receiverID != elevator.GetIPandPortAsInt(e.GetIP(), e.GetPort()) {
 			continue
 		}
 
@@ -205,6 +178,18 @@ func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
 
 			assignedOrderCh <- hallOrderAssignment
 			//Received hall order from master. Add to local queue.
+		case MotorStop:
+
+			var motorStopped bool
+			err = json.Unmarshal(message.m_payload, &motorStopped)
+
+			if err != nil {
+				fmt.Println("Error unmarshaling motor stop message:", err)
+				continue
+			}
+
+			fmt.Println("Received motor stop message:", motorStopped, "from", message.m_senderID)
+
 		}
 
 	}
@@ -214,13 +199,15 @@ func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
 func (m *Message) MarshalJSON() ([]byte, error) {
 	type MessageJSON struct {
 		MessageType int
-		ID          int
+		ReceiverID  int
+		SenderID    int
 		Payload     json.RawMessage
 	}
 
 	return json.Marshal(&MessageJSON{
 		MessageType: int(m.m_messageType),
-		ID:          m.m_ID,
+		ReceiverID:  m.m_receiverID,
+		SenderID:    m.m_senderID,
 		Payload:     m.m_payload,
 	})
 }
@@ -228,7 +215,8 @@ func (m *Message) MarshalJSON() ([]byte, error) {
 func (message *Message) UnmarshalJSON(data []byte) error {
 	type MessageJSON struct {
 		MessageType int
-		ID          int
+		ReceiverID  int
+		SenderID    int
 		Payload     json.RawMessage
 	}
 
@@ -239,7 +227,8 @@ func (message *Message) UnmarshalJSON(data []byte) error {
 	}
 
 	message.m_messageType = messageType(messageJSON.MessageType)
-	message.m_ID = messageJSON.ID
+	message.m_receiverID = messageJSON.ReceiverID
+	message.m_senderID = messageJSON.SenderID
 	message.m_payload = messageJSON.Payload
 
 	return nil

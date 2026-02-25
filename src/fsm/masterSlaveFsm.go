@@ -19,12 +19,12 @@ Loop:
 			id := elevator.GetIPandPortAsInt(e.GetWorldView()[chosenElevator].GetIP(),
 				e.GetWorldView()[chosenElevator].GetPort())
 
-			fmt.Printf("Hallorder assigned to elevator with id %d \n", id)
 			if id == elevator.GetIPandPortAsInt(e.GetIP(), e.GetPort()) {
 				assignedOrderCh <- buttonEvent
 			} else {
 				//Give to slave
-				network.SendHallOrder(buttonEvent, id, network.HallOrderAssignment)
+				network.SendHallOrder(buttonEvent, elevator.GetIPandPortAsInt(e.GetIP(), e.GetPort()), 
+				id, network.HallOrderAssignment)
 			}
 
 		case isMaster := <-changeMasterSlaveCh:
@@ -39,6 +39,9 @@ Loop:
 		time.Sleep(10 * time.Millisecond)
 	}
 
+	//Maybe make onMasterSlaveChange-function
+	e.SetIsMaster(false)
+	e.UpdateMyBackup()
 	go SlaveFsm(e, hallButtonCh, assignedOrderCh, changeMasterSlaveCh)
 
 }
@@ -48,6 +51,7 @@ Loop:
 func SlaveFsm(e *elevator.Elevator, hallButtonCh <-chan orders.Order, assignedOrderCh chan<- orders.Order, changeMasterSlaveCh <-chan bool) {
 
 	fmt.Println("I am slave")
+	fmt.Printf("Master is: %d \n", e.GetMasterID())
 
 Loop:
 	for {
@@ -61,8 +65,8 @@ Loop:
 			}
 		case buttonEvent := <-hallButtonCh:
 			//Give to master
-			network.SendHallOrder(buttonEvent, e.GetMasterID(), network.HallOrderRequest)
-			fmt.Printf("Sent hall order to master: %v \n", buttonEvent)
+			network.SendHallOrder(buttonEvent, elevator.GetIPandPortAsInt(e.GetIP(), e.GetPort()), 
+			e.GetMasterID(), network.HallOrderRequest)
 
 		}
 
@@ -70,6 +74,8 @@ Loop:
 
 	}
 
+	e.SetIsMaster(true)
+	e.UpdateMyBackup()
 	go MasterFsm(e, hallButtonCh, assignedOrderCh, changeMasterSlaveCh)
 
 }

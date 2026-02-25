@@ -81,17 +81,18 @@ func (b *Backup) UnmarshalJSON(data []byte) error {
 
 // This is ugly..
 // We will tidy up later :D
-func (e *Elevator) UpdateOwnBackup() {
+func (e *Elevator) UpdateMyBackup() {
 	e.m_myBackup.m_version++
 	e.m_myBackup.m_isMaster = e.m_isMaster
 	e.m_myBackup.m_direction = e.m_direction
 	e.m_myBackup.m_floor = e.m_floor
 	e.m_myBackup.m_requests = e.m_requests
-	e.m_myBackup.m_connectedToNetwork = true //Should always be true..
+	e.m_myBackup.m_connectedToNetwork = true //Should always be true for master
 	e.m_myBackup.m_behaviour = e.m_behaviour
 
 	e.UpdateWorldView(e.m_myBackup)
 }
+
 
 func (b *Backup) GetPort() string {
 	return b.m_port
