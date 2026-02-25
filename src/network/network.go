@@ -98,7 +98,7 @@ func SendBackupToRestoredElevator(b elevator.Backup) {
 	BroadcastMessage(backupMessage)
 }
 
-func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- events.ButtonEvent) {
+func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order) {
 	//heartbeatAddrReceiver, err := net.ResolveUDPAddr("udp", ":" + HEARTBEAT_PORT)
 	messageAddrReceiver, err := net.ResolveUDPAddr("udp4", MESSAGE_ADDR)
 

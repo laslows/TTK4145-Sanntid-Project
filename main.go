@@ -26,8 +26,8 @@ func main() {
 	elev := elevator.New(*elevatorPort)
 	timetaker := timer.New()
 
-	cabButtonCh := make(chan events.ButtonEvent)
-	hallButtonCh := make(chan events.ButtonEvent)
+	cabButtonCh := make(chan orders.Order)
+	hallButtonCh := make(chan orders.Order)
 	assignedOrderCh := make(chan orders.Order)
 	floorCh := make(chan int)
 	timerCh := make(chan bool)

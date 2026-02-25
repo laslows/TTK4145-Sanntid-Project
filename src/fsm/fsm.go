@@ -4,7 +4,6 @@ import (
 	"Sanntid/src/config"
 	"Sanntid/src/driver"
 	"Sanntid/src/elevator"
-	"Sanntid/src/events"
 	"Sanntid/src/orders"
 	"Sanntid/src/timer"
 	"fmt"
@@ -25,7 +24,7 @@ func Fsm(e *elevator.Elevator, timetaker *timer.Timer, cabButtonCh <-chan orders
 	for {
 		select {
 		case buttonEvent := <-cabButtonCh:
-			NewOrder(e, buttonEvent.GetFloor(), (orders.OrderType)(buttonEvent.GetButton()), timetaker)
+			NewOrder(e, buttonEvent.GetFloor(), buttonEvent.GetOrderType(), timetaker)
 
 		case assignedOrder := <-assignedOrderCh:
 			NewOrder(e, assignedOrder.GetFloor(), assignedOrder.GetOrderType(), timetaker)
