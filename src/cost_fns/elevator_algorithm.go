@@ -5,6 +5,7 @@ import (
 	elevator_algorithm "./elevator_algorithm"
 )
 
+//Already have this
 func requestsAbove(e elevator_state.ElevatorState) bool {
 	for floor := e.floor + 1; floor < len(e.requests); floor++ {
 		for _, hasRequest := range e.requests[floor] {
@@ -16,6 +17,8 @@ func requestsAbove(e elevator_state.ElevatorState) bool {
 	return false
 }
 
+
+//Already have this
 func requestsBelow(e elevator_state.ElevatorState) bool {
 	for floor := e.floor - 1; floor >= 0; floor-- {
 		for _, hasRequest := range e.requests[floor] {
@@ -27,6 +30,7 @@ func requestsBelow(e elevator_state.ElevatorState) bool {
 	return false
 }
 
+//Checks if I have any orders at any floor
 func AnyRequests(e elevator_state.ElevatorState) bool {
 	for floor := 0; floor < len(e.requests); floor++ {
 		for _, hasRequest := range e.requests[floor] {
@@ -38,6 +42,7 @@ func AnyRequests(e elevator_state.ElevatorState) bool {
 	return false
 }
 
+//Checks if elevator has any requests at current floor
 func AnyRequestsAtFloor(e elevator_state.ElevatorState) bool {
 	for _, hasRequest := range e.requests[e.floor] {
 		if hasRequest {
@@ -48,6 +53,7 @@ func AnyRequestsAtFloor(e elevator_state.ElevatorState) bool {
 }
 
 // TODO: Fix case-variable names and import CallType
+//I think we already have this?? Maybe add checks for below 0 or higher than N_FLOORS
 func ShouldStop(e elevator_state.ElevatorState) bool {
 	switch e.direction {
 	case Up:
