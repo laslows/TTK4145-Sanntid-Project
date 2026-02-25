@@ -212,14 +212,14 @@ func (e *Elevator) SetRequest(floor int, btn driver.ButtonType, active bool) {
 	e.m_requests[floor][btn] = active
 }
 
-func WithRequests(e Elevator, hallReqs [config.N_FLOORS][2]bool) Elevator {
+/* func WithRequests(e Elevator, hallReqs [config.N_FLOORS][2]bool) Elevator {
 	for f := 0; f < config.N_FLOORS; f++ {
 		e.SetRequest(f, driver.BT_HallUp, hallReqs[f][0])
 		e.SetRequest(f, driver.BT_HallDown, hallReqs[f][1])
-		// Cab request is left unchanged (already stored in e)
+
 	}
 	return e
-}
+} //added, maybe uncesserary */
 
 func (e *Elevator) GetDirection() Direction {
 	return e.m_direction
