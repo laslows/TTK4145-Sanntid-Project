@@ -2,7 +2,6 @@ package costfns
 
 import (
 	elevator_state "./elevator_state"
-	elevator_algorithm "./elevator_algorithm"
 )
 
 //Already have this
@@ -57,14 +56,14 @@ func AnyRequestsAtFloor(e elevator_state.ElevatorState) bool {
 func ShouldStop(e elevator_state.ElevatorState) bool {
 	switch e.direction {
 	case Up:
-		return (e.requests[e.floor][CallType.hallUp] ||
-			e.requests[e.floor][CallType.cab] ||
+		return (e.requests[e.floor][HallUp] ||
+			e.requests[e.floor][Cab] ||
 			!e.requestsAbove ||
 			e.floor == 0 ||
 			e.floor >= len(e.requests)-1)
 	case Down:
-		return (e.requests[e.floor][CallType.hallDown] ||
-			e.requests[e.floor][CallType.cab] ||
+		return (e.requests[e.floor][HallDown] ||
+			e.requests[e.floor][Cab] ||
 			!e.requestsBelow ||
 			e.floor == 0 ||
 			e.floor >= len(e.requests)-1)
@@ -102,51 +101,54 @@ func ChooseDirection(e elevator_state.ElevatorState) Dirn {
 	}
 }
 
-func ClearReqsAtFloor(e *elevator_state.ElevatorState, delegate( CallType c ) OnClearedRequest = null){
-	auto e2 = e;
-
-	clear(Calltype c) void{
-		if e2.requests[e2.floor][c] {
-			if &OnClearedRequest {
-				OnClearedRequest(c)
+func ClearReqsAtFloor(
+	e *elevator_state.ElevatorState,
+	clearMode ClearRequestType,
+	onClearedRequest func(CallType),
+) {
+	clearReq := func(c CallType) {
+		if e.Requests[e.Floor][int(c)] {
+			if onClearedRequest != nil {
+				onClearedRequest(c)
 			}
-		e2.requests[e2.floor][c] = false
+			e.Requests[e.Floor][int(c)] = false
 		}
 	}
 
-	switch ClearRequestType {
+	switch clearMode {
 	case All:
-		for c := CallType.min; c < len(e2.requests[0]); c++ {
-			clear(c)
+		for c := 0; c < len(e.Requests[0]); c++ {
+			clearReq(CallType(c))
 		}
-		break
+
 	case InDirn:
-		clear CallType.cab
+		// Always clear cab request at current floor
+		clearReq(Cab)
 
 		switch e.Direction {
 		case Up:
-			if e2.requests[e2.floor][CallType.hallUp] {
-				clear(CallType.hallUp)
-			} else if (!e2.requestsAbove) {
-				clear(CallType.hallDown)
+			if e.Requests[e.Floor][int(HallUp)] {
+				clearReq(HallUp)
+			} else if !requestsAbove(*e) {
+				clearReq(HallDown)
 			}
-			break
+
 		case Down:
-			if e2.requests[e2.floor][CallType.hallDown] {
-				clear(CallType.hallDown)
-			} else if (!e2.requestsBelow) {
-				clear(CallType.hallUp)
+			if e.Requests[e.Floor][int(HallDown)] {
+				clearReq(HallDown)
+			} else if !requestsBelow(*e) {
+				clearReq(HallUp)
 			}
-			break
+
 		case Stop:
-			clear(CallType.hallUp)
-			clear(CallType.hallDown)
-			break
+			clearReq(HallUp)
+			clearReq(HallDown)
+
 		default:
-			panic("Invalid direction")
+			panic("invalid direction")
 		}
-		break
+
+	default:
+		panic("invalid clear request mode")
 	}
-	
-	return e2
-} 
+}
