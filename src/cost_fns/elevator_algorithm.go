@@ -74,6 +74,7 @@ func ShouldStop(e elevator_state.ElevatorState) bool {
 	}
 }
 
+//Already have this
 func ChooseDirection(e elevator_state.ElevatorState) Dirn {
 	switch e.direction {
 	case Up:
@@ -101,6 +102,7 @@ func ChooseDirection(e elevator_state.ElevatorState) Dirn {
 	}
 }
 
+//I think we already have this??
 func ClearReqsAtFloor(
 	e *elevator_state.ElevatorState,
 	clearMode ClearRequestType,

@@ -1,18 +1,13 @@
-package costfns
+package fsm
 
 import (
-	"fmt"
-	"runtime/debug"
 	"sort"
 	"time"
-
-	ea "./elevator_algorithm"
-	es "./elevator_state"
 )
 
 type Req struct {
-	Active     bool
-	AssignedTo string
+	m_active     bool
+	m_assignedTo string
 }
 
 type State struct {
@@ -303,8 +298,4 @@ func assignImmediate(reqs [][2]Req, states []State) {
 	}
 }
 
-func dbg(tag string, format string, args ...any) {
-	_ = debug.Stack
-	_ = tag
-	fmt.Printf(format+"\n", args...)
-}
+

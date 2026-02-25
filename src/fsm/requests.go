@@ -43,6 +43,17 @@ func requestsHere(e elevator.Elevator) bool {
 	return false
 }
 
+func anyRequests(e elevator.Elevator) bool {
+	for floor := 0; floor < config.N_FLOORS; floor++ {
+		for _, hasRequest := range e.GetRequests()[floor] {
+			if hasRequest {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func ClearAtCurrentFloor(e elevator.Elevator) elevator.Elevator {
 
 	e.SetRequest(e.GetFloor(), driver.BT_Cab, false)
