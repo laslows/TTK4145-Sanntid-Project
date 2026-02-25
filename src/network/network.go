@@ -30,12 +30,12 @@ type Message struct {
 }
 
 type assignedOrderMessage struct {
-	m_ID int 
+	m_ID    int
 	m_order orders.Order
 }
 
 type motorStopMessage struct {
-	m_ID int
+	m_ID           int
 	m_hasMotorstop bool
 }
 
@@ -60,12 +60,13 @@ func BroadcastMessage(message Message) {
 	}
 	defer conn.Close()
 
-	messageBytes, err := json.Marshal(message)
+	messageBytes, err := json.Marshal(&message)
 	if err != nil {
 		fmt.Println("Error marshaling message:", err)
 		return
 	}
 
+	print(messageBytes)
 	_, err = conn.Write(messageBytes)
 	if err != nil {
 		fmt.Println("Error writing to UDP connection:", err)
@@ -79,7 +80,7 @@ func SendHallOrderToMaster(order orders.Order) {
 		m_messageType: hallOrderRequest,
 	}
 
-	payload, err := json.Marshal(order)
+	payload, err := json.Marshal(&order)
 	if err != nil {
 		//Handle error
 		return
@@ -121,7 +122,7 @@ func SendMotorStopMessage(m motorStopMessage) {
 
 func SendOrderRedistribution(orders orderRedistributionMessage) {
 	orderRedistributionMessage := Message{
-		m_messageType: motorStop,
+		m_messageType: orderRedistribution,
 	}
 
 	payload, err := json.Marshal(orders)
@@ -134,7 +135,7 @@ func SendOrderRedistribution(orders orderRedistributionMessage) {
 	BroadcastMessage(orderRedistributionMessage)
 }
 
-func SendBackupToRestoredElevator(b elevator.Backup) {
+func SendBackupToRestoredElevator(b *elevator.Backup) {
 	backupMessage := Message{
 		m_messageType: backup,
 	}
@@ -208,20 +209,40 @@ func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order) {
 			}
 
 		case hallOrderAssignment:
-			var hallOrder orders.Order
-			err = json.Unmarshal(message.m_payload, &hallOrder)
-
-			if err != nil {
-				fmt.Println("Error unmarshaling hall order assignment:", err)
-				continue
-			}
-
 
 			//Received hall order from master. Add to local queue.
 		}
 
-
 	}
 
+}
+
+func (m *Message) MarshalJSON() ([]byte, error) {
+	type MessageJSON struct {
+		MessageType int
+		Payload     json.RawMessage
 	}
-	
+
+	return json.Marshal(&MessageJSON{
+		MessageType: int(m.m_messageType),
+		Payload:     m.m_payload,
+	})
+}
+
+func (message *Message) UnmarshalJSON(data []byte) error {
+	type MessageJSON struct {
+		MessageType int
+		Payload     json.RawMessage
+	}
+
+	var messageJSON MessageJSON
+	err := json.Unmarshal(data, &messageJSON)
+	if err != nil {
+		return err
+	}
+
+	message.m_messageType = messageType(messageJSON.MessageType)
+	message.m_payload = messageJSON.Payload
+
+	return nil
+}
