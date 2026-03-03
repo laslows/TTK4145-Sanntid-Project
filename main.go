@@ -37,12 +37,12 @@ func main() {
 	initialize.Initialize(elev)
 
 	go fsm.Fsm(elev, timetaker, cabButtonCh, floorCh, timerCh, motorStopCh, assignedOrderCh)
-	go fsm.MasterFsm(hallButtonCh, assignedOrderCh, changeMasterSlaveCh)
+	go fsm.MasterFsm(elev, hallButtonCh, assignedOrderCh, changeMasterSlaveCh)
 	go events.InputPoller(cabButtonCh, hallButtonCh, floorCh, timerCh, motorStopCh, elev, timetaker)
 	go network.ListenForHeartbeats(elev, changeMasterSlaveCh)
 	go network.BroadcastHeartbeat(elev)
 
 	select {
-		// Keep main alive
+	// Keep main alive
 	}
 }
