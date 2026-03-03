@@ -30,21 +30,18 @@ func OptimalHallRequests(hallReqs [][2]bool, elevatorStates map[string]elevator.
 		performInitialMove(&states[i], reqs)
 	}
 
-	// simulate until done
+	// simulate until all hall reqs are assigned
 	for {
 		sort.Slice(states, func(i, j int) bool {
 			return states[i].Time < states[j].Time
 		})
 
-		done := true
-		if anyUnassigned(reqs) {
-			done = false
+		if !anyUnassigned(reqs) {
+			break
 		}
+
 		if unvisitedAreImmediatelyAssignable(reqs, states) {
 			assignImmediate(reqs, states)
-			done = true
-		}
-		if done {
 			break
 		}
 
@@ -61,23 +58,24 @@ func OptimalHallRequests(hallReqs [][2]bool, elevatorStates map[string]elevator.
 	for id, elev := range elevatorStates {
 		grid := make([][]bool, numFloors)
 
-		reqs := elev.GetRequests() // [N_FLOORS][N_BUTTONS]bool
-
+		elevReqs := elev.GetRequests() // [N_FLOORS][N_BUTTONS]bool
 		for f := 0; f < numFloors; f++ {
 			grid[f] = make([]bool, width)
 			if config.INCLUDE_CAB {
-				grid[f][2] = reqs[f][driver.BT_Cab]
+				grid[f][2] = elevReqs[f][driver.BT_Cab]
 			}
 		}
-
 		result[id] = grid
 	}
 
+	// Apply hall assignments
 	for f := 0; f < numFloors; f++ {
 		for c := 0; c < 2; c++ {
 			if reqs[f][c].m_active && reqs[f][c].m_assignedTo != "" {
 				id := reqs[f][c].m_assignedTo
-				result[id][f][c] = true
+				if _, ok := result[id]; ok {
+					result[id][f][c] = true
+				}
 			}
 		}
 	}
@@ -120,10 +118,13 @@ func anyUnassigned(reqs [][2]Req) bool {
 	return false
 }
 
-// Produces a [][]bool grid of hall requests matching fn(req).
 func filterReq(reqs [][2]Req, fn func(Req) bool) [config.N_FLOORS][2]bool {
 	var out [config.N_FLOORS][2]bool
-	for f := 0; f < config.N_FLOORS && f < len(reqs); f++ {
+	maxF := len(reqs)
+	if maxF > config.N_FLOORS {
+		maxF = config.N_FLOORS
+	}
+	for f := 0; f < maxF; f++ {
 		out[f][0] = fn(reqs[f][0])
 		out[f][1] = fn(reqs[f][1])
 	}
@@ -156,53 +157,60 @@ func initialStates(states map[string]elevator.Elevator) []State {
 		out = append(out, State{
 			ID:    k,
 			State: v,
-			// Small tie-breaker so sort is deterministic
-			Time: time.Duration(i) * time.Microsecond,
+			Time:  time.Duration(i) * time.Microsecond,
 		})
 	}
 	return out
 }
 
 func performInitialMove(s *State, reqs [][2]Req) {
-	doIdle := func() {
+	f := s.State.GetFloor()
+	if f < 0 || f >= len(reqs) {
+		return
+	}
+
+	assignHere := func() bool {
+		assignedAny := false
 		for c := 0; c < 2; c++ {
-			if reqs[s.State.GetFloor()][c].m_active {
-				reqs[s.State.GetFloor()][c].m_assignedTo = s.ID
-				s.Time += time.Duration(config.DOOR_OPEN_DURATION) * time.Millisecond
+			if reqs[f][c].m_active && reqs[f][c].m_assignedTo == "" {
+				reqs[f][c].m_assignedTo = s.ID
+				assignedAny = true
 			}
 		}
+		return assignedAny
 	}
 
 	switch s.State.GetBehaviour() {
 	case elevator.DoorOpen:
-		s.Time += time.Duration(config.DOOR_OPEN_DURATION) / 2 * time.Millisecond
-		doIdle()
+		// Assume door is halfway through its open time; finish remaining half.
+		s.Time += time.Duration(config.DOOR_OPEN_DURATION) * time.Millisecond / 2
+		// If we serve hall calls while door is already open, don't add extra door time.
+		_ = assignHere()
+
 	case elevator.Idle:
-		doIdle()
+		// If idle and there are hall calls here, we open the door once to serve them.
+		if assignHere() {
+			s.Time += time.Duration(config.DOOR_OPEN_DURATION) * time.Millisecond
+		}
+
 	case elevator.Moving:
+		// Assuming it’s halfway to next floor...
 		s.State.SetFloor(s.State.GetFloor() + int(s.State.GetDirection()))
-		s.Time += time.Duration(config.TRAVEL_DURATION) / 2 * time.Millisecond
+		s.Time += time.Duration(config.TRAVEL_DURATION) * time.Millisecond / 2
 	}
 }
 
-func performSingleMove(s *State, reqs [][2]Req) { //TODO: Fix, fix withRequests
+// Core simulation step for the earliest-available elevator.
+func performSingleMove(s *State, reqs [][2]Req) {
 	e := elevator.WithRequests(s.State, filterReq(reqs, isUnassigned))
 
-	onClear := func(c elevator.Button) {
-		switch c {
-		case elevator.HallUp, elevator.HallDown:
-			reqs[s.State.GetFloor()][int(c)].m_assignedTo = s.ID
-		case elevator.Cab:
-			s.State.SetRequest(s.State.GetFloor(), driver.BT_Cab, false)
-		}
-	}
-
 	switch s.State.GetBehaviour() {
+
 	case elevator.Moving:
 		if ShouldStop(e) {
 			s.State.SetBehaviour(elevator.DoorOpen)
 			s.Time += time.Duration(config.DOOR_OPEN_DURATION) * time.Millisecond
-			s.State = ClearAtCurrentFloor(s.State, onClear)
+			s.State = clearAndRecordServedRequests(s.ID, s.State, reqs)
 		} else {
 			s.State.SetFloor(s.State.GetFloor() + int(s.State.GetDirection()))
 			s.Time += time.Duration(config.TRAVEL_DURATION) * time.Millisecond
@@ -213,10 +221,11 @@ func performSingleMove(s *State, reqs [][2]Req) { //TODO: Fix, fix withRequests
 		s.State.SetDirection(pair.m_dirn)
 
 		switch pair.m_behaviour {
+
 		case elevator.DoorOpen:
 			s.State.SetBehaviour(elevator.DoorOpen)
 			s.Time += time.Duration(config.DOOR_OPEN_DURATION) * time.Millisecond
-			s.State = ClearAtCurrentFloor(s.State, onClear)
+			s.State = clearAndRecordServedRequests(s.ID, s.State, reqs)
 
 		case elevator.Moving:
 			s.State.SetBehaviour(elevator.Moving)
@@ -232,8 +241,33 @@ func performSingleMove(s *State, reqs [][2]Req) { //TODO: Fix, fix withRequests
 	}
 }
 
+func clearAndRecordServedRequests(elevID string, e elevator.Elevator, reqs [][2]Req) elevator.Elevator {
+	f := e.GetFloor()
+	if f < 0 || f >= len(reqs) {
+		return e
+	}
+
+	beforeUp := e.GetRequestAtFloor(f, driver.BT_HallUp)
+	beforeDown := e.GetRequestAtFloor(f, driver.BT_HallDown)
+
+	e2 := ClearAtCurrentFloor(e)
+
+	afterUp := e2.GetRequestAtFloor(f, driver.BT_HallUp)
+	afterDown := e2.GetRequestAtFloor(f, driver.BT_HallDown)
+
+	// If request existed and got cleared, it was served now.
+	if beforeUp && !afterUp && reqs[f][int(elevator.HallUp)].m_active && reqs[f][int(elevator.HallUp)].m_assignedTo == "" {
+		reqs[f][int(elevator.HallUp)].m_assignedTo = elevID
+	}
+	if beforeDown && !afterDown && reqs[f][int(elevator.HallDown)].m_active && reqs[f][int(elevator.HallDown)].m_assignedTo == "" {
+		reqs[f][int(elevator.HallDown)].m_assignedTo = elevID
+	}
+
+	return e2
+}
+
 func unvisitedAreImmediatelyAssignable(reqs [][2]Req, states []State) bool {
-	// no remaining cab requests
+	// no remaining cab requests anywhere
 	for _, s := range states {
 		eReqs := s.State.GetRequests()
 		for f := 0; f < config.N_FLOORS; f++ {
@@ -277,8 +311,23 @@ func unvisitedAreImmediatelyAssignable(reqs [][2]Req, states []State) bool {
 }
 
 func assignImmediate(reqs [][2]Req, states []State) {
-	// If there’s an unassigned hall request at a floor with an elevator and no cab requests,
-	// assign it to an elevator present at that floor.
+
+	doorAddedAtFloor := make(map[string]map[int]bool) // elevID -> floor -> bool
+
+	markDoor := func(elevID string, floor int) {
+		if _, ok := doorAddedAtFloor[elevID]; !ok {
+			doorAddedAtFloor[elevID] = make(map[int]bool)
+		}
+		doorAddedAtFloor[elevID][floor] = true
+	}
+
+	doorAlready := func(elevID string, floor int) bool {
+		if m, ok := doorAddedAtFloor[elevID]; ok {
+			return m[floor]
+		}
+		return false
+	}
+
 	for f := range reqs {
 		for c := 0; c < 2; c++ {
 			if !isUnassigned(reqs[f][c]) {
@@ -287,12 +336,10 @@ func assignImmediate(reqs [][2]Req, states []State) {
 
 			for si := range states {
 				s := &states[si]
-
 				if s.State.GetFloor() != f {
 					continue
 				}
 
-				// Require no cab requests for this elevator
 				hasCab := false
 				eReqs := s.State.GetRequests()
 				for floor := 0; floor < config.N_FLOORS; floor++ {
@@ -306,9 +353,12 @@ func assignImmediate(reqs [][2]Req, states []State) {
 				}
 
 				reqs[f][c].m_assignedTo = s.ID
-				s.Time += time.Duration(config.DOOR_OPEN_DURATION) * time.Millisecond
 
-				// Stop after assigning this request to one elevator
+				if !doorAlready(s.ID, f) {
+					s.Time += time.Duration(config.DOOR_OPEN_DURATION) * time.Millisecond
+					markDoor(s.ID, f)
+				}
+
 				break
 			}
 		}
