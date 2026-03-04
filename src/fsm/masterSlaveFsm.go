@@ -15,16 +15,16 @@ Loop:
 		select {
 		case buttonEvent := <-hallButtonCh:
 			//Should decide here who takes the order. For now it is just sent back to the fsm
-			chosenElevator := SuperOptimalOrderAssignmentAlgorithm()
-			
-			id := e.GetWorldView()[chosenElevator].GetID()
+			asignedOrder := runHallReqAlgorithm(createJSONDataForHallReqAlgorithm(e))
+
+			id := e.GetWorldView()[string(asignedOrder)].GetID()
 
 			if id == e.GetID() {
 				assignedOrderCh <- buttonEvent
 			} else {
 				//Give to slave
-				network.SendHallOrder(buttonEvent, e.GetID(), 
-				id, network.HallOrderAssignment)
+				network.SendHallOrder(buttonEvent, e.GetID(),
+					id, network.HallOrderAssignment)
 			}
 
 		case isMaster := <-changeMasterSlaveCh:

@@ -59,12 +59,12 @@ func createJSONDataForHallReqAlgorithm(e *elevator.Elevator) []byte {
 	return jsonData
 }
 
-func runHallReqAlgorithm(data []byte) {
-	input := string(data) // Convert data to string
-	err := exec.Command("./hall_request_assigner", "--input", input).Run()
+func runHallReqAlgorithm(data []byte) []byte {
+	input := string(data)
+	cmd := exec.Command("./hall_request_assigner", "--input", input)
+	out, err := cmd.CombinedOutput()
 	if err != nil {
-		fmt.Printf("Error running hall request algorithm: %v\n", err)
+		fmt.Errorf("running hall request algorithm: %w; output: %s", err, string(out))
 	}
+	return out
 }
-
-
