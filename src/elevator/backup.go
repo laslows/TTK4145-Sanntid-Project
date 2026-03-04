@@ -6,12 +6,12 @@ import (
 )
 
 type Backup struct {
-	m_ID 				 int
+	m_ID                 int
 	m_floor              int
 	m_direction          Direction
 	m_requests           [config.N_FLOORS][config.N_BUTTONS]bool
 	m_isMaster           bool
-	m_behaviour 		 ElevatorBehaviour
+	m_behaviour          ElevatorBehaviour
 	m_version            int
 	m_connectedToNetwork bool
 }
@@ -21,7 +21,7 @@ type Backup struct {
 
 func (b *Backup) MarshalJSON() ([]byte, error) {
 	type BackupJSON struct {
-		ID 				   int
+		ID                 int
 		Floor              int
 		Direction          int
 		Requests           [config.N_FLOORS][config.N_BUTTONS]bool
@@ -32,7 +32,7 @@ func (b *Backup) MarshalJSON() ([]byte, error) {
 	}
 
 	return json.Marshal(&BackupJSON{
-		ID:					b.m_ID,
+		ID:                 b.m_ID,
 		Floor:              b.m_floor,
 		Direction:          int(b.m_direction),
 		Requests:           b.m_requests,
@@ -46,7 +46,7 @@ func (b *Backup) MarshalJSON() ([]byte, error) {
 // Egendefinert unmarshaler
 func (b *Backup) UnmarshalJSON(data []byte) error {
 	type BackupJSON struct {
-		ID 				   int
+		ID                 int
 		Floor              int
 		Direction          int
 		Requests           [config.N_FLOORS][config.N_BUTTONS]bool
@@ -88,11 +88,25 @@ func (e *Elevator) UpdateMyBackup() {
 	e.UpdateWorldView(e.m_myBackup)
 }
 
-
 func (b *Backup) GetID() int {
 	return b.m_ID
 }
 
+func (b *Backup) GetBehaviour() ElevatorBehaviour {
+	return b.m_behaviour
+}
+
+func (b *Backup) GetDirection() Direction {
+	return b.m_direction
+}
+
+func (b *Backup) GetFloor() int {
+	return b.m_floor
+}
+
+func (b *Backup) GetRequests() [config.N_FLOORS][config.N_BUTTONS]bool {
+	return b.m_requests
+}
 
 /*
 func NewBackup(IP string) *Backup {

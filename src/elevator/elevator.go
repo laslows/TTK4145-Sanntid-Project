@@ -294,3 +294,31 @@ func StopLight(on bool) {
 func MotorDirection(dir Direction) {
 	driver.SetMotorDirection(driver.MotorDirection(dir))
 }
+
+func DirectionToString(dir Direction) string {
+	switch dir {
+	case Down:
+		return "down"
+	case Up:
+		return "up"
+	case Stop:
+		return "stop"
+	default:
+		return ""
+	}
+}
+
+func BehaviourToString(behaviour ElevatorBehaviour) string {
+	switch behaviour {
+	case Idle:
+		return "idle"
+	case DoorOpen:
+		return "doorOpen"
+	case Moving:
+		return "moving"
+	case MotorStop:
+		return "motorStop"
+	default:
+		return ""
+	}
+}
