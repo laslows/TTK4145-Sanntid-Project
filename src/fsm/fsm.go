@@ -136,6 +136,9 @@ func NewOrder(e *elevator.Elevator, floor int, order_type orders.OrderType, _tim
 	case elevator.Moving:
 		e.SetRequest(floor, (driver.ButtonType)(order_type), true)
 
+	case elevator.MotorStop:
+		e.SetRequest(floor, (driver.ButtonType)(order_type), true)
+
 	case elevator.Idle:
 		e.SetRequest(floor, (driver.ButtonType)(order_type), true)
 		pair := ChooseDirection(*e)
