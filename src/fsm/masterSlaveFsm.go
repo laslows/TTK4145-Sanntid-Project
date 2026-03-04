@@ -10,6 +10,8 @@ import (
 	"time"
 )
 
+//TODO? get a snapshot from backup in here
+
 func MasterFsm(
 	elev *elevator.Elevator,
 	hallButtonCh <-chan events.ButtonEvent,
@@ -41,16 +43,28 @@ Loop:
 			}
 
 			// ---- TO-DO: add function to run hall assigner ----
-			elevatorStates := network.GetElevatorStates() // TODO: implement functinality in network
+			//elevatorStates := network.GetElevatorStates() // TODO: implement functinality in network
 
 			// Ensure we include OUR own up-to-date state in the map
-			myID := elev.GetPort() // starting point: use port as ID
-			elevatorStates[myID] = *elev
+			worldViewMap := make(map[string]elevator.Elevator)
+			for _, backup := range elev.GetWorldView() {
+				if backup != nil {
+					elev.UpdateMyBackup()
+					//worldViewMap[backup.GetIP()] = *backup
+				}
+			}
+			assignment := OptimalHallRequests(hallReqs, worldViewMap)
+			id := elevator.GetIPandPortAsInt(elev.GetIP(), elev.GetPort())
 
-			assignments := OptimalHallRequests(hallReqs, elevatorStates) //adds optimalhallrequetss
-
+			if id == elevator.GetIPandPortAsInt(elev.GetIP(), elev.GetPort()) {
+				assignedOrderCh <- orders.New(f, btn)
+			} else {
+				//Give to slave
+				network.SendHallOrder(orders.New(f, btn), elevator.GetIPandPortAsInt(elev.GetIP(), elev.GetPort()),
+					id, network.HallOrderAssignment)
+			}
 			// Starting point: only send the orders assigned to THIS elevator into local FSM, TODO senere
-			if myGrid, ok := assignments[myID]; ok {
+			if myGrid, ok := assignment[elev.GetIP()]; ok {
 				for floor := 0; floor < len(myGrid); floor++ {
 					if myGrid[floor][0] {
 						assignedOrderCh <- orders.New(floor, orders.HALL_UP)
@@ -81,6 +95,9 @@ Loop:
 		time.Sleep(10 * time.Millisecond)
 	}
 
+	elev.SetIsMaster(false)
+	elev.UpdateMyBackup()
+
 	go SlaveFsm(elev, hallButtonCh, assignedOrderCh, changeMasterSlaveCh)
 }
 
@@ -92,6 +109,7 @@ func SlaveFsm(
 	changeMasterSlaveCh <-chan bool,
 ) {
 	fmt.Println("I am slave")
+	//fmt.Printf("Master is: %d \n", elev.GetMasterIP())
 
 Loop:
 	for {
@@ -103,16 +121,19 @@ Loop:
 			} else {
 				fmt.Println("Should not be here, stay slave")
 			}
-
 		case buttonEvent := <-hallButtonCh:
-			// Forward to master
-			network.SendHallOrderToMaster(
-				orders.New(buttonEvent.GetFloor(), orders.OrderType(buttonEvent.GetButton())),
-			)
+			//Give to master
+			network.SendHallOrder(orders.New(buttonEvent.GetFloor(), orders.OrderType(buttonEvent.GetButton())), elevator.GetIPandPortAsInt(elev.GetIP(), elev.GetPort()),
+				elev.GetMasterID(), network.HallOrderRequest)
+
 		}
 
 		time.Sleep(10 * time.Millisecond)
+
 	}
+
+	elev.SetIsMaster(true)
+	elev.UpdateMyBackup()
 
 	go MasterFsm(elev, hallButtonCh, assignedOrderCh, changeMasterSlaveCh)
 }
