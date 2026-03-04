@@ -45,7 +45,7 @@ func Fsm(e *elevator.Elevator, timetaker *timer.Timer, cabButtonCh <-chan orders
 			//Try to reach new floor if between floors
 			e.SetBehaviour(elevator.MotorStop)
 			e.UpdateMyBackup()
-			network.SendMotorStopMessage(elevator.GetIPandPortAsInt(e.GetIP(), e.GetPort()), e.GetMasterID(), true)
+			network.SendMotorStopMessage(e.GetID(), e.GetMasterID(), true)
 
 		}
 
@@ -72,7 +72,7 @@ func onFloorArrival(e *elevator.Elevator, floor int, _timer *timer.Timer) {
 			e.SetBehaviour(elevator.Moving)
 		}
 
-		network.SendMotorStopMessage(elevator.GetIPandPortAsInt(e.GetIP(), e.GetPort()), e.GetMasterID(), false)
+		network.SendMotorStopMessage(e.GetID(), e.GetMasterID(), false)
 		fallthrough
 
 	case elevator.Moving:

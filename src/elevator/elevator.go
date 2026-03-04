@@ -5,6 +5,7 @@ import (
 	"Sanntid/src/driver"
 	"fmt"
 	"net"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -40,8 +41,7 @@ const (
 
 type Elevator struct {
 	//Can maybe remove IP
-	m_IP        string
-	m_port      string
+	m_ID        int
 	m_floor     int
 	m_direction Direction
 	m_requests  [config.N_FLOORS][config.N_BUTTONS]bool
@@ -59,8 +59,6 @@ type Elevator struct {
 // Constructor
 func New(port string) *Elevator {
 	e := &Elevator{
-		m_IP:        getLocalIP(),
-		m_port:      port,
 		m_floor:     -1,
 		m_direction: Stop,
 		m_behaviour: Idle,
@@ -75,9 +73,10 @@ func New(port string) *Elevator {
 		},
 	}
 
+	e.m_ID = getIDAsInt(getLocalIP(), strconv.Itoa(os.Getpid()))
+
 	e.m_myBackup = &Backup{
-		m_IP:        e.m_IP,
-		m_port:      e.m_port,
+		m_ID:        e.m_ID,
 		m_floor:     e.m_floor,
 		m_direction: e.m_direction,
 		m_isMaster:  e.m_isMaster,
@@ -111,7 +110,7 @@ func (e *Elevator) GetGlobalLights() [config.N_FLOORS][config.N_BUTTONS]bool {
 // Should maybe use a message id instead, to check if we have already received the message
 func (e *Elevator) UpdateWorldView(backup *Backup) {
 	for i, b := range e.m_worldView {
-		if b == nil || (b.m_IP == backup.m_IP && b.m_port == backup.m_port) {
+		if b == nil || (b.m_ID == backup.m_ID) {
 			e.m_worldView[i] = backup
 			return
 		}
@@ -122,43 +121,43 @@ func (e *Elevator) TryUpdateWorldView(backup *Backup) bool {
 	// Update if new elevator, or if the incoming backup is newer.
 
 	for _, b := range e.m_worldView {
-		if b != nil && b.m_IP == backup.m_IP && b.m_port == backup.m_port {
+		if b != nil && b.m_ID == backup.m_ID {
 			return backup.m_version > b.m_version
 		}
 	}
 	return true
 }
 
-func GetIPandPortAsInt(ip, port string) int {
+func getIDAsInt(ip, osID string) int {
 	ipString := strings.ReplaceAll(ip, ".", "")
-	ipPort := ipString + port
-	ipInt, err := strconv.Atoi(ipPort)
+	iDString := ipString + osID
+	idInt, err := strconv.Atoi(iDString)
 
 	if err != nil {
+		fmt.Println(iDString)
 		panic(fmt.Sprintf("Failed to convert IP to int: %v", err))
 	}
 
-	return ipInt
+	return idInt
 }
 
 func (e *Elevator) TryUpdateIsMaster() bool {
-	//If we are master and should be slave, or if we are slave and should be master, 
+	//If we are master and should be slave, or if we are slave and should be master,
 	// update isMaster and return true. Else return false
 	if (e.m_isMaster && !CheckIsMaster(*e)) || (!e.m_isMaster && CheckIsMaster(*e)) {
 		e.m_isMaster = CheckIsMaster(*e)
 		return true
 	}
 	return false
-	
+
 }
 
 func CheckIsMaster(e Elevator) bool {
-	myId := GetIPandPortAsInt(e.m_IP, e.m_port)
 	master := true
 
 	for _, b := range e.m_worldView {
 		if b != nil {
-			master = master && (myId >= GetIPandPortAsInt(b.m_IP, b.m_port))
+			master = master && (e.GetID() >= b.GetID())
 		}
 	}
 
@@ -186,7 +185,7 @@ func (e *Elevator) GetMyBackup() *Backup {
 	//Would maybe be easier to store a pointer to own backup in elevator struct, and update it every time we update the worldview
 
 	for _, b := range e.m_worldView {
-		if b != nil && b.m_IP == e.m_IP && b.m_port == e.m_port {
+		if b != nil && b.m_ID == e.m_ID {
 			return b
 		}
 	}
@@ -196,7 +195,7 @@ func (e *Elevator) GetMyBackup() *Backup {
 func (e *Elevator) GetMasterID() int {
 	for _, b := range e.m_worldView {
 		if b != nil && b.m_isMaster {
-			return GetIPandPortAsInt(b.m_IP, b.m_port)
+			return b.GetID()
 		}
 	}
 
@@ -256,12 +255,8 @@ func (e *Elevator) SetIsMaster(isMaster bool) {
 	e.m_isMaster = isMaster
 }
 
-func (e *Elevator) GetIP() string {
-	return e.m_IP
-}
-
-func (e *Elevator) GetPort() string {
-	return e.m_port
+func (e *Elevator) GetID() int {
+	return e.m_ID
 }
 
 func FloorSensor() int {

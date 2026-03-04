@@ -149,7 +149,7 @@ func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
 			continue
 		}
 
-		if message.m_receiverID != elevator.GetIPandPortAsInt(e.GetIP(), e.GetPort()) {
+		if message.m_receiverID != e.GetID() {
 			continue
 		}
 

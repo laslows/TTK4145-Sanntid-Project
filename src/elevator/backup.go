@@ -6,8 +6,7 @@ import (
 )
 
 type Backup struct {
-	m_IP                 string
-	m_port               string
+	m_ID 				 int
 	m_floor              int
 	m_direction          Direction
 	m_requests           [config.N_FLOORS][config.N_BUTTONS]bool
@@ -22,8 +21,7 @@ type Backup struct {
 
 func (b *Backup) MarshalJSON() ([]byte, error) {
 	type BackupJSON struct {
-		IP                 string
-		Port               string
+		ID 				   int
 		Floor              int
 		Direction          int
 		Requests           [config.N_FLOORS][config.N_BUTTONS]bool
@@ -34,8 +32,7 @@ func (b *Backup) MarshalJSON() ([]byte, error) {
 	}
 
 	return json.Marshal(&BackupJSON{
-		IP:                 b.m_IP,
-		Port:               b.m_port,
+		ID:					b.m_ID,
 		Floor:              b.m_floor,
 		Direction:          int(b.m_direction),
 		Requests:           b.m_requests,
@@ -49,8 +46,7 @@ func (b *Backup) MarshalJSON() ([]byte, error) {
 // Egendefinert unmarshaler
 func (b *Backup) UnmarshalJSON(data []byte) error {
 	type BackupJSON struct {
-		IP                 string
-		Port               string
+		ID 				   int
 		Floor              int
 		Direction          int
 		Requests           [config.N_FLOORS][config.N_BUTTONS]bool
@@ -66,8 +62,7 @@ func (b *Backup) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	b.m_IP = backupJSON.IP
-	b.m_port = backupJSON.Port
+	b.m_ID = backupJSON.ID
 	b.m_floor = backupJSON.Floor
 	b.m_direction = Direction(backupJSON.Direction)
 	b.m_requests = backupJSON.Requests
@@ -94,13 +89,10 @@ func (e *Elevator) UpdateMyBackup() {
 }
 
 
-func (b *Backup) GetPort() string {
-	return b.m_port
+func (b *Backup) GetID() int {
+	return b.m_ID
 }
 
-func (b *Backup) GetIP() string {
-	return b.m_IP
-}
 
 /*
 func NewBackup(IP string) *Backup {

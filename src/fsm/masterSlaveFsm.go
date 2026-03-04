@@ -16,14 +16,14 @@ Loop:
 		case buttonEvent := <-hallButtonCh:
 			//Should decide here who takes the order. For now it is just sent back to the fsm
 			chosenElevator := SuperOptimalOrderAssignmentAlgorithm()
-			id := elevator.GetIPandPortAsInt(e.GetWorldView()[chosenElevator].GetIP(),
-				e.GetWorldView()[chosenElevator].GetPort())
+			
+			id := e.GetWorldView()[chosenElevator].GetID()
 
-			if id == elevator.GetIPandPortAsInt(e.GetIP(), e.GetPort()) {
+			if id == e.GetID() {
 				assignedOrderCh <- buttonEvent
 			} else {
 				//Give to slave
-				network.SendHallOrder(buttonEvent, elevator.GetIPandPortAsInt(e.GetIP(), e.GetPort()), 
+				network.SendHallOrder(buttonEvent, e.GetID(), 
 				id, network.HallOrderAssignment)
 			}
 
@@ -65,8 +65,7 @@ Loop:
 			}
 		case buttonEvent := <-hallButtonCh:
 			//Give to master
-			network.SendHallOrder(buttonEvent, elevator.GetIPandPortAsInt(e.GetIP(), e.GetPort()), 
-			e.GetMasterID(), network.HallOrderRequest)
+			network.SendHallOrder(buttonEvent, e.GetID(), e.GetMasterID(), network.HallOrderRequest)
 
 		}
 
