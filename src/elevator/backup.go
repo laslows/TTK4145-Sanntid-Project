@@ -108,6 +108,10 @@ func (b *Backup) GetRequests() [config.N_FLOORS][config.N_BUTTONS]bool {
 	return b.m_requests
 }
 
+func (b *Backup) GetConnectedToNetwork() bool {
+	return b.m_connectedToNetwork
+}
+
 /*
 func NewBackup(IP string) *Backup {
 	return &Backup{

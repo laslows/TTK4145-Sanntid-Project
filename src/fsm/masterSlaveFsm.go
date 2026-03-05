@@ -16,7 +16,7 @@ Loop:
 		select {
 		case buttonEvent := <-hallButtonCh:
 			
-			orderAssignments := runHallRequestAssignerAlgorithm(createJSONDataForHallReqAlgorithm(e))
+			orderAssignments := runHallReqAlgorithm(e)
 			
 			//Do stuff with own hall orders
 
