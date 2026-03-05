@@ -4,15 +4,10 @@ import (
 	"Sanntid/src/config"
 	"Sanntid/src/driver"
 	"Sanntid/src/elevator"
-	"Sanntid/src/network"
 	"Sanntid/src/orders"
 	"Sanntid/src/timer"
 	"fmt"
-	/*
-		"Sanntid/src/elevator"
-		"Sanntid/src/driver"
-		"Sanntid/src/timer"
-	*/)
+)
 
 //TODO: Fix naming conventions
 
@@ -45,7 +40,7 @@ func Fsm(e *elevator.Elevator, timetaker *timer.Timer, cabButtonCh <-chan orders
 			//Try to reach new floor if between floors
 			e.SetBehaviour(elevator.MotorStop)
 			e.UpdateMyBackup()
-			network.SendMotorStopMessage(e.GetID(), e.GetMasterID(), true)
+			//network.SendMotorStopMessage(e.GetID(), e.GetMasterID(), true)
 
 		}
 
@@ -68,12 +63,18 @@ func onFloorArrival(e *elevator.Elevator, floor int, _timer *timer.Timer) {
 		if !anyRequests(*e) {
 			e.SetBehaviour(elevator.Idle)
 			elevator.MotorDirection(elevator.Stop)
+		} else if ShouldStop(*e) {
+			elevator.MotorDirection(elevator.Stop)
+			elevator.DoorOpenLight(true)
+			*e = ClearAtCurrentFloor(*e)
+			_timer.Start(e.GetDoorOpenDuration())
+			setAllLights(*e)
+			e.SetBehaviour(elevator.DoorOpen)
 		} else {
 			e.SetBehaviour(elevator.Moving)
 		}
 
-		network.SendMotorStopMessage(e.GetID(), e.GetMasterID(), false)
-		fallthrough
+		//network.SendMotorStopMessage(e.GetID(), e.GetMasterID(), false)
 
 	case elevator.Moving:
 		if ShouldStop(*e) {
@@ -134,6 +135,9 @@ func NewOrder(e *elevator.Elevator, floor int, order_type orders.OrderType, _tim
 		}
 
 	case elevator.Moving:
+		e.SetRequest(floor, (driver.ButtonType)(order_type), true)
+
+	case elevator.MotorStop:
 		e.SetRequest(floor, (driver.ButtonType)(order_type), true)
 
 	case elevator.Idle:

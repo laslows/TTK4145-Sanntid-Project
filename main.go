@@ -32,14 +32,15 @@ func main() {
 	floorCh := make(chan int)
 	timerCh := make(chan bool)
 	motorStopCh := make(chan bool)
-	changeMasterSlaveCh := make(chan bool)
+	updateWorldViewCh := make(chan elevator.Backup)
+	peerLostCh := make(chan int)
 
 	initialize.Initialize(elev)
 
 	go fsm.Fsm(elev, timetaker, cabButtonCh, floorCh, timerCh, motorStopCh, assignedOrderCh)
-	go fsm.MasterFsm(elev, hallButtonCh, assignedOrderCh, changeMasterSlaveCh)
+	go fsm.MasterFsm(elev, hallButtonCh, assignedOrderCh, updateWorldViewCh, peerLostCh)
 	go events.InputPoller(cabButtonCh, hallButtonCh, floorCh, timerCh, motorStopCh, elev, timetaker)
-	go network.ListenForHeartbeats(elev, changeMasterSlaveCh)
+	go network.ListenForHeartbeats(elev, updateWorldViewCh, peerLostCh)
 	go network.BroadcastHeartbeat(elev)
 	go network.ListenForMessages(elev, hallButtonCh, assignedOrderCh)
 

@@ -78,7 +78,10 @@ func SendHallOrder(order orders.Order, senderID, receiverId int, messageType mes
 }
 
 // Motpart i onfloorarrival
-func SendMotorStopMessage(senderID, receiverId int, motorStopped bool) {
+
+//Tror ikke vi trenger eksplisitt motor stop melding med hallrequestassigner-algoritmen
+
+/*func SendMotorStopMessage(senderID, receiverId int, motorStopped bool) {
 	motorStopMessage := Message{
 		m_messageType: MotorStop,
 		m_senderID:    senderID,
@@ -93,7 +96,7 @@ func SendMotorStopMessage(senderID, receiverId int, motorStopped bool) {
 
 	motorStopMessage.m_payload = payload
 	BroadcastMessage(motorStopMessage)
-}
+}*/
 
 func SendBackupToRestoredElevator(b *elevator.Backup) {
 	backupMessage := Message{
@@ -177,8 +180,9 @@ func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
 			}
 
 			assignedOrderCh <- hallOrderAssignment
-			//Received hall order from master. Add to local queue.
-		case MotorStop:
+			
+
+		/*case MotorStop:
 
 			var motorStopped bool
 			err = json.Unmarshal(message.m_payload, &motorStopped)
@@ -189,7 +193,7 @@ func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
 			}
 
 			fmt.Println("Received motor stop message:", motorStopped, "from", message.m_senderID)
-
+		*/
 		}
 
 	}

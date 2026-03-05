@@ -76,12 +76,13 @@ func New(port string) *Elevator {
 	e.m_ID = getIDAsInt(getLocalIP(), strconv.Itoa(os.Getpid()))
 
 	e.m_myBackup = &Backup{
-		m_ID:        e.m_ID,
-		m_floor:     e.m_floor,
-		m_direction: e.m_direction,
-		m_isMaster:  e.m_isMaster,
-		m_version:   0,
-		m_behaviour: Idle,
+		m_ID:                 e.m_ID,
+		m_floor:              e.m_floor,
+		m_direction:          e.m_direction,
+		m_isMaster:           e.m_isMaster,
+		m_version:            0,
+		m_behaviour:          Idle,
+		m_connectedToNetwork: true,
 	}
 
 	e.UpdateWorldView(e.m_myBackup)
@@ -118,11 +119,11 @@ func (e *Elevator) UpdateWorldView(backup *Backup) {
 }
 
 func (e *Elevator) TryUpdateWorldView(backup *Backup) bool {
-	// Update if new elevator, or if the incoming backup is newer.
+	// Update if new elevator, or if the incoming backup is newer, or if backup has reconnected.
 
 	for _, b := range e.m_worldView {
 		if b != nil && b.m_ID == backup.m_ID {
-			return backup.m_version > b.m_version
+			return backup.m_version > b.m_version || !b.m_connectedToNetwork
 		}
 	}
 	return true
@@ -144,26 +145,27 @@ func getIDAsInt(ip, osID string) int {
 func (e *Elevator) TryUpdateIsMaster() bool {
 	//If we are master and should be slave, or if we are slave and should be master,
 	// update isMaster and return true. Else return false
-	if (e.m_isMaster && !CheckIsMaster(*e)) || (!e.m_isMaster && CheckIsMaster(*e)) {
-		e.m_isMaster = CheckIsMaster(*e)
+	if (e.m_isMaster && !checkIsMaster(*e)) || (!e.m_isMaster && checkIsMaster(*e)) {
+		e.m_isMaster = checkIsMaster(*e)
 		return true
 	}
+
 	return false
 
 }
 
-func CheckIsMaster(e Elevator) bool {
+func checkIsMaster(e Elevator) bool {
 	master := true
 
 	for _, b := range e.m_worldView {
-		if b != nil {
+		if b != nil && b.m_connectedToNetwork {
 			master = master && (e.GetID() >= b.GetID())
 		}
 	}
 
 	//Remove this lol
 	if master {
-		fmt.Printf("I am master!")
+		fmt.Println("I am master!")
 	}
 
 	return master
@@ -201,6 +203,15 @@ func (e *Elevator) GetMasterID() int {
 
 	fmt.Println("No master found in worldview")
 	return -1
+}
+
+func (e *Elevator) LooseConnectionToPeer(peer int) {
+	for i, b := range e.m_worldView {
+		if b != nil && b.m_ID == peer {
+			e.m_worldView[i].m_connectedToNetwork = false
+			return
+		}
+	}
 }
 
 func (e *Elevator) GetWorldView() [config.N_ELEVATORS]*Backup {
