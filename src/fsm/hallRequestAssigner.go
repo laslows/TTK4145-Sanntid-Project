@@ -6,23 +6,24 @@ import (
 	"encoding/json"
 	"fmt"
 	"os/exec"
+	"strconv"
 )
 
 //TODO:fix name
 
 type SystemState struct {
-	HallRequests [][]bool
-	States       map[string]ElevatorState
+	HallRequests [][]bool `json:"hallRequests"`
+	States       map[string]ElevatorState `json:"states"`
 }
 
 type ElevatorState struct {
-	Behaviour   string
-	Floor       int
-	Direction   string
-	CabRequests []bool
+	Behaviour   string `json:"behaviour"`
+	Floor       int `json:"floor"`
+	Direction   string `json:"direction"`
+	CabRequests []bool `json:"cabRequests"`
 }
 
-func createJSONDataForHallReqAlgorithm(e *elevator.Elevator) []byte {
+func createJSONDataForHallReqAlgorithm(e *elevator.Elevator) string {
 	states := make(map[string]ElevatorState)
 	hallRequests := make([][]bool, config.N_FLOORS)
 	for i := range hallRequests {
@@ -30,16 +31,21 @@ func createJSONDataForHallReqAlgorithm(e *elevator.Elevator) []byte {
 	}
 	worldView := e.GetWorldView()
 	for _, backup := range worldView {
-		if backup != nil { //TODO:motorstop and disconnected
+		fmt.Println(backup.GetConnectedToNetwork())
+		fmt.Println(backup.GetBehaviour())
+		if backup != nil {
 			requests := backup.GetRequests()
-			states[string(backup.GetID())] = ElevatorState{
-				Behaviour:   elevator.BehaviourToString(backup.GetBehaviour()),
-				Floor:       backup.GetFloor(),
-				Direction:   elevator.DirectionToString(backup.GetDirection()),
-				CabRequests: make([]bool, len(requests)),
-			}
-			for i, row := range requests {
-				states[string(backup.GetID())].CabRequests[i] = row[len(row)-1]
+			if backup.GetBehaviour() != elevator.MotorStop && backup.GetConnectedToNetwork() {
+				fmt.Println(backup.GetID())
+				states[strconv.Itoa(backup.GetID())] = ElevatorState{
+					Behaviour:   elevator.BehaviourToString(backup.GetBehaviour()),
+					Floor:       backup.GetFloor(),
+					Direction:   elevator.DirectionToString(backup.GetDirection()),
+					CabRequests: make([]bool, len(requests)),
+				}
+				for i, row := range requests {
+					states[strconv.Itoa(backup.GetID())].CabRequests[i] = row[len(row)-1]
+				}
 			}
 			for i := range hallRequests {
 				for j := range hallRequests[i] {
@@ -48,6 +54,8 @@ func createJSONDataForHallReqAlgorithm(e *elevator.Elevator) []byte {
 			}
 		}
 	}
+
+	println(len(states))
 	system := SystemState{
 		HallRequests: hallRequests,
 		States:       states,
@@ -56,15 +64,18 @@ func createJSONDataForHallReqAlgorithm(e *elevator.Elevator) []byte {
 	if err != nil {
 		panic(err)
 	}
-	return jsonData
+	return string(jsonData)
 }
 
-func runHallReqAlgorithm(data []byte) {
-	input := string(data) // Convert data to string
-	err := exec.Command("./hall_request_assigner", "--input", input).Run()
+func runHallReqAlgorithm(data string) {
+	//input := string(data) // Convert data to string
+	cmd := exec.Command("./src/fsm/hall_request_assigner/hall_request_assigner", "--input", data)
+	out, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Printf("Error running hall request algorithm: %v\n", err)
 	}
+	fmt.Print(string(out))
+	
 }
 
 
