@@ -20,11 +20,13 @@ func Fsm(e *elevator.Elevator, timetaker *timer.Timer, cabButtonCh <-chan orders
 	for {
 		select {
 		case buttonEvent := <-cabButtonCh:
-			NewOrder(e, buttonEvent.GetFloor(), buttonEvent.GetOrderType(), timetaker)
+
+			e.SetRequest(buttonEvent.GetFloor(), (driver.ButtonType)(buttonEvent.GetOrderType()), true)
+			//NewOrder(e, buttonEvent.GetFloor(), buttonEvent.GetOrderType(), timetaker)
 
 		case assignedHallOrders := <-assignedHallOrdersCh:
 
-			//Put orders in queue. But should but all in queue at the same time?			
+			//Put orders in queue. But should put all in queue at the same time?			
 
 			NewOrder(e, assignedOrder.GetFloor(), assignedOrder.GetOrderType(), timetaker)
 			
@@ -132,7 +134,12 @@ func OnDoorTimeout(e *elevator.Elevator, _timer *timer.Timer) {
 	}
 }
 
-func NewOrder(e *elevator.Elevator, floor int, order_type orders.OrderType, _timer *timer.Timer) {
+func InsertOrder(e *elevator.Elevator, order orders.Order, timer *timer.Timer) {
+	
+
+}
+
+func onNewOrder(e *elevator.Elevator, floor int, order_type orders.OrderType, _timer *timer.Timer) {
 
 	switch e.GetBehaviour() {
 	case elevator.DoorOpen:
