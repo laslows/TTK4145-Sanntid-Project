@@ -67,13 +67,20 @@ func createJSONDataForHallReqAlgorithm(e *elevator.Elevator) string {
 	return string(jsonData)
 }
 
-func runHallReqAlgorithm(data string) {
-	//input := string(data) // Convert data to string
-	cmd := exec.Command("./src/fsm/hall_request_assigner/hall_request_assigner", "--input", data)
+func runHallReqAlgorithm(e *elevator.Elevator) map[int][config.N_FLOORS][config.N_BUTTONS-1]bool {
+	input := createJSONDataForHallReqAlgorithm(e)
+	cmd := exec.Command("./src/fsm/hall_request_assigner/hall_request_assigner", "--input", input)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Errorf("running hall request algorithm: %w; output: %s", err, string(out))
 	}
 	fmt.Print(string(out))
-	
+	var hallOrderAssignmentMap map[int][config.N_FLOORS][config.N_BUTTONS-1]bool
+
+	err = json.Unmarshal(out, &hallOrderAssignmentMap)
+	if err != nil {
+		panic(err)
+	}
+
+	return hallOrderAssignmentMap
 }

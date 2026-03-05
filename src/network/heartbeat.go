@@ -60,7 +60,7 @@ func ListenForHeartbeats(elev *elevator.Elevator, changeMasterSlaveCh chan<- boo
 				changeMasterSlaveCh <- elev.GetIsMaster()
 			}
 
-			fmt.Printf("Updated worldview with heartbeat from %s received to %s\n", heartBeat.GetID(), elev.GetID())
+			fmt.Printf("Updated worldview with heartbeat from %d received to %d\n", heartBeat.GetID(), elev.GetID())
 
 			// Problem: how do the masters decide what backup to throw away (??)
 		}
