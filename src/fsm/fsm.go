@@ -11,8 +11,8 @@ import (
 
 //TODO: Fix naming conventions
 
-func Fsm(e *elevator.Elevator, timetaker *timer.Timer, cabButtonCh <-chan orders.Order, floorCh <-chan int, timerCh <-chan bool, motorStopCh <-chan bool,
-	assignedHallOrdersCh <-chan map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool) {
+func Fsm(e *elevator.Elevator, timetaker *timer.Timer, cabButtonCh <-chan orders.Order, floorCh <-chan int, timerCh <-chan bool, 
+	motorStopCh <-chan bool, localAssignedHallOrdersCh <-chan [config.N_FLOORS][config.N_BUTTONS - 1]bool) {
 	//Can only receive on channels. Might have to change tho, idk
 	//Maybe make buttonevent and ordertype the samenthing
 	//Putt update backup overalt lol
@@ -24,7 +24,7 @@ func Fsm(e *elevator.Elevator, timetaker *timer.Timer, cabButtonCh <-chan orders
 			e.SetRequest(buttonEvent.GetFloor(), (driver.ButtonType)(buttonEvent.GetOrderType()), true)
 			//NewOrder(e, buttonEvent.GetFloor(), buttonEvent.GetOrderType(), timetaker)
 
-		case assignedHallOrders := <-assignedHallOrdersCh:
+		case assignedHallOrders := <-localAssignedHallOrdersCh:
 
 			//Put orders in queue. But should put all in queue at the same time?			
 

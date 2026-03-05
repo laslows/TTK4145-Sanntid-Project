@@ -95,26 +95,7 @@ func SendHallOrderRedistribution(orderAssignments map[int][config.N_FLOORS][conf
 	BroadcastMessage(hallOrderRedistributionMessage)
 }
 
-// Motpart i onfloorarrival
 
-//Tror ikke vi trenger eksplisitt motor stop melding med hallrequestassigner-algoritmen
-
-/*func SendMotorStopMessage(senderID, receiverId int, motorStopped bool) {
-	motorStopMessage := Message{
-		m_messageType: MotorStop,
-		m_senderID:    senderID,
-		m_receiverID:  receiverId,
-	}
-
-	payload, err := json.Marshal(&motorStopped)
-	if err != nil {
-		//Handle error
-		return
-	}
-
-	motorStopMessage.m_payload = payload
-	BroadcastMessage(motorStopMessage)
-}*/
 
 func SendBackupToRestoredElevator(b *elevator.Backup) {
 	backupMessage := Message{
@@ -132,7 +113,7 @@ func SendBackupToRestoredElevator(b *elevator.Backup) {
 }
 
 func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
-	assignedHallOrdersCh chan<- map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool) {
+	globalAssignedHallOrdersCh chan<- map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool) {
 	//heartbeatAddrReceiver, err := net.ResolveUDPAddr("udp", ":" + HEARTBEAT_PORT)
 	messageAddrReceiver, err := net.ResolveUDPAddr("udp4", MESSAGE_ADDR)
 
@@ -170,9 +151,11 @@ func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
 			continue
 		}
 
-		if message.m_receiverID != e.GetID() {
+		if !(message.m_receiverID == e.GetID() || (!e.GetIsMaster() && message.m_receiverID == 0)) {
 			continue
 		}
+
+		//Come here if ID == my ID or of i am slave and ID is 0
 
 		switch message.m_messageType {
 		case HallOrderRequest:
@@ -197,7 +180,7 @@ func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
 				continue
 			}
 
-			assignedHallOrdersCh <- hallOrderAssignments
+			globalAssignedHallOrdersCh <- hallOrderAssignments
 			
 
 		/*case MotorStop:
