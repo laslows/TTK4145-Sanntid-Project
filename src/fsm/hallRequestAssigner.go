@@ -72,10 +72,8 @@ func runHallReqAlgorithm(data string) {
 	cmd := exec.Command("./src/fsm/hall_request_assigner/hall_request_assigner", "--input", data)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		fmt.Printf("Error running hall request algorithm: %v\n", err)
+		fmt.Errorf("running hall request algorithm: %w; output: %s", err, string(out))
 	}
 	fmt.Print(string(out))
 	
 }
-
-
