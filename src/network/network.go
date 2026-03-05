@@ -182,19 +182,6 @@ func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
 
 			globalAssignedHallOrdersCh <- hallOrderAssignments
 			
-
-		/*case MotorStop:
-
-			var motorStopped bool
-			err = json.Unmarshal(message.m_payload, &motorStopped)
-
-			if err != nil {
-				fmt.Println("Error unmarshaling motor stop message:", err)
-				continue
-			}
-
-			fmt.Println("Received motor stop message:", motorStopped, "from", message.m_senderID)
-		*/
 		}
 
 	}

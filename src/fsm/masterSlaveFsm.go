@@ -20,13 +20,13 @@ Loop:
 		select {
 		case buttonEvent := <-hallButtonCh:
 
-			globalOrderAssignments := runHallReqAlgorithm(e)
-
-			//Do stuff with own hall orders
-
-			localAssignedHallOrdersCh <- globalOrderAssignments[e.GetID()]
-
-			network.SendHallOrderRedistribution(globalOrderAssignments, e.GetID())
+			if checkNewOrder(e, buttonEvent) {
+				globalOrderAssignments := runHallRequestAlgorithm(e)
+				localAssignedHallOrdersCh <- globalOrderAssignments[e.GetID()]
+				network.SendHallOrderRedistribution(globalOrderAssignments, e.GetID())
+			} else {
+				fmt.Println("Order already in queue, not sending to algorithm")
+			}
 
 		case heartBeat := <-updateWorldViewCh:
 

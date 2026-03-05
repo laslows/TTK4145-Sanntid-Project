@@ -6,12 +6,11 @@ import (
 	"Sanntid/src/elevator"
 	"Sanntid/src/orders"
 	"Sanntid/src/timer"
-	"fmt"
 )
 
 //TODO: Fix naming conventions
 
-func Fsm(e *elevator.Elevator, timetaker *timer.Timer, cabButtonCh <-chan orders.Order, floorCh <-chan int, timerCh <-chan bool, 
+func Fsm(e *elevator.Elevator, timetaker *timer.Timer, cabButtonCh <-chan orders.Order, floorCh <-chan int, timerCh <-chan bool,
 	motorStopCh <-chan bool, localAssignedHallOrdersCh <-chan [config.N_FLOORS][config.N_BUTTONS - 1]bool) {
 	//Can only receive on channels. Might have to change tho, idk
 	//Maybe make buttonevent and ordertype the samenthing
@@ -26,10 +25,9 @@ func Fsm(e *elevator.Elevator, timetaker *timer.Timer, cabButtonCh <-chan orders
 
 		case assignedHallOrders := <-localAssignedHallOrdersCh:
 
-			//Put orders in queue. But should put all in queue at the same time?			
+			//Put orders in queue. But should put all in queue at the same time?
+			e.SetAllHallRequests(assignedHallOrders)
 
-			NewOrder(e, assignedOrder.GetFloor(), assignedOrder.GetOrderType(), timetaker)
-			
 		case floorArrival := <-floorCh:
 			onFloorArrival(e, floorArrival, timetaker)
 
@@ -76,7 +74,7 @@ func onFloorArrival(e *elevator.Elevator, floor int, _timer *timer.Timer) {
 			_timer.Start(e.GetDoorOpenDuration())
 			setAllLights(*e)
 			e.SetBehaviour(elevator.DoorOpen)
-			
+
 		} else {
 			e.SetBehaviour(elevator.Moving)
 		}
@@ -135,7 +133,6 @@ func OnDoorTimeout(e *elevator.Elevator, _timer *timer.Timer) {
 }
 
 func InsertOrder(e *elevator.Elevator, order orders.Order, timer *timer.Timer) {
-	
 
 }
 

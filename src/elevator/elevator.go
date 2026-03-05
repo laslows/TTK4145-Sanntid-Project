@@ -238,6 +238,14 @@ func (e *Elevator) SetRequest(floor int, btn driver.ButtonType, active bool) {
 	e.m_requests[floor][btn] = active
 }
 
+func (e *Elevator) SetAllHallRequests(requests [config.N_FLOORS][config.N_BUTTONS - 1]bool) {
+	for floor := 0; floor < config.N_FLOORS; floor++ {
+		for btn := 0; btn < config.N_BUTTONS-1; btn++ {
+			e.m_requests[floor][btn] = requests[floor][btn]
+		}
+	}
+}
+
 func (e *Elevator) GetDirection() Direction {
 	return e.m_direction
 }

@@ -6,6 +6,8 @@ import (
 	"fmt"
 )
 
+//Move to elevator package ?
+
 func Initialize(elev *elevator.Elevator) {
 	//opprette kontakt, finne ut hva slags rolle du har
 	//(hvis det allerede er en master i nettverket, blir du slave.
@@ -17,14 +19,18 @@ func Initialize(elev *elevator.Elevator) {
 	// for å bestemme hvem av de som skal være master,
 	// og hvem som skal være slave.
 
-
 	for elevator.FloorSensor() == -1 {
 		onInitBetweenFloors(elev)
 	}
 
-	//Maybe listen for lost cab orders
+	driver.SetMotorDirection(driver.MD_Stop)
+	elev.SetBehaviour(elevator.Idle)
+	elev.SetDirection(elevator.Stop)
+	elev.SetFloor(elevator.FloorSensor())
 
-	fmt.Print("Initialiser heisen")
+	fmt.Println("Initialiser heisen")
+
+	fmt.Printf("Initial floor: %d\n", elev.GetFloor())
 }
 
 func onInitBetweenFloors(e *elevator.Elevator) {
