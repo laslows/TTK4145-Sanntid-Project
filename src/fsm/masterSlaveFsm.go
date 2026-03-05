@@ -9,6 +9,10 @@ import (
 	"time"
 )
 
+//TODO:
+// Insert hall order to queue how to do this?
+// Fix newOrder
+
 func MasterFsm(e *elevator.Elevator, hallButtonCh <-chan orders.Order, globalAssignedHallOrdersCh <-chan map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool,
 	localAssignedHallOrdersCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool, updateWorldViewCh <-chan elevator.Backup, peerLostCh <-chan int) {
 Loop:
@@ -16,10 +20,10 @@ Loop:
 		select {
 		case buttonEvent := <-hallButtonCh:
 
-			globalOrderAssignments := runHallRequestAssignerAlgorithm(createJSONDataForHallReqAlgorithm(e))
+			globalOrderAssignments := runHallReqAlgorithm(e)
 
 			//Do stuff with own hall orders
-			
+
 			localAssignedHallOrdersCh <- globalOrderAssignments[e.GetID()]
 
 			network.SendHallOrderRedistribution(globalOrderAssignments, e.GetID())

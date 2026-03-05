@@ -176,7 +176,6 @@ func onNewOrder(e *elevator.Elevator, floor int, order_type orders.OrderType, _t
 		}
 
 	}
-
 	e.UpdateMyBackup()
 	setAllLights(*e)
 }
