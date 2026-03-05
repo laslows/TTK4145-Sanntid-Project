@@ -3,29 +3,25 @@ package fsm
 import (
 	"Sanntid/src/elevator"
 	"Sanntid/src/network"
+	"Sanntid/src/config"
 	"Sanntid/src/orders"
 	"fmt"
 	"time"
 )
 
-func MasterFsm(e *elevator.Elevator, hallButtonCh <-chan orders.Order, assignedOrderCh chan<- orders.Order,
+func MasterFsm(e *elevator.Elevator, hallButtonCh <-chan orders.Order, assignedHallOrdersCh chan<- map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool,
 	updateWorldViewCh <-chan elevator.Backup, peerLostCh <-chan int) {
 Loop:
 	for {
 		select {
 		case buttonEvent := <-hallButtonCh:
-			//Should decide here who takes the order. For now it is just sent back to the fsm
-			chosenElevator := SuperOptimalOrderAssignmentAlgorithm()
+			
+			orderAssignments := runHallRequestAssignerAlgorithm(createJSONDataForHallReqAlgorithm(e))
+			
+			//Do stuff with own hall orders
 
-			id := e.GetWorldView()[chosenElevator].GetID()
-
-			if id == e.GetID() {
-				assignedOrderCh <- buttonEvent
-			} else {
-				//Give to slave
-				network.SendHallOrder(buttonEvent, e.GetID(),
-					id, network.HallOrderAssignment)
-			}
+			
+			network.SendHallOrderRedistribution(orderAssignments, e.GetID())
 
 		case heartBeat := <-updateWorldViewCh:
 
@@ -52,13 +48,13 @@ Loop:
 	//Maybe make onMasterSlaveChange-function
 	e.SetIsMaster(false)
 	e.UpdateMyBackup()
-	go SlaveFsm(e, hallButtonCh, assignedOrderCh, updateWorldViewCh, peerLostCh)
+	go SlaveFsm(e, hallButtonCh, assignedHallOrdersCh, updateWorldViewCh, peerLostCh)
 
 }
 
 // Kanskje vi kan returne fra masterFsm om vi bli slave, og starte denne. Og så motsatt ??
 // Idk om dette er en god løsning..
-func SlaveFsm(e *elevator.Elevator, hallButtonCh <-chan orders.Order, assignedOrderCh chan<- orders.Order, updateWorldViewCh <-chan elevator.Backup,
+func SlaveFsm(e *elevator.Elevator, hallButtonCh <-chan orders.Order, assignedHallOrdersCh chan<- map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool, updateWorldViewCh <-chan elevator.Backup,
 	peerLostCh <-chan int) {
 
 	fmt.Println("I am slave")
@@ -68,8 +64,8 @@ Loop:
 	for {
 		select {
 		case buttonEvent := <-hallButtonCh:
-			//Give to master
-			network.SendHallOrder(buttonEvent, e.GetID(), e.GetMasterID(), network.HallOrderRequest)
+			//Give to masterHallOrderRequest
+			network.SendHallOrder(buttonEvent, e.GetID(), e.GetMasterID())
 
 		case heartBeat := <-updateWorldViewCh:
 
@@ -101,7 +97,7 @@ Loop:
 
 	e.SetIsMaster(true)
 	e.UpdateMyBackup()
-	go MasterFsm(e, hallButtonCh, assignedOrderCh, updateWorldViewCh, peerLostCh)
+	go MasterFsm(e, hallButtonCh, assignedHallOrdersCh, updateWorldViewCh, peerLostCh)
 
 }
 

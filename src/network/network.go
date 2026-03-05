@@ -3,6 +3,7 @@ package network
 import (
 	"Sanntid/src/elevator"
 	"Sanntid/src/orders"
+	"Sanntid/src/config"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -17,9 +18,9 @@ type messageType int
 
 const (
 	HallOrderRequest messageType = iota
-	HallOrderAssignment
-	MotorStop
-	OrderRedistribution
+	HallOrderRedistribution
+	//MotorStop
+	//OrderRedistribution
 	Backup
 )
 
@@ -60,9 +61,9 @@ func BroadcastMessage(message Message) {
 
 }
 
-func SendHallOrder(order orders.Order, senderID, receiverId int, messageType messageType) {
+func SendHallOrder(order orders.Order, senderID, receiverId int) {
 	hallOrderMessage := Message{
-		m_messageType: messageType,
+		m_messageType: HallOrderRequest,
 		m_senderID:    senderID,
 		m_receiverID:  receiverId,
 	}
@@ -75,6 +76,23 @@ func SendHallOrder(order orders.Order, senderID, receiverId int, messageType mes
 
 	hallOrderMessage.m_payload = payload
 	BroadcastMessage(hallOrderMessage)
+}
+
+//Inputs a map with elevator id as key and assigned order as value. Should be called by master after running the hall request assignment algorithm
+func SendHallOrderRedistribution(orderAssignments map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool, senderID int) {
+	hallOrderRedistributionMessage := Message{
+		m_messageType: HallOrderRedistribution,
+		m_senderID:    senderID,
+	}
+
+	payload, err := json.Marshal(&orderAssignments)
+	if err != nil {
+		//Handle error
+		return
+	}
+
+	hallOrderRedistributionMessage.m_payload = payload
+	BroadcastMessage(hallOrderRedistributionMessage)
 }
 
 // Motpart i onfloorarrival
@@ -114,7 +132,7 @@ func SendBackupToRestoredElevator(b *elevator.Backup) {
 }
 
 func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
-	assignedOrderCh chan<- orders.Order) {
+	assignedHallOrdersCh chan<- map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool) {
 	//heartbeatAddrReceiver, err := net.ResolveUDPAddr("udp", ":" + HEARTBEAT_PORT)
 	messageAddrReceiver, err := net.ResolveUDPAddr("udp4", MESSAGE_ADDR)
 
@@ -169,17 +187,17 @@ func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
 
 			hallButtonCh <- hallOrderRequest
 
-		case HallOrderAssignment:
+		case HallOrderRedistribution:
 
-			var hallOrderAssignment orders.Order
-			err = json.Unmarshal(message.m_payload, &hallOrderAssignment)
+			var hallOrderAssignments map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool
+			err = json.Unmarshal(message.m_payload, &hallOrderAssignments)
 
 			if err != nil {
 				fmt.Println("Error unmarshaling hall order assignment:", err)
 				continue
 			}
 
-			assignedOrderCh <- hallOrderAssignment
+			assignedHallOrdersCh <- hallOrderAssignments
 			
 
 		/*case MotorStop:

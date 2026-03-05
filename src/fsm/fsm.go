@@ -12,7 +12,7 @@ import (
 //TODO: Fix naming conventions
 
 func Fsm(e *elevator.Elevator, timetaker *timer.Timer, cabButtonCh <-chan orders.Order, floorCh <-chan int, timerCh <-chan bool, motorStopCh <-chan bool,
-	assignedOrderCh <-chan orders.Order) {
+	assignedHallOrdersCh <-chan map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool) {
 	//Can only receive on channels. Might have to change tho, idk
 	//Maybe make buttonevent and ordertype the samenthing
 	//Putt update backup overalt lol
@@ -22,9 +22,12 @@ func Fsm(e *elevator.Elevator, timetaker *timer.Timer, cabButtonCh <-chan orders
 		case buttonEvent := <-cabButtonCh:
 			NewOrder(e, buttonEvent.GetFloor(), buttonEvent.GetOrderType(), timetaker)
 
-		case assignedOrder := <-assignedOrderCh:
+		case assignedHallOrders := <-assignedHallOrdersCh:
+
+			//Put orders in queue. But should but all in queue at the same time?			
+
 			NewOrder(e, assignedOrder.GetFloor(), assignedOrder.GetOrderType(), timetaker)
-			fmt.Printf("Assigned order from master: %v \n", assignedOrder)
+			
 		case floorArrival := <-floorCh:
 			onFloorArrival(e, floorArrival, timetaker)
 
@@ -63,6 +66,7 @@ func onFloorArrival(e *elevator.Elevator, floor int, _timer *timer.Timer) {
 		if !anyRequests(*e) {
 			e.SetBehaviour(elevator.Idle)
 			elevator.MotorDirection(elevator.Stop)
+
 		} else if ShouldStop(*e) {
 			elevator.MotorDirection(elevator.Stop)
 			elevator.DoorOpenLight(true)
@@ -70,9 +74,12 @@ func onFloorArrival(e *elevator.Elevator, floor int, _timer *timer.Timer) {
 			_timer.Start(e.GetDoorOpenDuration())
 			setAllLights(*e)
 			e.SetBehaviour(elevator.DoorOpen)
+			
 		} else {
 			e.SetBehaviour(elevator.Moving)
 		}
+
+		e.UpdateMyBackup()
 
 		//network.SendMotorStopMessage(e.GetID(), e.GetMasterID(), false)
 
@@ -83,6 +90,7 @@ func onFloorArrival(e *elevator.Elevator, floor int, _timer *timer.Timer) {
 			*e = ClearAtCurrentFloor(*e)
 			_timer.Start(e.GetDoorOpenDuration())
 			setAllLights(*e)
+			e.UpdateMyBackup()
 			e.SetBehaviour(elevator.DoorOpen)
 		}
 	default:
@@ -162,5 +170,6 @@ func NewOrder(e *elevator.Elevator, floor int, order_type orders.OrderType, _tim
 
 	}
 
+	e.UpdateMyBackup()
 	setAllLights(*e)
 }

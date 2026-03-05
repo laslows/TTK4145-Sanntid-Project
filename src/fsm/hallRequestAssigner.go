@@ -24,11 +24,15 @@ type ElevatorState struct {
 
 func createJSONDataForHallReqAlgorithm(e *elevator.Elevator) []byte {
 	states := make(map[string]ElevatorState)
+
 	hallRequests := make([][]bool, config.N_FLOORS)
+
 	for i := range hallRequests {
 		hallRequests[i] = make([]bool, config.N_BUTTONS-1)
 	}
+
 	worldView := e.GetWorldView()
+	
 	for _, backup := range worldView {
 		if backup != nil { //TODO:motorstop and disconnected
 			requests := backup.GetRequests()
@@ -59,12 +63,16 @@ func createJSONDataForHallReqAlgorithm(e *elevator.Elevator) []byte {
 	return jsonData
 }
 
-func runHallReqAlgorithm(data []byte) {
+func runHallRequestAssignerAlgorithm(data []byte) map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool {
 	input := string(data) // Convert data to string
 	err := exec.Command("./hall_request_assigner", "--input", input).Run()
 	if err != nil {
 		fmt.Printf("Error running hall request algorithm: %v\n", err)
 	}
+
+
+	return make(map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool)
+
 }
 
 
