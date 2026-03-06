@@ -25,11 +25,9 @@ func Fsm(e *elevator.Elevator, timetaker *timer.Timer, cabButtonCh <-chan orders
 			onNewOrder(e, timetaker)
 			fmt.Printf("New cab order: floor %d, button %d\n", buttonEvent.GetFloor(), buttonEvent.GetOrderType())
 
-		case /*assignedHallOrders := */ <-localAssignedHallOrdersCh:
+		case assignedHallOrders := <-localAssignedHallOrdersCh:
 
-			//Put orders in queue. But should put all in queue at the same time?
-			//e.SetAllHallRequests(assignedHallOrders)
-
+			insertAllHallOrders(e, assignedHallOrders, timetaker)
 			onNewOrder(e, timetaker)
 
 		case floorArrival := <-floorCh:
@@ -133,6 +131,20 @@ func OnDoorTimeout(e *elevator.Elevator, _timer *timer.Timer) {
 
 	default:
 		break
+	}
+
+	e.UpdateMyBackup()
+}
+
+func insertAllHallOrders(e *elevator.Elevator, hallOrders [config.N_FLOORS][config.N_BUTTONS - 1]bool, timer *timer.Timer) {
+	for floor := 0; floor < config.N_FLOORS; floor++ {
+		for btn := 0; btn < config.N_BUTTONS-1; btn++ {
+			if hallOrders[floor][btn] {
+				insertOrder(e, orders.New(floor, orders.OrderType(btn)), timer)
+			} else {
+				e.SetRequest(floor, (driver.ButtonType)(btn), false)
+			}
+		}
 	}
 }
 
