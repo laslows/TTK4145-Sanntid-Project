@@ -36,7 +36,7 @@ func createJSONDataForHallReqAlgorithm(e *elevator.Elevator) string {
 	worldView := e.GetWorldView()
 
 	for _, backup := range worldView {
-		
+
 		if backup == nil {
 			continue
 		}
@@ -69,6 +69,9 @@ func createJSONDataForHallReqAlgorithm(e *elevator.Elevator) string {
 	if err != nil {
 		panic(err)
 	}
+
+	fmt.Println(system)
+
 	return string(jsonData)
 }
 
@@ -76,7 +79,7 @@ func runHallRequestAlgorithm(e *elevator.Elevator) map[int][config.N_FLOORS][con
 	input := createJSONDataForHallReqAlgorithm(e)
 	cmd := exec.Command("./src/fsm/hall_request_assigner/hall_request_assigner", "--input", input)
 	out, err := cmd.CombinedOutput()
-	hallOrderAssignmentMap := make(map[int][config.N_FLOORS][config.N_BUTTONS-1]bool)
+	hallOrderAssignmentMap := make(map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool)
 
 	if err != nil {
 		fmt.Printf("running hall request algorithm failed: %v; output: %s\n", err, string(out))

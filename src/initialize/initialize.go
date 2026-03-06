@@ -27,6 +27,7 @@ func Initialize(elev *elevator.Elevator) {
 	elev.SetBehaviour(elevator.Idle)
 	elev.SetDirection(elevator.Stop)
 	elev.SetFloor(elevator.FloorSensor())
+	elev.UpdateMyBackup()
 
 	fmt.Println("Initialiser heisen")
 
