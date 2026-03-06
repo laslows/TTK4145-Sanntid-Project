@@ -21,14 +21,16 @@ func Fsm(e *elevator.Elevator, timetaker *timer.Timer, cabButtonCh <-chan orders
 		select {
 		case buttonEvent := <-cabButtonCh:
 
-			e.SetRequest(buttonEvent.GetFloor(), (driver.ButtonType)(buttonEvent.GetOrderType()), true)
-			onNewOrder(e, buttonEvent.GetFloor(), buttonEvent.GetOrderType(), timetaker)
+			insertOrder(e, buttonEvent, timetaker)
+			onNewOrder(e, timetaker)
 			fmt.Printf("New cab order: floor %d, button %d\n", buttonEvent.GetFloor(), buttonEvent.GetOrderType())
 
-		case assignedHallOrders := <-localAssignedHallOrdersCh:
+		case /*assignedHallOrders := */ <-localAssignedHallOrdersCh:
 
 			//Put orders in queue. But should put all in queue at the same time?
-			e.SetAllHallRequests(assignedHallOrders)
+			//e.SetAllHallRequests(assignedHallOrders)
+
+			onNewOrder(e, timetaker)
 
 		case floorArrival := <-floorCh:
 			onFloorArrival(e, floorArrival, timetaker)
@@ -134,15 +136,57 @@ func OnDoorTimeout(e *elevator.Elevator, _timer *timer.Timer) {
 	}
 }
 
-func InsertOrder(e *elevator.Elevator, order orders.Order, timer *timer.Timer) {
-	
+func insertOrder(e *elevator.Elevator, order orders.Order, timer *timer.Timer) {
+	switch e.GetBehaviour() {
+	case elevator.DoorOpen:
+		if ShouldClearImmediately(*e, order.GetFloor(), order.GetOrderType()) {
+			fmt.Printf("Clearing order immediately: floor %d, button %d\n", order.GetFloor(), order.GetOrderType())
+			timer.Start(e.GetDoorOpenDuration())
+		} else {
+			e.SetRequest(order.GetFloor(), (driver.ButtonType)(order.GetOrderType()), true)
+		}
+	default:
+		e.SetRequest(order.GetFloor(), (driver.ButtonType)(order.GetOrderType()), true)
+	}
+	e.UpdateMyBackup()
+	setAllLights(*e)
 }
 
-func onNewOrder(e *elevator.Elevator, floor int, order_type orders.OrderType, _timer *timer.Timer) {
+func onNewOrder(e *elevator.Elevator, _timer *timer.Timer) {
+	switch e.GetBehaviour() {
+	case elevator.Idle:
+		pair := ChooseDirection(*e)
+		e.SetDirection(pair.m_dirn)
+		e.SetBehaviour(pair.m_behaviour)
 
+		switch pair.m_behaviour {
+		case elevator.DoorOpen:
+			elevator.DoorOpenLight(true)
+			_timer.Start(e.GetDoorOpenDuration())
+			*e = ClearAtCurrentFloor(*e)
+
+		case elevator.Moving:
+			elevator.MotorDirection(pair.m_dirn)
+
+		case elevator.Idle:
+			break
+		}
+
+	default:
+		break
+	}
+
+	e.UpdateMyBackup()
+	setAllLights(*e)
+
+}
+
+/*
+func NewOrder(e *elevator.Elevator, floor int, order_type orders.OrderType, _timer *timer.Timer) {
 	switch e.GetBehaviour() {
 	case elevator.DoorOpen:
 		if ShouldClearImmediately(*e, floor, order_type) {
+			fmt.Printf("Clearing order immediately: floor %d, button %d\n", floor, order_type)
 			_timer.Start(e.GetDoorOpenDuration())
 		} else {
 			e.SetRequest(floor, (driver.ButtonType)(order_type), true)
@@ -174,7 +218,12 @@ func onNewOrder(e *elevator.Elevator, floor int, order_type orders.OrderType, _t
 
 		}
 
+	default:
+		break
 	}
+
 	e.UpdateMyBackup()
 	setAllLights(*e)
 }
+
+*/

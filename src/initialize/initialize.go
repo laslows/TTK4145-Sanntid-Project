@@ -1,6 +1,7 @@
 package initialize
 
 import (
+	"Sanntid/src/config"
 	"Sanntid/src/driver"
 	"Sanntid/src/elevator"
 	"fmt"
@@ -18,6 +19,8 @@ func Initialize(elev *elevator.Elevator) {
 	// (f.eks. lavest IP-adresse eller heis-ID)
 	// for å bestemme hvem av de som skal være master,
 	// og hvem som skal være slave.
+
+	clearAllLights()
 
 	for elevator.FloorSensor() == -1 {
 		onInitBetweenFloors(elev)
@@ -38,4 +41,12 @@ func onInitBetweenFloors(e *elevator.Elevator) {
 	driver.SetMotorDirection(driver.MD_DOWN)
 	e.SetDirection(elevator.Down)
 	e.SetBehaviour(elevator.Moving)
+}
+
+func clearAllLights() {
+	for floor := 0; floor < config.N_FLOORS; floor++ {
+		for btn := 0; btn < config.N_BUTTONS; btn++ {
+			elevator.RequestButtonLight(floor, (driver.ButtonType)(btn), false)
+		}
+	}
 }
