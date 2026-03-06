@@ -5,7 +5,6 @@ import (
 	"Sanntid/src/driver"
 	"fmt"
 	"net"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -73,7 +72,7 @@ func New(port string) *Elevator {
 		},
 	}
 
-	e.m_ID = getIDAsInt(getLocalIP(), strconv.Itoa(os.Getpid()))
+	e.m_ID = getIDAsInt(getLocalIP(), port)
 
 	e.m_myBackup = &Backup{
 		m_ID:                 e.m_ID,
@@ -237,7 +236,6 @@ func (e *Elevator) GetRequests() [config.N_FLOORS][config.N_BUTTONS]bool {
 func (e *Elevator) SetRequest(floor int, btn driver.ButtonType, active bool) {
 	e.m_requests[floor][btn] = active
 }
-
 
 func (e *Elevator) GetDirection() Direction {
 	return e.m_direction
