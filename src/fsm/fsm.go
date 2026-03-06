@@ -6,7 +6,6 @@ import (
 	"Sanntid/src/elevator"
 	"Sanntid/src/orders"
 	"Sanntid/src/timer"
-	"fmt"
 )
 
 //TODO: Fix naming conventions
@@ -24,11 +23,11 @@ func Fsm(e *elevator.Elevator, timetaker *timer.Timer, cabButtonCh <-chan orders
 			e.SetRequest(buttonEvent.GetFloor(), (driver.ButtonType)(buttonEvent.GetOrderType()), true)
 			//NewOrder(e, buttonEvent.GetFloor(), buttonEvent.GetOrderType(), timetaker)
 
-		case assignedHallOrders := <-assignedHallOrdersCh:
+		// case assignedHallOrders := <-assignedHallOrdersCh:
 
-			//Put orders in queue. But should put all in queue at the same time?			
+		// 	//Put orders in queue. But should put all in queue at the same time?			
 
-			NewOrder(e, assignedOrder.GetFloor(), assignedOrder.GetOrderType(), timetaker)
+		// 	NewOrder(e, assignedOrder.GetFloor(), assignedOrder.GetOrderType(), timetaker)
 			
 		case floorArrival := <-floorCh:
 			onFloorArrival(e, floorArrival, timetaker)

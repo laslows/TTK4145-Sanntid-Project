@@ -14,16 +14,18 @@ func MasterFsm(e *elevator.Elevator, hallButtonCh <-chan orders.Order, assignedH
 Loop:
 	for {
 		select {
-		case buttonEvent := <-hallButtonCh:
+		// case buttonEvent := <-hallButtonCh:
 			
-			orderAssignments := runHallReqAlgorithm(e)
+		// 	orderAssignments := runHallReqAlgorithm(e)
 			
-			//Do stuff with own hall orders
+		// 	//Do stuff with own hall orders
 
 			
-			network.SendHallOrderRedistribution(orderAssignments, e.GetID())
+		// 	network.SendHallOrderRedistribution(orderAssignments, e.GetID())
 
 		case heartBeat := <-updateWorldViewCh:
+			fmt.Println("master")
+			fmt.Println(heartBeat)
 
 			e.UpdateWorldView(&heartBeat)
 			fmt.Printf("Updated worldview with heartbeat from %d received to %d\n", heartBeat.GetID(), e.GetID())
@@ -68,6 +70,7 @@ Loop:
 			network.SendHallOrder(buttonEvent, e.GetID(), e.GetMasterID())
 
 		case heartBeat := <-updateWorldViewCh:
+			fmt.Println("slave")
 
 			e.UpdateWorldView(&heartBeat)
 			fmt.Printf("Updated worldview with heartbeat from %d received to %d\n", heartBeat.GetID(), e.GetID())

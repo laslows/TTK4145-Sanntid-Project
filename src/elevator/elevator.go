@@ -160,6 +160,7 @@ func checkIsMaster(e Elevator) bool {
 	for _, b := range e.m_worldView {
 		if b != nil && b.m_connectedToNetwork {
 			master = master && (e.GetID() >= b.GetID())
+			println(e.GetID() >= b.GetID())
 		}
 	}
 

@@ -28,3 +28,9 @@ Todo:
     - Ny ordre må midlertidig legges inn i ordrelisten til en heis og oppdatere worldview for at assigneren skal klare å 
     ta med orderen.
     - Master må kalle på hallRequestAssigner hver gang det kommer en ny ordre
+
+Heisen har ikke samme ID når den kommer i live igjen, må finne en annen løsning på ID
+En nyere heis har alltid større ID, når det kommer på ny heis, så vil den bli behandlet som en ny heis fordi det er en
+ny ID, når listen over heiser er full, så er det ikke lenger mulig å legge til heiser i listen, og da vil begge heiser
+oppfatte at de har største ID i systemet. Gammel master vil konstant prøve å oppdatere worldview fordi det er en heis
+som er disconnected, og siden den har en gammel ID så vil den fortsette å spamme.
