@@ -24,7 +24,7 @@ type ElevatorState struct {
 	CabRequests []bool `json:"cabRequests"`
 }
 
-func createJSONDataForHallReqAlgorithm(e *elevator.Elevator) string {
+func createJSONDataForHallReqAlgorithm(e *elevator.Elevator, hallOrder orders.Order) string {
 	states := make(map[string]ElevatorState)
 
 	hallRequests := make([][]bool, config.N_FLOORS)
@@ -32,6 +32,8 @@ func createJSONDataForHallReqAlgorithm(e *elevator.Elevator) string {
 	for i := range hallRequests {
 		hallRequests[i] = make([]bool, config.N_BUTTONS-1)
 	}
+
+	hallRequests[hallOrder.GetFloor()][hallOrder.GetOrderType()] = true
 
 	worldView := e.GetWorldView()
 
@@ -41,22 +43,22 @@ func createJSONDataForHallReqAlgorithm(e *elevator.Elevator) string {
 			continue
 		}
 
-		requests := backup.GetRequests()
+		backupRequests := backup.GetRequests()
 		if backup.GetBehaviour() != elevator.MotorStop && backup.GetConnectedToNetwork() {
 			states[strconv.Itoa(backup.GetID())] = ElevatorState{
 				Behaviour:   elevator.BehaviourToString(backup.GetBehaviour()),
 				Floor:       backup.GetFloor(),
 				Direction:   elevator.DirectionToString(backup.GetDirection()),
-				CabRequests: make([]bool, len(requests)),
+				CabRequests: make([]bool, len(backupRequests)),
 			}
-			for i, row := range requests {
+			for i, row := range backupRequests {
 				states[strconv.Itoa(backup.GetID())].CabRequests[i] = row[len(row)-1]
 			}
 		}
 
 		for floor := range hallRequests {
 			for button := range hallRequests[floor] {
-				hallRequests[floor][button] = hallRequests[floor][button] || requests[floor][button]
+				hallRequests[floor][button] = hallRequests[floor][button] || backupRequests[floor][button]
 			}
 		}
 	}
@@ -70,13 +72,11 @@ func createJSONDataForHallReqAlgorithm(e *elevator.Elevator) string {
 		panic(err)
 	}
 
-	fmt.Println(system)
-
 	return string(jsonData)
 }
 
-func runHallRequestAlgorithm(e *elevator.Elevator) map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool {
-	input := createJSONDataForHallReqAlgorithm(e)
+func runHallRequestAlgorithm(e *elevator.Elevator, hallOrder orders.Order) map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool {
+	input := createJSONDataForHallReqAlgorithm(e, hallOrder)
 	cmd := exec.Command("./src/fsm/hall_request_assigner/hall_request_assigner", "--input", input)
 	out, err := cmd.CombinedOutput()
 	hallOrderAssignmentMap := make(map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool)

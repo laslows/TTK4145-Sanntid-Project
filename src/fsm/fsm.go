@@ -6,6 +6,7 @@ import (
 	"Sanntid/src/elevator"
 	"Sanntid/src/orders"
 	"Sanntid/src/timer"
+	"fmt"
 )
 
 //TODO: Fix naming conventions
@@ -21,7 +22,8 @@ func Fsm(e *elevator.Elevator, timetaker *timer.Timer, cabButtonCh <-chan orders
 		case buttonEvent := <-cabButtonCh:
 
 			e.SetRequest(buttonEvent.GetFloor(), (driver.ButtonType)(buttonEvent.GetOrderType()), true)
-			//NewOrder(e, buttonEvent.GetFloor(), buttonEvent.GetOrderType(), timetaker)
+			onNewOrder(e, buttonEvent.GetFloor(), buttonEvent.GetOrderType(), timetaker)
+			fmt.Printf("New cab order: floor %d, button %d\n", buttonEvent.GetFloor(), buttonEvent.GetOrderType())
 
 		case assignedHallOrders := <-localAssignedHallOrdersCh:
 
@@ -133,7 +135,7 @@ func OnDoorTimeout(e *elevator.Elevator, _timer *timer.Timer) {
 }
 
 func InsertOrder(e *elevator.Elevator, order orders.Order, timer *timer.Timer) {
-
+	
 }
 
 func onNewOrder(e *elevator.Elevator, floor int, order_type orders.OrderType, _timer *timer.Timer) {

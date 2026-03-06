@@ -21,9 +21,12 @@ Loop:
 		case buttonEvent := <-hallButtonCh:
 
 			if checkNewOrder(e, buttonEvent) {
-				globalOrderAssignments := runHallRequestAlgorithm(e)
+				fmt.Printf("New order received!")
+
+				globalOrderAssignments := runHallRequestAlgorithm(e, buttonEvent)
 				localAssignedHallOrdersCh <- globalOrderAssignments[e.GetID()]
 				network.SendHallOrderRedistribution(globalOrderAssignments, e.GetID())
+				
 			} else {
 				fmt.Println("Order already in queue, not sending to algorithm")
 			}

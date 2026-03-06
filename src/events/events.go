@@ -3,13 +3,12 @@ package events
 import (
 	"time"
 
-	"Sanntid/src/orders"
 	"Sanntid/src/config"
 	"Sanntid/src/driver"
 	"Sanntid/src/elevator"
+	"Sanntid/src/orders"
 	"Sanntid/src/timer"
 )
-
 
 func InputPoller(cabButtonCh chan<- orders.Order, hallButtonCh chan<- orders.Order, floorCh chan<- int,
 	timerCh chan<- bool, motorStopCh chan<- bool, e *elevator.Elevator, timetaker *timer.Timer) {
