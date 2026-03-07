@@ -82,11 +82,27 @@ func (e *Elevator) UpdateMyBackup() {
 	e.m_myBackup.m_direction = e.m_direction
 	e.m_myBackup.m_floor = e.m_floor
 	e.m_myBackup.m_requests = e.m_requests
-	e.m_myBackup.m_connectedToNetwork = true //Should always be true for master
+	e.m_myBackup.m_connectedToNetwork = true //Should always be true for me
 	e.m_myBackup.m_behaviour = e.m_behaviour
 
 	e.UpdateWorldView(e.m_myBackup)
 }
+
+func (e *Elevator) restoreMyBackup(b *Backup){
+	//Maybe just do directly in restoreElevatorState
+
+	e.m_myBackup.m_floor = e.m_floor
+	e.m_myBackup.m_direction = e.m_direction
+	e.m_myBackup.m_requests = e.m_requests
+	e.m_myBackup.m_isMaster = e.m_isMaster
+	e.m_myBackup.m_behaviour = e.m_behaviour
+	e.m_myBackup.m_version = b.m_version + 1
+	e.m_myBackup.m_connectedToNetwork = true //Should always be true for me
+
+	e.UpdateWorldView(e.m_myBackup)
+}
+
+
 
 func (b *Backup) GetID() int {
 	return b.m_ID
@@ -112,14 +128,3 @@ func (b *Backup) GetConnectedToNetwork() bool {
 	return b.m_connectedToNetwork
 }
 
-/*
-func NewBackup(IP string) *Backup {
-	return &Backup{
-		m_IP: IP,
-	}
-}
-
-func (b *Backup) GetIP() string {
-	return b.m_IP
-}
-*/

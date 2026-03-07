@@ -1,12 +1,13 @@
 package network
 
 import (
+	"Sanntid/src/config"
 	"Sanntid/src/elevator"
 	"Sanntid/src/orders"
-	"Sanntid/src/config"
 	"encoding/json"
 	"fmt"
 	"net"
+	"time"
 )
 
 const MESSAGE_PORT = "16666"
@@ -14,14 +15,19 @@ const MESSAGE_PORT = "16666"
 // Maybe change to not multicast??
 const MESSAGE_ADDR = "224.0.0.1:16666"
 
+// Maybe move this to initialization package, but that would require us to import it
+const INITIALIZATION_TIMEOUT = 1 * time.Second
+
 type messageType int
 
+// Make not exported??
 const (
 	HallOrderRequest messageType = iota
 	HallOrderRedistribution
 	//MotorStop
 	//OrderRedistribution
-	Backup
+	Initialization
+	WorldView
 )
 
 type Message struct {
@@ -78,7 +84,7 @@ func SendHallOrder(order orders.Order, senderID, receiverId int) {
 	BroadcastMessage(hallOrderMessage)
 }
 
-//Inputs a map with elevator id as key and assigned order as value. Should be called by master after running the hall request assignment algorithm
+// Inputs a map with elevator id as key and assigned order as value. Should be called by master after running the hall request assignment algorithm
 func SendHallOrderRedistribution(orderAssignments map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool, senderID int) {
 	hallOrderRedistributionMessage := Message{
 		m_messageType: HallOrderRedistribution,
@@ -95,25 +101,36 @@ func SendHallOrderRedistribution(orderAssignments map[int][config.N_FLOORS][conf
 	BroadcastMessage(hallOrderRedistributionMessage)
 }
 
-
-
-func SendBackupToRestoredElevator(b *elevator.Backup) {
-	backupMessage := Message{
-		m_messageType: Backup,
+func SendWorldView(worldView [config.N_ELEVATORS]*elevator.Backup, senderID, receiverId int) {
+	worldViewMessage := Message{
+		m_messageType: WorldView,
+		m_senderID:    senderID,
+		m_receiverID:  receiverId,
 	}
 
-	payload, err := json.Marshal(b)
+	payload, err := json.Marshal(worldView)
 	if err != nil {
 		//Handle error
 		return
 	}
 
-	backupMessage.m_payload = payload
-	BroadcastMessage(backupMessage)
+	worldViewMessage.m_payload = payload
+
+	BroadcastMessage(worldViewMessage)
+}
+
+func SendInitializationMessage(senderID int) {
+	initializationMessage := Message{
+		m_messageType: Initialization,
+		m_senderID:    senderID,
+		m_receiverID:  0, //Send to master
+	}
+
+	BroadcastMessage(initializationMessage)
 }
 
 func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
-	globalAssignedHallOrdersCh chan<- map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool) {
+	globalAssignedHallOrdersCh chan<- map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool, peerConnectedCh chan<- int) {
 	//heartbeatAddrReceiver, err := net.ResolveUDPAddr("udp", ":" + HEARTBEAT_PORT)
 	messageAddrReceiver, err := net.ResolveUDPAddr("udp4", MESSAGE_ADDR)
 
@@ -151,11 +168,11 @@ func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
 			continue
 		}
 
-		if !(message.m_receiverID == e.GetID() || (!e.GetIsMaster() && message.m_receiverID == 0)) {
+		if !(message.m_receiverID == e.GetID() || message.m_receiverID == 0) {
 			continue
 		}
 
-		//Come here if ID == my ID or of i am slave and ID is 0
+		//Come here if ID == my ID or if receiverID is 0
 
 		switch message.m_messageType {
 		case HallOrderRequest:
@@ -172,6 +189,10 @@ func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
 
 		case HallOrderRedistribution:
 
+			if e.GetIsMaster() {
+				continue
+			}
+
 			var hallOrderAssignments map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool
 			err = json.Unmarshal(message.m_payload, &hallOrderAssignments)
 
@@ -181,9 +202,70 @@ func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
 			}
 
 			globalAssignedHallOrdersCh <- hallOrderAssignments
-			
+
+		case Initialization:
+
+			peerConnectedCh <- message.m_senderID
+
 		}
 
+	}
+
+}
+
+func TryListenForWorldView() ([config.N_ELEVATORS]*elevator.Backup, bool) {
+
+	var worldView [config.N_ELEVATORS]*elevator.Backup
+
+	messageAddrReceiver, err := net.ResolveUDPAddr("udp4", MESSAGE_ADDR)
+	if err != nil {
+		fmt.Println("Error resolving UDP address:", err)
+		return worldView, false
+	}
+
+	conn, err := net.ListenMulticastUDP("udp4", nil, messageAddrReceiver)
+	if err != nil {
+		fmt.Println("Error listening for messages:", err)
+		return worldView, false
+	}
+	defer conn.Close()
+
+	//Buffer to read incoming messages into
+	buffer := make([]byte, 1024)
+
+	conn.SetReadDeadline(time.Now().Add(INITIALIZATION_TIMEOUT))
+
+	for {
+		n, _, err := conn.ReadFromUDP(buffer)
+		if err != nil {
+			//Timeout reached
+
+			//maybe should make peer receive worldView even if not new peer. We could get some weird behaviour where you become master and then slave
+			// immediately after, depending on what heartbeats you receive first
+
+			fmt.Println("Didn't receive worldView, I am probably first peer.")
+			return worldView, false
+		}
+
+		var message Message
+		err = json.Unmarshal(buffer[:n], &message)
+		if err != nil {
+			fmt.Println("Error unmarshaling message:", err)
+			continue
+		}
+
+		if message.m_messageType != WorldView {
+			continue
+		}
+
+		err = json.Unmarshal(message.m_payload, &worldView)
+		if err != nil {
+			fmt.Println("Error unmarshaling world view:", err)
+			continue
+		}
+
+		fmt.Println("Got worldView.")
+		return worldView, true
 	}
 
 }

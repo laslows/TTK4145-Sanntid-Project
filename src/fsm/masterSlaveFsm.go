@@ -10,13 +10,18 @@ import (
 )
 
 //TODO:
-// Insert hall order to queue how to do this?
-// Fix newOrder
+// Door obstruction
 
 func MasterFsm(e *elevator.Elevator, hallButtonCh <-chan orders.Order, globalAssignedHallOrdersCh <-chan map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool,
-	localAssignedHallOrdersCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool, updateWorldViewCh <-chan elevator.Backup, peerLostCh <-chan int) {
+	localAssignedHallOrdersCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool, updateWorldViewCh <-chan elevator.Backup, peerLostCh <-chan int,
+	peerConnectedCh <-chan int) {
 Loop:
 	for {
+		if !e.GetIsMaster() {
+			fmt.Println("Immediately switching to slave")
+			break Loop
+		}
+
 		select {
 		case buttonEvent := <-hallButtonCh:
 
@@ -26,7 +31,7 @@ Loop:
 				globalOrderAssignments := runHallRequestAlgorithm(e, buttonEvent)
 				localAssignedHallOrdersCh <- globalOrderAssignments[e.GetID()]
 				network.SendHallOrderRedistribution(globalOrderAssignments, e.GetID())
-				
+
 			} else {
 				fmt.Println("Order already in queue, not sending to algorithm")
 			}
@@ -34,7 +39,6 @@ Loop:
 		case heartBeat := <-updateWorldViewCh:
 
 			e.UpdateWorldView(&heartBeat)
-			fmt.Printf("Updated worldview with heartbeat from %d received to %d\n", heartBeat.GetID(), e.GetID())
 
 			onUpdateWorldView(e)
 
@@ -46,7 +50,19 @@ Loop:
 		case peer := <-peerLostCh:
 			fmt.Println("We lost peer ", peer)
 
-			e.LooseConnectionToPeer(peer)
+			e.LoseConnectionToPeer(peer)
+
+		case peer := <-peerConnectedCh:
+			fmt.Println("We gained peer ", peer)
+
+			fmt.Println("Gained connection to peer. Sending worldview")
+			network.SendWorldView(e.GetWorldView(), e.GetID(), peer)
+
+			e.TryUpdateIsMaster()
+			if !e.GetIsMaster() {
+				fmt.Println("gained connection to new master, switching to slave")
+				break Loop
+			}
 
 		}
 
@@ -56,20 +72,22 @@ Loop:
 	//Maybe make onMasterSlaveChange-function
 	e.SetIsMaster(false)
 	e.UpdateMyBackup()
-	go SlaveFsm(e, hallButtonCh, globalAssignedHallOrdersCh, localAssignedHallOrdersCh, updateWorldViewCh, peerLostCh)
+	go SlaveFsm(e, hallButtonCh, globalAssignedHallOrdersCh, localAssignedHallOrdersCh, updateWorldViewCh, peerLostCh, peerConnectedCh)
 
 }
 
 // Kanskje vi kan returne fra masterFsm om vi bli slave, og starte denne. Og så motsatt ??
 // Idk om dette er en god løsning..
 func SlaveFsm(e *elevator.Elevator, hallButtonCh <-chan orders.Order, globalAssignedHallOrdersCh <-chan map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool,
-	localAssignedHallOrdersCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool, updateWorldViewCh <-chan elevator.Backup, peerLostCh <-chan int) {
+	localAssignedHallOrdersCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool, updateWorldViewCh <-chan elevator.Backup, peerLostCh <-chan int,
+	peerConnectedCh <-chan int) {
 
 	fmt.Println("I am slave")
 	fmt.Printf("Master is: %d \n", e.GetMasterID())
 
 Loop:
 	for {
+
 		select {
 		case buttonEvent := <-hallButtonCh:
 			//Give to masterHallOrderRequest
@@ -78,8 +96,6 @@ Loop:
 		case heartBeat := <-updateWorldViewCh:
 
 			e.UpdateWorldView(&heartBeat)
-			fmt.Printf("Updated worldview with heartbeat from %d received to %d\n", heartBeat.GetID(), e.GetID())
-
 			onUpdateWorldView(e)
 
 			if e.GetIsMaster() {
@@ -90,13 +106,19 @@ Loop:
 		case peer := <-peerLostCh:
 			fmt.Println("We lost peer ", peer)
 
-			e.LooseConnectionToPeer(peer)
+			e.LoseConnectionToPeer(peer)
 
 			e.TryUpdateIsMaster()
 			if e.GetIsMaster() {
 				fmt.Println("Switching to master")
 				break Loop
 			}
+
+		case peer := <-peerConnectedCh:
+			fmt.Println("We gained peer ", peer)
+
+			fmt.Println("Gained connection to peer. I am slave, so will not send message.")
+
 		case globalHallOrders := <-globalAssignedHallOrdersCh:
 
 			localAssignedHallOrdersCh <- globalHallOrders[e.GetID()]
@@ -109,7 +131,7 @@ Loop:
 
 	e.SetIsMaster(true)
 	e.UpdateMyBackup()
-	go MasterFsm(e, hallButtonCh, globalAssignedHallOrdersCh, localAssignedHallOrdersCh, updateWorldViewCh, peerLostCh)
+	go MasterFsm(e, hallButtonCh, globalAssignedHallOrdersCh, localAssignedHallOrdersCh, updateWorldViewCh, peerLostCh, peerConnectedCh)
 
 }
 

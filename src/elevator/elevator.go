@@ -193,6 +193,15 @@ func (e *Elevator) GetMyBackup() *Backup {
 	return nil
 }
 
+func (e *Elevator) GetBackup(peerID int) *Backup {
+	for _, b := range e.m_worldView {
+		if b != nil && b.m_ID == peerID {
+			return b
+		}
+	}
+	return nil
+}
+
 func (e *Elevator) GetMasterID() int {
 	for _, b := range e.m_worldView {
 		if b != nil && b.m_isMaster {
@@ -204,13 +213,30 @@ func (e *Elevator) GetMasterID() int {
 	return -1
 }
 
-func (e *Elevator) LooseConnectionToPeer(peer int) {
+func (e *Elevator) GainedConnectionToPrevDisconnectedPeer(peerID int) bool {
+	for _, b := range e.m_worldView {
+		if b != nil && b.m_ID == peerID {
+			return !b.m_connectedToNetwork
+		}
+	}
+	return false
+}
+
+func (e *Elevator) LoseConnectionToPeer(peerID int) {
 	for i, b := range e.m_worldView {
-		if b != nil && b.m_ID == peer {
+		if b != nil && b.m_ID == peerID {
 			e.m_worldView[i].m_connectedToNetwork = false
 			return
 		}
 	}
+}
+
+func (e *Elevator) RestoreElevatorState(b *Backup) {
+
+	e.m_requests = b.m_requests
+
+	e.restoreMyBackup(b)
+
 }
 
 func (e *Elevator) GetWorldView() [config.N_ELEVATORS]*Backup {

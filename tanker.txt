@@ -28,3 +28,4 @@ Todo:
     - Ny ordre må midlertidig legges inn i ordrelisten til en heis og oppdatere worldview for at assigneren skal klare å 
     ta med orderen.
     - Master må kalle på hallRequestAssigner hver gang det kommer en ny ordre
+    - I stedet for getters på backup, lag getstate?? (Til hallrequestassigner)

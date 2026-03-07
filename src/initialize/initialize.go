@@ -4,37 +4,51 @@ import (
 	"Sanntid/src/config"
 	"Sanntid/src/driver"
 	"Sanntid/src/elevator"
+	"Sanntid/src/network"
 	"fmt"
 )
 
 //Move to elevator package ?
 
-func Initialize(elev *elevator.Elevator) {
-	//opprette kontakt, finne ut hva slags rolle du har
-	//(hvis det allerede er en master i nettverket, blir du slave.
-	// Hvis du er den eneste heisen i nettverket blir du master,
-	// hvis to mastere merges sammen,
-	// eller hvis det ikke finnes en master i nettverket,
-	// brukes en enkel regel
-	// (f.eks. lavest IP-adresse eller heis-ID)
-	// for å bestemme hvem av de som skal være master,
-	// og hvem som skal være slave.
+func Initialize(e *elevator.Elevator) {
 
 	clearAllLights()
 
 	for elevator.FloorSensor() == -1 {
-		onInitBetweenFloors(elev)
+		onInitBetweenFloors(e)
 	}
 
 	driver.SetMotorDirection(driver.MD_Stop)
-	elev.SetBehaviour(elevator.Idle)
-	elev.SetDirection(elevator.Stop)
-	elev.SetFloor(elevator.FloorSensor())
-	elev.UpdateMyBackup()
+	e.SetBehaviour(elevator.Idle)
+	e.SetDirection(elevator.Stop)
+	e.SetFloor(elevator.FloorSensor())
 
 	fmt.Println("Initialiser heisen")
 
-	fmt.Printf("Initial floor: %d\n", elev.GetFloor())
+	fmt.Printf("Initial floor: %d\n", e.GetFloor())
+
+	network.SendInitializationMessage(e.GetID())
+
+	worldView, gotWorldView := network.TryListenForWorldView()
+
+	if gotWorldView {
+
+		for _, b := range worldView {
+			if b != nil && b.GetID() == e.GetID() {
+				e.RestoreElevatorState(b)
+			} else if b != nil {
+				e.UpdateWorldView(b)
+			}
+		}
+
+		fmt.Println(e.GetRequests())
+
+		//setAllLights(*e)
+	}
+
+	e.TryUpdateIsMaster()
+	e.UpdateMyBackup()
+
 }
 
 func onInitBetweenFloors(e *elevator.Elevator) {
