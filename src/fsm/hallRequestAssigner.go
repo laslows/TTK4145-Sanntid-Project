@@ -24,7 +24,7 @@ type ElevatorState struct {
 	CabRequests []bool `json:"cabRequests"`
 }
 
-func createJSONDataForHallReqAlgorithm(e *elevator.Elevator, hallOrder orders.Order) string {
+func createJSONDataForHallReqAlgorithm(e *elevator.Elevator, hallOrder *orders.Order) string {
 	states := make(map[string]ElevatorState)
 
 	hallRequests := make([][]bool, config.N_FLOORS)
@@ -33,7 +33,9 @@ func createJSONDataForHallReqAlgorithm(e *elevator.Elevator, hallOrder orders.Or
 		hallRequests[i] = make([]bool, config.N_BUTTONS-1)
 	}
 
-	hallRequests[hallOrder.GetFloor()][hallOrder.GetOrderType()] = true
+	if hallOrder != nil {
+		hallRequests[hallOrder.GetFloor()][hallOrder.GetOrderType()] = true
+	}
 
 	worldView := e.GetWorldView()
 
@@ -75,11 +77,11 @@ func createJSONDataForHallReqAlgorithm(e *elevator.Elevator, hallOrder orders.Or
 	return string(jsonData)
 }
 
-func runHallRequestAlgorithm(e *elevator.Elevator, hallOrder orders.Order) map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool {
+func runHallRequestAlgorithm(e *elevator.Elevator, hallOrder *orders.Order) map[int][config.N_FLOORS][config.N_BUTTONS-1]bool {
 	input := createJSONDataForHallReqAlgorithm(e, hallOrder)
 	cmd := exec.Command("./src/fsm/hall_request_assigner/hall_request_assigner", "--input", input)
 	out, err := cmd.CombinedOutput()
-	hallOrderAssignmentMap := make(map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool)
+	hallOrderAssignmentMap := make(map[int][config.N_FLOORS][config.N_BUTTONS-1]bool)
 
 	if err != nil {
 		fmt.Printf("running hall request algorithm failed: %v; output: %s\n", err, string(out))

@@ -239,6 +239,18 @@ func (e *Elevator) RestoreElevatorState(b *Backup) {
 
 }
 
+func (e *Elevator) ClearDisconnectedNodeQueue(){
+	for _, b := range e.m_worldView {
+		if b != nil && !b.m_connectedToNetwork {
+			for f := 0; f < config.N_FLOORS; f++ {
+				for btn := 0; btn < config.N_BUTTONS-1; btn++ {
+					b.m_requests[f][btn] = false
+				}
+			}
+		}
+	}
+}
+
 func (e *Elevator) GetWorldView() [config.N_ELEVATORS]*Backup {
 	return e.m_worldView
 }

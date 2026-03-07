@@ -28,7 +28,7 @@ Loop:
 			if checkNewOrder(e, buttonEvent) {
 				fmt.Printf("New order received!")
 
-				globalOrderAssignments := runHallRequestAlgorithm(e, buttonEvent)
+				globalOrderAssignments := runHallRequestAlgorithm(e, &buttonEvent)
 				localAssignedHallOrdersCh <- globalOrderAssignments[e.GetID()]
 				network.SendHallOrderRedistribution(globalOrderAssignments, e.GetID())
 
@@ -51,6 +51,14 @@ Loop:
 			fmt.Println("We lost peer ", peer)
 
 			e.LoseConnectionToPeer(peer)
+
+			//Must redistribute when we lose connection
+			globalOrderAssignments := runHallRequestAlgorithm(e, nil)
+
+			localAssignedHallOrdersCh <- globalOrderAssignments[e.GetID()]
+			network.SendHallOrderRedistribution(globalOrderAssignments, e.GetID())
+
+			e.ClearDisconnectedNodeQueue()
 
 		case peer := <-peerConnectedCh:
 			fmt.Println("We gained peer ", peer)
@@ -107,6 +115,7 @@ Loop:
 			fmt.Println("We lost peer ", peer)
 
 			e.LoseConnectionToPeer(peer)
+			e.ClearDisconnectedNodeQueue()
 
 			e.TryUpdateIsMaster()
 			if e.GetIsMaster() {
