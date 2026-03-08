@@ -15,7 +15,7 @@ import (
 func MasterFsm(e *elevator.Elevator, hallButtonCh <-chan orders.Order, globalAssignedHallOrdersCh <-chan map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool,
 	localAssignedHallOrdersCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool, updateWorldViewCh <-chan elevator.Backup, peerLostCh <-chan int,
 	peerConnectedCh <-chan int) {
-	
+
 	if !e.GetIsMaster() {
 		fmt.Println("Immediately switching to slave")
 		go SlaveFsm(e, hallButtonCh, globalAssignedHallOrdersCh, localAssignedHallOrdersCh, updateWorldViewCh, peerLostCh, peerConnectedCh)
@@ -25,14 +25,12 @@ func MasterFsm(e *elevator.Elevator, hallButtonCh <-chan orders.Order, globalAss
 Loop:
 	for {
 		select {
-		case buttonEvent := <-hallButtonCh:
+		case hallOrder := <-hallButtonCh:
 
-			if checkNewOrder(e, buttonEvent) {
+			if checkNewOrder(e, hallOrder) {
 				fmt.Printf("New order received!")
 
-				globalOrderAssignments := runHallRequestAlgorithm(e, &buttonEvent)
-				localAssignedHallOrdersCh <- globalOrderAssignments[e.GetID()]
-				network.SendHallOrderRedistribution(globalOrderAssignments, e.GetID())
+				redistributeHallOrders(e, &hallOrder, localAssignedHallOrdersCh)
 
 			} else {
 				fmt.Println("Order already in queue, not sending to algorithm")
@@ -40,8 +38,17 @@ Loop:
 
 		case heartBeat := <-updateWorldViewCh:
 
-			
-			e.UpdateWorldView(&heartBeat)
+			if e.ShouldRedistributeOrders(&heartBeat) {
+				e.UpdateWorldView(&heartBeat)
+				redistributeHallOrders(e, nil, localAssignedHallOrdersCh)
+			} else if heartBeat.GetID() == e.GetID() {
+				e.UpdateWorldView(&heartBeat)
+				//Only happens if motorstop, should maybe be moved
+				redistributeHallOrders(e, nil, localAssignedHallOrdersCh)
+				fmt.Println("I changed motorstopstatus")
+			} else {
+				e.UpdateWorldView(&heartBeat)
+			}
 
 			onUpdateWorldView(e)
 
@@ -56,10 +63,7 @@ Loop:
 			e.LoseConnectionToPeer(peer)
 
 			//Must redistribute when we lose connection
-			globalOrderAssignments := runHallRequestAlgorithm(e, nil)
-
-			localAssignedHallOrdersCh <- globalOrderAssignments[e.GetID()]
-			network.SendHallOrderRedistribution(globalOrderAssignments, e.GetID())
+			redistributeHallOrders(e, nil, localAssignedHallOrdersCh)
 
 			e.ClearDisconnectedNodeQueue()
 
@@ -68,6 +72,7 @@ Loop:
 
 			fmt.Println("Gained connection to peer. Sending worldview")
 			network.SendWorldView(e.GetWorldView(), e.GetID(), peer)
+			//redistributeHallOrders(e, nil, localAssignedHallOrdersCh)
 
 			e.TryUpdateIsMaster()
 			if !e.GetIsMaster() {
@@ -153,5 +158,13 @@ func onUpdateWorldView(e *elevator.Elevator) {
 
 	//Also check motorstop
 	//Also check other stuff
+
+}
+
+func redistributeHallOrders(e *elevator.Elevator, hallOrder *orders.Order, localAssignedHallOrdersCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool) {
+
+	globalOrderAssignments := runHallRequestAlgorithm(e, hallOrder)
+	localAssignedHallOrdersCh <- globalOrderAssignments[e.GetID()]
+	network.SendHallOrderRedistribution(globalOrderAssignments, e.GetID())
 
 }

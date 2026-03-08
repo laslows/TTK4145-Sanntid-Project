@@ -12,7 +12,7 @@ import (
 //TODO: Fix naming conventions
 
 func Fsm(e *elevator.Elevator, timetaker *timer.Timer, cabButtonCh <-chan orders.Order, floorCh <-chan int, timerCh <-chan bool,
-	motorStopCh <-chan bool, obstructionCh <-chan bool, localAssignedHallOrdersCh <-chan [config.N_FLOORS][config.N_BUTTONS - 1]bool) {
+	motorStopCh <-chan bool, obstructionCh <-chan bool, localAssignedHallOrdersCh <-chan [config.N_FLOORS][config.N_BUTTONS - 1]bool, updateWorldViewCh chan<- elevator.Backup) {
 	//Can only receive on channels. Might have to change tho, idk
 	//Maybe make buttonevent and ordertype the samenthing
 	//Putt update backup overalt lol
@@ -48,9 +48,15 @@ func Fsm(e *elevator.Elevator, timetaker *timer.Timer, cabButtonCh <-chan orders
 			//network.SendMotorStopMessage(e.GetID(), e.GetMasterID(), true)
 		case obstruction := <-obstructionCh:
 
-			
 			e.SetIsObstructed(obstruction)
+			if obstruction {
+				e.SetDirection(elevator.Stop)
+			}
 			e.UpdateMyBackup()
+
+			if e.GetIsMaster() {
+				updateWorldViewCh <- *e.GetMyBackup()
+			}
 		}
 
 	}
@@ -95,9 +101,9 @@ func onFloorArrival(e *elevator.Elevator, floor int, _timer *timer.Timer) {
 			elevator.DoorOpenLight(true)
 			*e = ClearAtCurrentFloor(*e)
 			_timer.Start(e.GetDoorOpenDuration())
+			e.SetBehaviour(elevator.DoorOpen)
 			setAllLights(*e)
 			e.UpdateMyBackup()
-			e.SetBehaviour(elevator.DoorOpen)
 		}
 	default:
 		break

@@ -144,10 +144,16 @@ func getIDAsInt(ip, osID string) int {
 	return idInt
 }
 
-/*
-func (e *Elevator) ShouldRedustributeOrders() bool {
 
-}*/
+func (e *Elevator) ShouldRedistributeOrders(backup *Backup) bool {
+	//SHould redistribute if new backup changes obstruction status, or if we lose connection or if we gain connection
+    for _, b := range e.m_worldView {
+		if b != nil && b.m_ID == backup.m_ID {
+			return (b.m_isObstructed != backup.m_isObstructed)
+		}
+	}
+	return false
+}
 
 func (e *Elevator) TryUpdateIsMaster() bool {
 	//If we are master and should be slave, or if we are slave and should be master,
