@@ -28,21 +28,23 @@ func main() {
 
 	cabButtonCh := make(chan orders.Order)
 	hallButtonCh := make(chan orders.Order)
-	assignedHallOrdersCh := make(chan map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool)
+	globalAssignedHallOrdersCh := make(chan map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool)
+	localAssignedHallOrdersCh := make(chan [config.N_FLOORS][config.N_BUTTONS - 1]bool)
 	floorCh := make(chan int)
 	timerCh := make(chan bool)
 	motorStopCh := make(chan bool)
 	updateWorldViewCh := make(chan elevator.Backup)
 	peerLostCh := make(chan int)
+	peerConnectedCh := make(chan int)
 
 	initialize.Initialize(elev)
 
-	go fsm.Fsm(elev, timetaker, cabButtonCh, floorCh, timerCh, motorStopCh, assignedHallOrdersCh)
-	go fsm.MasterFsm(elev, hallButtonCh, assignedHallOrdersCh, updateWorldViewCh, peerLostCh)
+	go fsm.Fsm(elev, timetaker, cabButtonCh, floorCh, timerCh, motorStopCh, localAssignedHallOrdersCh)
+	go fsm.MasterFsm(elev, hallButtonCh, globalAssignedHallOrdersCh, localAssignedHallOrdersCh, updateWorldViewCh, peerLostCh, peerConnectedCh)
 	go events.InputPoller(cabButtonCh, hallButtonCh, floorCh, timerCh, motorStopCh, elev, timetaker)
 	go network.ListenForHeartbeats(elev, updateWorldViewCh, peerLostCh)
 	go network.BroadcastHeartbeat(elev)
-	go network.ListenForMessages(elev, hallButtonCh, assignedHallOrdersCh)
+	go network.ListenForMessages(elev, hallButtonCh, globalAssignedHallOrdersCh, peerConnectedCh)
 
 	select {
 		// Keep main alive

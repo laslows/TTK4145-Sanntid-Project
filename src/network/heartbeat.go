@@ -37,7 +37,6 @@ func ListenForHeartbeats(elev *elevator.Elevator, updateWorldViewCh chan<- eleva
 	lastSeen := make(map[int]time.Time)
 
 	for {
-		//n is number of bytes received, remoteAddr is the address of the sender, err is error :(
 		conn.SetReadDeadline(time.Now().Add(HEARTBEAT_TIMEOUT))
 		n, _, err := conn.ReadFromUDP(buffer)
 
