@@ -11,7 +11,7 @@ import (
 )
 
 func InputPoller(cabButtonCh chan<- orders.Order, hallButtonCh chan<- orders.Order, floorCh chan<- int,
-	timerCh chan<- bool, motorStopCh chan<- bool, e *elevator.Elevator, timetaker *timer.Timer) {
+	timerCh chan<- bool, motorStopCh chan<- bool, obstructionCh chan<- bool, e *elevator.Elevator, timetaker *timer.Timer) {
 	//Can only send on channels, not receive.
 
 	var prevButtons [config.N_FLOORS][config.N_BUTTONS]bool
@@ -19,6 +19,8 @@ func InputPoller(cabButtonCh chan<- orders.Order, hallButtonCh chan<- orders.Ord
 
 	motorStopWatchdog := timer.New()
 	var requestResetWatchdog = true
+
+	var obstruction = false
 
 	for {
 		// Check new button pressed
@@ -67,6 +69,14 @@ func InputPoller(cabButtonCh chan<- orders.Order, hallButtonCh chan<- orders.Ord
 
 		if e.GetBehaviour() == elevator.DoorOpen && elevator.ObstructionSwitch() {
 			timetaker.Start(e.GetDoorOpenDuration())
+
+			if !obstruction {
+				obstruction = true
+				obstructionCh <- true
+			}
+		} else if obstruction && !elevator.ObstructionSwitch() {
+			obstruction = false
+			obstructionCh <- false
 		}
 
 		time.Sleep(time.Duration(config.INPUT_POLL_RATE) * time.Millisecond)

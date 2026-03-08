@@ -15,13 +15,15 @@ import (
 func MasterFsm(e *elevator.Elevator, hallButtonCh <-chan orders.Order, globalAssignedHallOrdersCh <-chan map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool,
 	localAssignedHallOrdersCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool, updateWorldViewCh <-chan elevator.Backup, peerLostCh <-chan int,
 	peerConnectedCh <-chan int) {
+	
+	if !e.GetIsMaster() {
+		fmt.Println("Immediately switching to slave")
+		go SlaveFsm(e, hallButtonCh, globalAssignedHallOrdersCh, localAssignedHallOrdersCh, updateWorldViewCh, peerLostCh, peerConnectedCh)
+		return
+	}
+
 Loop:
 	for {
-		if !e.GetIsMaster() {
-			fmt.Println("Immediately switching to slave")
-			break Loop
-		}
-
 		select {
 		case buttonEvent := <-hallButtonCh:
 
@@ -38,6 +40,7 @@ Loop:
 
 		case heartBeat := <-updateWorldViewCh:
 
+			
 			e.UpdateWorldView(&heartBeat)
 
 			onUpdateWorldView(e)

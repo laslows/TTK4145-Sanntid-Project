@@ -12,7 +12,7 @@ import (
 //TODO: Fix naming conventions
 
 func Fsm(e *elevator.Elevator, timetaker *timer.Timer, cabButtonCh <-chan orders.Order, floorCh <-chan int, timerCh <-chan bool,
-	motorStopCh <-chan bool, localAssignedHallOrdersCh <-chan [config.N_FLOORS][config.N_BUTTONS - 1]bool) {
+	motorStopCh <-chan bool, obstructionCh <-chan bool, localAssignedHallOrdersCh <-chan [config.N_FLOORS][config.N_BUTTONS - 1]bool) {
 	//Can only receive on channels. Might have to change tho, idk
 	//Maybe make buttonevent and ordertype the samenthing
 	//Putt update backup overalt lol
@@ -46,7 +46,11 @@ func Fsm(e *elevator.Elevator, timetaker *timer.Timer, cabButtonCh <-chan orders
 			e.SetBehaviour(elevator.MotorStop)
 			e.UpdateMyBackup()
 			//network.SendMotorStopMessage(e.GetID(), e.GetMasterID(), true)
+		case obstruction := <-obstructionCh:
 
+			
+			e.SetIsObstructed(obstruction)
+			e.UpdateMyBackup()
 		}
 
 	}

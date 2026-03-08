@@ -12,6 +12,7 @@ type Backup struct {
 	m_requests           [config.N_FLOORS][config.N_BUTTONS]bool
 	m_isMaster           bool
 	m_behaviour          ElevatorBehaviour
+	m_isObstructed       bool
 	m_version            int
 	m_connectedToNetwork bool
 }
@@ -26,6 +27,7 @@ func (b *Backup) MarshalJSON() ([]byte, error) {
 		Direction          int
 		Requests           [config.N_FLOORS][config.N_BUTTONS]bool
 		IsMaster           bool
+		IsObstructed       bool
 		Version            int
 		ConnectedToNetwork bool
 		Behaviour          int
@@ -37,6 +39,7 @@ func (b *Backup) MarshalJSON() ([]byte, error) {
 		Direction:          int(b.m_direction),
 		Requests:           b.m_requests,
 		IsMaster:           b.m_isMaster,
+		IsObstructed:       b.m_isObstructed,
 		Version:            b.m_version,
 		ConnectedToNetwork: b.m_connectedToNetwork,
 		Behaviour:          int(b.m_behaviour),
@@ -51,6 +54,7 @@ func (b *Backup) UnmarshalJSON(data []byte) error {
 		Direction          int
 		Requests           [config.N_FLOORS][config.N_BUTTONS]bool
 		IsMaster           bool
+		IsObstructed       bool
 		Version            int
 		Behaviour          int
 		ConnectedToNetwork bool
@@ -67,6 +71,7 @@ func (b *Backup) UnmarshalJSON(data []byte) error {
 	b.m_direction = Direction(backupJSON.Direction)
 	b.m_requests = backupJSON.Requests
 	b.m_isMaster = backupJSON.IsMaster
+	b.m_isObstructed = backupJSON.IsObstructed
 	b.m_version = backupJSON.Version
 	b.m_connectedToNetwork = backupJSON.ConnectedToNetwork
 	b.m_behaviour = ElevatorBehaviour(backupJSON.Behaviour)
@@ -82,13 +87,14 @@ func (e *Elevator) UpdateMyBackup() {
 	e.m_myBackup.m_direction = e.m_direction
 	e.m_myBackup.m_floor = e.m_floor
 	e.m_myBackup.m_requests = e.m_requests
+	e.m_myBackup.m_isObstructed = e.m_isObstructed
 	e.m_myBackup.m_connectedToNetwork = true //Should always be true for me
 	e.m_myBackup.m_behaviour = e.m_behaviour
 
 	e.UpdateWorldView(e.m_myBackup)
 }
 
-func (e *Elevator) restoreMyBackup(b *Backup){
+func (e *Elevator) restoreMyBackup(b *Backup) {
 	//Maybe just do directly in restoreElevatorState
 
 	e.m_myBackup.m_floor = e.m_floor
@@ -97,12 +103,11 @@ func (e *Elevator) restoreMyBackup(b *Backup){
 	e.m_myBackup.m_isMaster = e.m_isMaster
 	e.m_myBackup.m_behaviour = e.m_behaviour
 	e.m_myBackup.m_version = b.m_version + 1
+	e.m_myBackup.m_isObstructed = e.m_isObstructed
 	e.m_myBackup.m_connectedToNetwork = true //Should always be true for me
 
 	e.UpdateWorldView(e.m_myBackup)
 }
-
-
 
 func (b *Backup) GetID() int {
 	return b.m_ID
@@ -124,7 +129,10 @@ func (b *Backup) GetRequests() [config.N_FLOORS][config.N_BUTTONS]bool {
 	return b.m_requests
 }
 
+func (b *Backup) GetIsObstructed() bool {
+	return b.m_isObstructed
+}
+
 func (b *Backup) GetConnectedToNetwork() bool {
 	return b.m_connectedToNetwork
 }
-

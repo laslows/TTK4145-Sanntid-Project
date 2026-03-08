@@ -33,20 +33,21 @@ func main() {
 	floorCh := make(chan int)
 	timerCh := make(chan bool)
 	motorStopCh := make(chan bool)
+	obstructionCh := make(chan bool)
 	updateWorldViewCh := make(chan elevator.Backup)
 	peerLostCh := make(chan int)
 	peerConnectedCh := make(chan int)
 
 	initialize.Initialize(elev)
 
-	go fsm.Fsm(elev, timetaker, cabButtonCh, floorCh, timerCh, motorStopCh, localAssignedHallOrdersCh)
+	go fsm.Fsm(elev, timetaker, cabButtonCh, floorCh, timerCh, motorStopCh, obstructionCh, localAssignedHallOrdersCh)
 	go fsm.MasterFsm(elev, hallButtonCh, globalAssignedHallOrdersCh, localAssignedHallOrdersCh, updateWorldViewCh, peerLostCh, peerConnectedCh)
-	go events.InputPoller(cabButtonCh, hallButtonCh, floorCh, timerCh, motorStopCh, elev, timetaker)
+	go events.InputPoller(cabButtonCh, hallButtonCh, floorCh, timerCh, motorStopCh, obstructionCh, elev, timetaker)
 	go network.ListenForHeartbeats(elev, updateWorldViewCh, peerLostCh)
 	go network.BroadcastHeartbeat(elev)
 	go network.ListenForMessages(elev, hallButtonCh, globalAssignedHallOrdersCh, peerConnectedCh)
 
 	select {
-		// Keep main alive
+	// Keep main alive
 	}
 }

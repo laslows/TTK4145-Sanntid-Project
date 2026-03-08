@@ -46,6 +46,7 @@ type Elevator struct {
 	m_requests  [config.N_FLOORS][config.N_BUTTONS]bool
 	m_behaviour ElevatorBehaviour
 	m_isMaster  bool
+	m_isObstructed bool
 	m_myBackup  *Backup
 
 	m_worldView [config.N_ELEVATORS]*Backup
@@ -62,6 +63,7 @@ func New(port string) *Elevator {
 		m_direction: Stop,
 		m_behaviour: Idle,
 		m_isMaster:  true,
+		m_isObstructed: false,
 
 		m_worldView: [config.N_ELEVATORS]*Backup{},
 
@@ -82,6 +84,7 @@ func New(port string) *Elevator {
 		m_version:            0,
 		m_behaviour:          Idle,
 		m_connectedToNetwork: true,
+		m_isObstructed:       false,
 	}
 
 	e.UpdateWorldView(e.m_myBackup)
@@ -140,6 +143,11 @@ func getIDAsInt(ip, osID string) int {
 
 	return idInt
 }
+
+/*
+func (e *Elevator) ShouldRedustributeOrders() bool {
+
+}*/
 
 func (e *Elevator) TryUpdateIsMaster() bool {
 	//If we are master and should be slave, or if we are slave and should be master,
@@ -249,6 +257,10 @@ func (e *Elevator) ClearDisconnectedNodeQueue(){
 			}
 		}
 	}
+}
+
+func (e *Elevator) SetIsObstructed(isObstructed bool) {
+	e.m_isObstructed = isObstructed
 }
 
 func (e *Elevator) GetWorldView() [config.N_ELEVATORS]*Backup {
