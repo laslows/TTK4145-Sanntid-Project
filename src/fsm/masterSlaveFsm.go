@@ -155,6 +155,7 @@ Loop:
 func onUpdateWorldView(e *elevator.Elevator) {
 
 	e.TryUpdateIsMaster()
+	setAllLights(*e)
 
 	//Also check motorstop
 	//Also check other stuff

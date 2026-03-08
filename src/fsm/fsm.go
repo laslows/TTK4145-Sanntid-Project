@@ -84,8 +84,8 @@ func onFloorArrival(e *elevator.Elevator, floor int, _timer *timer.Timer) {
 			elevator.DoorOpenLight(true)
 			*e = ClearAtCurrentFloor(*e)
 			_timer.Start(e.GetDoorOpenDuration())
-			setAllLights(*e)
 			e.SetBehaviour(elevator.DoorOpen)
+			setAllLights(*e)
 
 		} else {
 			e.SetBehaviour(elevator.Moving)
@@ -102,8 +102,9 @@ func onFloorArrival(e *elevator.Elevator, floor int, _timer *timer.Timer) {
 			*e = ClearAtCurrentFloor(*e)
 			_timer.Start(e.GetDoorOpenDuration())
 			e.SetBehaviour(elevator.DoorOpen)
-			setAllLights(*e)
 			e.UpdateMyBackup()
+			setAllLights(*e)
+
 		}
 	default:
 		break
@@ -120,6 +121,7 @@ func setAllLights(e elevator.Elevator) {
 	}
 }
 
+//MARTHE
 func OnDoorTimeout(e *elevator.Elevator, _timer *timer.Timer) {
 	switch e.GetBehaviour() {
 	case elevator.DoorOpen:
@@ -203,48 +205,3 @@ func onNewOrder(e *elevator.Elevator, _timer *timer.Timer) {
 
 }
 
-/*
-func NewOrder(e *elevator.Elevator, floor int, order_type orders.OrderType, _timer *timer.Timer) {
-	switch e.GetBehaviour() {
-	case elevator.DoorOpen:
-		if ShouldClearImmediately(*e, floor, order_type) {
-			fmt.Printf("Clearing order immediately: floor %d, button %d\n", floor, order_type)
-			_timer.Start(e.GetDoorOpenDuration())
-		} else {
-			e.SetRequest(floor, (driver.ButtonType)(order_type), true)
-		}
-
-	case elevator.Moving:
-		e.SetRequest(floor, (driver.ButtonType)(order_type), true)
-
-	case elevator.MotorStop:
-		e.SetRequest(floor, (driver.ButtonType)(order_type), true)
-
-	case elevator.Idle:
-		e.SetRequest(floor, (driver.ButtonType)(order_type), true)
-		pair := ChooseDirection(*e)
-		e.SetDirection(pair.m_dirn)
-		e.SetBehaviour(pair.m_behaviour)
-
-		switch pair.m_behaviour {
-		case elevator.DoorOpen:
-			elevator.DoorOpenLight(true)
-			_timer.Start(e.GetDoorOpenDuration())
-			*e = ClearAtCurrentFloor(*e)
-
-		case elevator.Moving:
-			elevator.MotorDirection(pair.m_dirn)
-
-		case elevator.Idle:
-			break
-
-		}
-
-	default:
-		break
-	}
-	e.UpdateMyBackup()
-	setAllLights(*e)
-}
-
-*/

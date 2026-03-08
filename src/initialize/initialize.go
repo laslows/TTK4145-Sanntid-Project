@@ -13,6 +13,7 @@ import (
 func Initialize(e *elevator.Elevator) {
 
 	clearAllLights()
+	elevator.DoorOpenLight(false)
 
 	for elevator.FloorSensor() == -1 {
 		onInitBetweenFloors(e)
