@@ -48,7 +48,11 @@ func Fsm(e *elevator.Elevator, timetaker *timer.Timer, cabButtonCh <-chan orders
 			//Try to reach new floor if between floors
 			e.SetBehaviour(elevator.MotorStop)
 			e.UpdateMyBackup()
-			//network.SendMotorStopMessage(e.GetID(), e.GetMasterID(), true)
+
+			if e.GetIsMaster() {
+				updateWorldViewCh <- *e.GetMyBackup()
+			}
+
 		case obstruction := <-obstructionCh:
 
 			e.SetIsObstructed(obstruction)

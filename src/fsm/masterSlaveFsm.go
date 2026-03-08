@@ -9,8 +9,6 @@ import (
 	"time"
 )
 
-//TODO:
-// Door obstruction
 
 func MasterFsm(e *elevator.Elevator, hallButtonCh <-chan orders.Order, globalAssignedHallOrdersCh <-chan map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool,
 	localAssignedHallOrdersCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool, updateWorldViewCh <-chan elevator.Backup, peerLostCh <-chan int,
@@ -46,7 +44,7 @@ Loop:
 				e.UpdateWorldView(&heartBeat)
 				//Only happens if motorstop, should maybe be moved
 				redistributeHallOrders(e, nil, localAssignedHallOrdersCh)
-				fmt.Println("I changed motorstopstatus")
+				fmt.Println("I changed obstructionstatus or motorstopstatus")
 			} else {
 				e.UpdateWorldView(&heartBeat)
 			}

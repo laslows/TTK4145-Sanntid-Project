@@ -13,6 +13,8 @@ import (
 //Should tidy up this file a lot. Maybe separate the get/set-functions, the driver functions and
 // the smart functions
 
+//TODO: differ between backup and b with better namings..
+
 type Direction int
 
 const (
@@ -146,10 +148,10 @@ func getIDAsInt(ip, osID string) int {
 
 
 func (e *Elevator) ShouldRedistributeOrders(backup *Backup) bool {
-	//SHould redistribute if new backup changes obstruction status, or if we lose connection or if we gain connection
+	//SHould redistribute if new backup changes obstruction status, or if we lose connection or if we gain connection, or if we change motorstopstatus
     for _, b := range e.m_worldView {
 		if b != nil && b.m_ID == backup.m_ID {
-			return (b.m_isObstructed != backup.m_isObstructed)
+			return (b.m_isObstructed != backup.m_isObstructed || b.GetHasMotorstop() != backup.GetHasMotorstop())
 		}
 	}
 	return false

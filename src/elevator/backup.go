@@ -133,6 +133,10 @@ func (b *Backup) GetIsObstructed() bool {
 	return b.m_isObstructed
 }
 
+func (b *Backup) GetHasMotorstop() bool {
+	return b.m_behaviour == MotorStop
+}
+
 func (b *Backup) GetConnectedToNetwork() bool {
 	return b.m_connectedToNetwork
 }
