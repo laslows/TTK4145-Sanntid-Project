@@ -13,12 +13,8 @@ import (
 
 func Fsm(e *elevator.Elevator, timetaker *timer.Timer, cabButtonCh <-chan orders.Order, floorCh <-chan int, timerCh <-chan bool,
 	motorStopCh <-chan bool, obstructionCh <-chan bool, localAssignedHallOrdersCh <-chan [config.N_FLOORS][config.N_BUTTONS - 1]bool, updateWorldViewCh chan<- elevator.Backup) {
-	//Can only receive on channels. Might have to change tho, idk
-	//Maybe make buttonevent and ordertype the samenthing
-	//Putt update backup overalt lol
 
 	onNewOrder(e, timetaker)
-
 
 	for {
 		select {
@@ -37,15 +33,10 @@ func Fsm(e *elevator.Elevator, timetaker *timer.Timer, cabButtonCh <-chan orders
 			onFloorArrival(e, floorArrival, timetaker)
 
 		case <-timerCh:
-			// Close door
 			OnDoorTimeout(e, timetaker)
 
 		case <-motorStopCh:
-			//Maybe make it receive a struct (MotorStopEvent, idk)
 
-			//Inform other elevators
-			//Clear queue
-			//Try to reach new floor if between floors
 			e.SetBehaviour(elevator.MotorStop)
 			e.UpdateMyBackup()
 
@@ -71,9 +62,6 @@ func Fsm(e *elevator.Elevator, timetaker *timer.Timer, cabButtonCh <-chan orders
 }
 
 func onFloorArrival(e *elevator.Elevator, floor int, _timer *timer.Timer) {
-	// Clear floor from queue
-	// Tell network
-	// Stop motor
 
 	e.SetFloor(floor)
 	elevator.FloorIndicator(floor)
@@ -98,8 +86,6 @@ func onFloorArrival(e *elevator.Elevator, floor int, _timer *timer.Timer) {
 		}
 
 		e.UpdateMyBackup()
-
-		//network.SendMotorStopMessage(e.GetID(), e.GetMasterID(), false)
 
 	case elevator.Moving:
 		if ShouldStop(*e) {
