@@ -46,7 +46,9 @@ func createJSONDataForHallReqAlgorithm(e *elevator.Elevator, hallOrder *orders.O
 		}
 
 		backupRequests := backup.GetRequests()
-		if backup.GetBehaviour() != elevator.MotorStop && backup.GetConnectedToNetwork() {
+		if backup.GetBehaviour() != elevator.MotorStop && !backup.GetIsObstructed() && backup.GetConnectedToNetwork() {
+			fmt.Println("Backup with ID", backup.GetID(), "has obstruction statsus", backup.GetIsObstructed(), "and behaviour", backup.GetBehaviour())
+
 			states[strconv.Itoa(backup.GetID())] = ElevatorState{
 				Behaviour:   elevator.BehaviourToString(backup.GetBehaviour()),
 				Floor:       backup.GetFloor(),
@@ -77,11 +79,11 @@ func createJSONDataForHallReqAlgorithm(e *elevator.Elevator, hallOrder *orders.O
 	return string(jsonData)
 }
 
-func runHallRequestAlgorithm(e *elevator.Elevator, hallOrder *orders.Order) map[int][config.N_FLOORS][config.N_BUTTONS-1]bool {
+func runHallRequestAlgorithm(e *elevator.Elevator, hallOrder *orders.Order) map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool {
 	input := createJSONDataForHallReqAlgorithm(e, hallOrder)
 	cmd := exec.Command("./src/fsm/hall_request_assigner/hall_request_assigner", "--input", input)
 	out, err := cmd.CombinedOutput()
-	hallOrderAssignmentMap := make(map[int][config.N_FLOORS][config.N_BUTTONS-1]bool)
+	hallOrderAssignmentMap := make(map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool)
 
 	if err != nil {
 		fmt.Printf("running hall request algorithm failed: %v; output: %s\n", err, string(out))
