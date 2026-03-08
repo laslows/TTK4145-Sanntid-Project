@@ -16,6 +16,7 @@ func MasterFsm(e *elevator.Elevator, hallButtonCh <-chan orders.Order, globalAss
 	localAssignedHallOrdersCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool, updateWorldViewCh <-chan elevator.Backup, peerLostCh <-chan int,
 	peerConnectedCh <-chan int) {
 
+	
 	if !e.GetIsMaster() {
 		fmt.Println("Immediately switching to slave")
 		go SlaveFsm(e, hallButtonCh, globalAssignedHallOrdersCh, localAssignedHallOrdersCh, updateWorldViewCh, peerLostCh, peerConnectedCh)
@@ -169,3 +170,4 @@ func redistributeHallOrders(e *elevator.Elevator, hallOrder *orders.Order, local
 	network.SendHallOrderRedistribution(globalOrderAssignments, e.GetID())
 
 }
+

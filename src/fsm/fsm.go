@@ -17,6 +17,9 @@ func Fsm(e *elevator.Elevator, timetaker *timer.Timer, cabButtonCh <-chan orders
 	//Maybe make buttonevent and ordertype the samenthing
 	//Putt update backup overalt lol
 
+	onNewOrder(e, timetaker)
+
+
 	for {
 		select {
 		case buttonEvent := <-cabButtonCh:
@@ -73,7 +76,6 @@ func onFloorArrival(e *elevator.Elevator, floor int, _timer *timer.Timer) {
 
 	switch e.GetBehaviour() {
 	case elevator.MotorStop:
-		//This might be wrong, we are cooked
 
 		if !anyRequests(*e) {
 			e.SetBehaviour(elevator.Idle)
@@ -121,7 +123,6 @@ func setAllLights(e elevator.Elevator) {
 	}
 }
 
-//MARTHE
 func OnDoorTimeout(e *elevator.Elevator, _timer *timer.Timer) {
 	switch e.GetBehaviour() {
 	case elevator.DoorOpen:
@@ -133,6 +134,7 @@ func OnDoorTimeout(e *elevator.Elevator, _timer *timer.Timer) {
 		case elevator.DoorOpen:
 			_timer.Start(e.GetDoorOpenDuration())
 			*e = ClearAtCurrentFloor(*e)
+			e.UpdateMyBackup()
 			setAllLights(*e)
 		case elevator.Moving:
 			fallthrough
@@ -144,8 +146,6 @@ func OnDoorTimeout(e *elevator.Elevator, _timer *timer.Timer) {
 	default:
 		break
 	}
-
-	e.UpdateMyBackup()
 }
 
 func insertAllHallOrders(e *elevator.Elevator, hallOrders [config.N_FLOORS][config.N_BUTTONS - 1]bool, timer *timer.Timer) {
@@ -204,4 +204,3 @@ func onNewOrder(e *elevator.Elevator, _timer *timer.Timer) {
 	setAllLights(*e)
 
 }
-
