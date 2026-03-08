@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net"
 	"time"
+	"sync"
 )
 
 const MESSAGE_PORT = "16666"
@@ -17,6 +18,11 @@ const MESSAGE_ADDR = "224.0.0.1:16666"
 
 // Maybe move this to initialization package, but that would require us to import it
 const INITIALIZATION_TIMEOUT = 1 * time.Second
+
+const ACKNOWLEDGEMENT_TIMEOUT = 10 * time.Millisecond //TODO:better name
+
+var pendingAcks = make(map[int]chan bool) //TODO:where should variable exist
+var ackMutex sync.Mutex
 
 type messageType int
 
@@ -28,6 +34,7 @@ const (
 	//OrderRedistribution
 	Initialization
 	WorldView
+	Acknowledgement
 )
 
 type Message struct {
@@ -35,7 +42,9 @@ type Message struct {
 	m_senderID    int
 	m_receiverID  int
 	m_payload     json.RawMessage
+	m_messageID	int
 }
+
 
 func BroadcastMessage(message Message) {
 	//Send message to multicast address
@@ -58,13 +67,23 @@ func BroadcastMessage(message Message) {
 		fmt.Println("Error marshaling message:", err)
 		return
 	}
+	ackCh := make(chan bool)
 
-	_, err = conn.Write(messageBytes)
-	if err != nil {
-		fmt.Println("Error writing to UDP connection:", err)
-		return
+    pendingAcks[message.m_messageID] = ackCh
+
+	ticker := time.NewTicker(ACKNOWLEDGEMENT_TIMEOUT)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		_, err = conn.Write(messageBytes)
+		if err != nil {
+			fmt.Println("Error writing to UDP connection:", err)
+			continue
+		}
+		if <-ackCh {
+			break
+		}
 	}
-
 }
 
 func SendHallOrder(order orders.Order, senderID, receiverId int) {
@@ -81,7 +100,7 @@ func SendHallOrder(order orders.Order, senderID, receiverId int) {
 	}
 
 	hallOrderMessage.m_payload = payload
-	BroadcastMessage(hallOrderMessage)
+	go BroadcastMessage(hallOrderMessage)
 }
 
 // Inputs a map with elevator id as key and assigned order as value. Should be called by master after running the hall request assignment algorithm
@@ -98,7 +117,7 @@ func SendHallOrderRedistribution(orderAssignments map[int][config.N_FLOORS][conf
 	}
 
 	hallOrderRedistributionMessage.m_payload = payload
-	BroadcastMessage(hallOrderRedistributionMessage)
+	go BroadcastMessage(hallOrderRedistributionMessage)
 }
 
 func SendWorldView(worldView [config.N_ELEVATORS]*elevator.Backup, senderID, receiverId int) {
@@ -116,7 +135,7 @@ func SendWorldView(worldView [config.N_ELEVATORS]*elevator.Backup, senderID, rec
 
 	worldViewMessage.m_payload = payload
 
-	BroadcastMessage(worldViewMessage)
+	go BroadcastMessage(worldViewMessage)
 }
 
 func SendInitializationMessage(senderID int) {
@@ -126,8 +145,28 @@ func SendInitializationMessage(senderID int) {
 		m_receiverID:  0, //Send to master
 	}
 
-	BroadcastMessage(initializationMessage)
+	go BroadcastMessage(initializationMessage)
 }
+
+func SendAcknowledgement(senderID, receiverID, messageID int) {
+	acknowledgementMessage := Message{
+		m_messageType: Acknowledgement,
+		m_senderID: senderID,
+		m_receiverID: receiverID,
+		m_messageID: messageID,
+	}
+
+	payload, err := json.Marshal(messageID)
+	if err != nil {
+		//Handle error
+		return
+	}
+
+	acknowledgementMessage.m_payload = payload
+
+	go BroadcastMessage(acknowledgementMessage)
+}
+
 
 func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
 	globalAssignedHallOrdersCh chan<- map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool, peerConnectedCh chan<- int) {
@@ -171,6 +210,20 @@ func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
 		if !(message.m_receiverID == e.GetID() || message.m_receiverID == 0) {
 			continue
 		}
+
+		if message.m_messageType == Acknowledgement {
+			ch, exists := pendingAcks[message.m_messageID]
+
+			if exists {
+				ch <- true
+			}
+
+			continue
+		}
+
+		SendAcknowledgement(e.GetID(), message.m_senderID, message.m_messageID)
+		//if in cache: send act + continue
+		//If not, send act and do code under
 
 		//Come here if ID == my ID or if receiverID is 0
 
