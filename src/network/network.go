@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"net"
 	"time"
-	"sync"
 )
 
 const MESSAGE_PORT = "16666"
@@ -22,7 +21,6 @@ const INITIALIZATION_TIMEOUT = 1 * time.Second
 const ACKNOWLEDGEMENT_TIMEOUT = 10 * time.Millisecond //TODO:better name
 
 var pendingAcks = make(map[int]chan bool) //TODO:where should variable exist
-var ackMutex sync.Mutex
 
 type messageType int
 
@@ -42,13 +40,16 @@ type Message struct {
 	m_senderID    int
 	m_receiverID  int
 	m_payload     json.RawMessage
-	m_messageID	int
+	m_messageID   int //TODO:how do we make IDs??
 }
 
-
-func BroadcastMessage(message Message) {
+func BroadcastMessage(message Message, newHallOrderDistributionCh <-chan int) {
 	//Send message to multicast address
 	messageAddrSender, err := net.ResolveUDPAddr("udp4", MESSAGE_ADDR)
+
+	//if id = myId break
+	// must check is even value on channel, and that we are in correct case
+	messageID := message.m_messageID
 
 	if err != nil {
 		fmt.Println("Error resolving multicast address:", err)
@@ -69,7 +70,7 @@ func BroadcastMessage(message Message) {
 	}
 	ackCh := make(chan bool)
 
-    pendingAcks[message.m_messageID] = ackCh
+	pendingAcks[message.m_messageID] = ackCh
 
 	ticker := time.NewTicker(ACKNOWLEDGEMENT_TIMEOUT)
 	defer ticker.Stop()
@@ -80,8 +81,13 @@ func BroadcastMessage(message Message) {
 			fmt.Println("Error writing to UDP connection:", err)
 			continue
 		}
-		if <-ackCh {
-			break
+		select {
+		case <-ackCh:
+			return
+		case newID := <-newHallOrderDistributionCh:
+			if messageID != newID {
+				return
+			}
 		}
 	}
 }
@@ -100,24 +106,28 @@ func SendHallOrder(order orders.Order, senderID, receiverId int) {
 	}
 
 	hallOrderMessage.m_payload = payload
-	go BroadcastMessage(hallOrderMessage)
+	go BroadcastMessage(hallOrderMessage, nil)
 }
 
 // Inputs a map with elevator id as key and assigned order as value. Should be called by master after running the hall request assignment algorithm
-func SendHallOrderRedistribution(orderAssignments map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool, senderID int) {
+func SendHallOrderRedistribution(orderList [config.N_FLOORS][config.N_BUTTONS - 1]bool, senderID, receiverID int) {
 	hallOrderRedistributionMessage := Message{
 		m_messageType: HallOrderRedistribution,
 		m_senderID:    senderID,
+		m_receiverID:  receiverID,
 	}
 
-	payload, err := json.Marshal(&orderAssignments)
+	payload, err := json.Marshal(&orderList)
 	if err != nil {
 		//Handle error
 		return
 	}
+	messageIdChannel := make(chan int)
+	messageIdChannel <- hallOrderRedistributionMessage.m_messageID
+	//Terminate old broadcasting
 
 	hallOrderRedistributionMessage.m_payload = payload
-	go BroadcastMessage(hallOrderRedistributionMessage)
+	go BroadcastMessage(hallOrderRedistributionMessage, messageIdChannel)
 }
 
 func SendWorldView(worldView [config.N_ELEVATORS]*elevator.Backup, senderID, receiverId int) {
@@ -135,7 +145,7 @@ func SendWorldView(worldView [config.N_ELEVATORS]*elevator.Backup, senderID, rec
 
 	worldViewMessage.m_payload = payload
 
-	go BroadcastMessage(worldViewMessage)
+	go BroadcastMessage(worldViewMessage, nil)
 }
 
 func SendInitializationMessage(senderID int) {
@@ -145,15 +155,15 @@ func SendInitializationMessage(senderID int) {
 		m_receiverID:  0, //Send to master
 	}
 
-	go BroadcastMessage(initializationMessage)
+	go BroadcastMessage(initializationMessage, nil)
 }
 
 func SendAcknowledgement(senderID, receiverID, messageID int) {
 	acknowledgementMessage := Message{
 		m_messageType: Acknowledgement,
-		m_senderID: senderID,
-		m_receiverID: receiverID,
-		m_messageID: messageID,
+		m_senderID:    senderID,
+		m_receiverID:  receiverID,
+		m_messageID:   messageID,
 	}
 
 	payload, err := json.Marshal(messageID)
@@ -164,12 +174,11 @@ func SendAcknowledgement(senderID, receiverID, messageID int) {
 
 	acknowledgementMessage.m_payload = payload
 
-	go BroadcastMessage(acknowledgementMessage)
+	go BroadcastMessage(acknowledgementMessage, nil)
 }
 
-
 func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
-	globalAssignedHallOrdersCh chan<- map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool, peerConnectedCh chan<- int) {
+	assignedOrdersFromMasterCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool, peerConnectedCh chan<- int) {
 	//heartbeatAddrReceiver, err := net.ResolveUDPAddr("udp", ":" + HEARTBEAT_PORT)
 	messageAddrReceiver, err := net.ResolveUDPAddr("udp4", MESSAGE_ADDR)
 
@@ -246,7 +255,7 @@ func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
 				continue
 			}
 
-			var hallOrderAssignments map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool
+			var hallOrderAssignments [config.N_FLOORS][config.N_BUTTONS - 1]bool
 			err = json.Unmarshal(message.m_payload, &hallOrderAssignments)
 
 			if err != nil {
@@ -254,7 +263,7 @@ func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
 				continue
 			}
 
-			globalAssignedHallOrdersCh <- hallOrderAssignments
+			assignedOrdersFromMasterCh <- hallOrderAssignments
 
 		case Initialization:
 
