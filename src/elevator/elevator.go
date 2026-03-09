@@ -62,7 +62,7 @@ type Elevator struct {
 func New(port string) *Elevator {
 	e := &Elevator{
 		m_floor:     -1,
-		m_direction: Stop,
+		m_direction: Down,
 		m_behaviour: Idle,
 		m_isMaster:  true,
 		m_isObstructed: false,
@@ -250,6 +250,8 @@ func (e *Elevator) LoseConnectionToPeer(peerID int) {
 func (e *Elevator) RestoreElevatorState(b *Backup) {
 
 	e.m_requests = b.m_requests
+	e.m_floor = b.m_floor
+	e.m_direction = b.m_direction
 
 	e.restoreMyBackup(b)
 

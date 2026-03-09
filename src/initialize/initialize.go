@@ -8,13 +8,10 @@ import (
 	"fmt"
 )
 
-
 func Initialize(e *elevator.Elevator) {
 
 	clearAllLights()
 	elevator.DoorOpenLight(false)
-
-	initOnFloor(e)
 
 	fmt.Println("Initialiser heisen")
 	fmt.Printf("Initial floor: %d\n", e.GetFloor())
@@ -34,6 +31,9 @@ func Initialize(e *elevator.Elevator) {
 
 	}
 
+	fmt.Println("Direction is: ", e.GetDirection())
+	initOnFloor(e)
+
 	e.TryUpdateIsMaster()
 	e.UpdateMyBackup()
 
@@ -42,8 +42,7 @@ func Initialize(e *elevator.Elevator) {
 func initOnFloor(e *elevator.Elevator) {
 
 	for elevator.FloorSensor() == -1 {
-		driver.SetMotorDirection(driver.MD_DOWN)
-		e.SetDirection(elevator.Down)
+		driver.SetMotorDirection((driver.MotorDirection)(e.GetDirection()))
 		e.SetBehaviour(elevator.Moving)
 	}
 
