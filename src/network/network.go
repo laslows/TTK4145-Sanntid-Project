@@ -42,7 +42,7 @@ type Message struct {
 	m_senderID    int
 	m_receiverID  int
 	m_payload     json.RawMessage
-	m_messageID   uint64 //TODO:how do we make IDs??
+	m_messageID   uint64
 }
 
 func BroadcastMessage(message Message, newHallOrderDistributionCh <-chan uint64) {
@@ -108,6 +108,8 @@ func SendHallOrder(order orders.Order, senderID, receiverId int) {
 	}
 
 	hallOrderMessage.m_payload = payload
+	hallOrderMessage.m_messageID = generateMessageID(hallOrderMessage)
+
 	go BroadcastMessage(hallOrderMessage, nil)
 }
 
@@ -129,6 +131,8 @@ func SendHallOrderRedistribution(orderList [config.N_FLOORS][config.N_BUTTONS - 
 	//Terminate old broadcasting
 
 	hallOrderRedistributionMessage.m_payload = payload
+	hallOrderRedistributionMessage.m_messageID = generateMessageID(hallOrderRedistributionMessage)
+
 	go BroadcastMessage(hallOrderRedistributionMessage, messageIdChannel)
 }
 
@@ -146,6 +150,7 @@ func SendWorldView(worldView [config.N_ELEVATORS]*elevator.Backup, senderID, rec
 	}
 
 	worldViewMessage.m_payload = payload
+	worldViewMessage.m_messageID = generateMessageID(worldViewMessage)
 
 	go BroadcastMessage(worldViewMessage, nil)
 }
@@ -156,6 +161,8 @@ func SendInitializationMessage(senderID int) {
 		m_senderID:    senderID,
 		m_receiverID:  0, //Send to master
 	}
+
+	initializationMessage.m_messageID = generateMessageID(initializationMessage)
 
 	go BroadcastMessage(initializationMessage, nil)
 }

@@ -55,7 +55,7 @@ func ListenForHeartbeats(elev *elevator.Elevator, updateWorldViewCh chan<- eleva
 		}
 
 		for peer, timestamp := range lastSeen {
-			if time.Now().Sub(timestamp) > HEARTBEAT_TIMEOUT {
+			if time.Since(timestamp) > HEARTBEAT_TIMEOUT {
 				delete(lastSeen, peer)
 				peerLostCh <- peer
 			}
