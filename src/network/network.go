@@ -4,8 +4,10 @@ import (
 	"Sanntid/src/config"
 	"Sanntid/src/elevator"
 	"Sanntid/src/orders"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"hash/fnv"
 	"net"
 	"time"
 )
@@ -20,7 +22,7 @@ const INITIALIZATION_TIMEOUT = 1 * time.Second
 
 const ACKNOWLEDGEMENT_TIMEOUT = 10 * time.Millisecond //TODO:better name
 
-var pendingAcks = make(map[int]chan bool) //TODO:where should variable exist
+var pendingAcks = make(map[uint64]chan bool) //TODO:where should variable exist
 
 type messageType int
 
@@ -40,10 +42,10 @@ type Message struct {
 	m_senderID    int
 	m_receiverID  int
 	m_payload     json.RawMessage
-	m_messageID   int //TODO:how do we make IDs??
+	m_messageID   uint64 //TODO:how do we make IDs??
 }
 
-func BroadcastMessage(message Message, newHallOrderDistributionCh <-chan int) {
+func BroadcastMessage(message Message, newHallOrderDistributionCh <-chan uint64) {
 	//Send message to multicast address
 	messageAddrSender, err := net.ResolveUDPAddr("udp4", MESSAGE_ADDR)
 
@@ -122,7 +124,7 @@ func SendHallOrderRedistribution(orderList [config.N_FLOORS][config.N_BUTTONS - 
 		//Handle error
 		return
 	}
-	messageIdChannel := make(chan int)
+	messageIdChannel := make(chan uint64)
 	messageIdChannel <- hallOrderRedistributionMessage.m_messageID
 	//Terminate old broadcasting
 
@@ -158,7 +160,7 @@ func SendInitializationMessage(senderID int) {
 	go BroadcastMessage(initializationMessage, nil)
 }
 
-func SendAcknowledgement(senderID, receiverID, messageID int) {
+func SendAcknowledgement(messageID uint64, senderID, receiverID int) {
 	acknowledgementMessage := Message{
 		m_messageType: Acknowledgement,
 		m_senderID:    senderID,
@@ -175,6 +177,25 @@ func SendAcknowledgement(senderID, receiverID, messageID int) {
 	acknowledgementMessage.m_payload = payload
 
 	go BroadcastMessage(acknowledgementMessage, nil)
+}
+
+func generateMessageID(message Message) uint64 {
+	timeStamp := uint32(time.Now().Unix())
+
+	data, err := json.Marshal(message)
+	if err != nil {
+		return 0
+	}
+
+	buffer := make([]byte, 4)
+	binary.LittleEndian.PutUint32(buffer, timeStamp)
+
+	hash := fnv.New64a()
+	hash.Write(data)
+	hash.Write(buffer)
+
+	return hash.Sum64()
+	
 }
 
 func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
@@ -230,7 +251,7 @@ func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
 			continue
 		}
 
-		SendAcknowledgement(e.GetID(), message.m_senderID, message.m_messageID)
+		SendAcknowledgement(message.m_messageID, e.GetID(), message.m_senderID)
 		//if in cache: send act + continue
 		//If not, send act and do code under
 
