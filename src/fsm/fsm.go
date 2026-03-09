@@ -131,6 +131,7 @@ func OnDoorTimeout(e *elevator.Elevator, _timer *timer.Timer) {
 		case elevator.Idle:
 			elevator.DoorOpenLight(false)
 			elevator.MotorDirection(e.GetDirection())
+			e.UpdateMyBackup()
 		}
 
 	default:
