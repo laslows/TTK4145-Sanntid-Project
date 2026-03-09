@@ -4,47 +4,57 @@ import (
 	"Sanntid/src/config"
 	"Sanntid/src/driver"
 	"Sanntid/src/elevator"
-	"Sanntid/src/events"
 	"Sanntid/src/orders"
 	"Sanntid/src/timer"
 	"fmt"
-	/*
-		"Sanntid/src/elevator"
-		"Sanntid/src/driver"
-		"Sanntid/src/timer"
-	*/)
+)
 
 //TODO: Fix naming conventions
 
-func Fsm(e *elevator.Elevator, timetaker *timer.Timer, cabButtonCh <-chan events.ButtonEvent, floorCh <-chan int, timerCh <-chan bool, motorStopCh <-chan bool,
-	assignedOrderCh <-chan orders.Order) {
-	//Can only receive on channels. Might have to change tho, idk
-	//Maybe make buttonevent and ordertype the samenthing
-	//Putt update backup overalt lol
+func Fsm(e *elevator.Elevator, timetaker *timer.Timer, cabButtonCh <-chan orders.Order, floorCh <-chan int, timerCh <-chan bool,
+	motorStopCh <-chan bool, obstructionCh <-chan bool, localAssignedHallOrdersCh <-chan [config.N_FLOORS][config.N_BUTTONS - 1]bool, updateWorldViewCh chan<- elevator.Backup) {
+
+	onNewOrder(e, timetaker)
 
 	for {
 		select {
 		case buttonEvent := <-cabButtonCh:
-			NewOrder(e, buttonEvent.GetFloor(), (orders.OrderType)(buttonEvent.GetButton()), timetaker)
 
-		case assignedOrder := <-assignedOrderCh:
-			NewOrder(e, assignedOrder.GetFloor(), assignedOrder.GetOrderType(), timetaker)
-			fmt.Printf("Assigned order from master: %v \n", assignedOrder)
+			insertOrder(e, buttonEvent, timetaker)
+			onNewOrder(e, timetaker)
+			fmt.Printf("New cab order: floor %d, button %d\n", buttonEvent.GetFloor(), buttonEvent.GetOrderType())
+
+		case assignedHallOrders := <-localAssignedHallOrdersCh:
+
+			insertAllHallOrders(e, assignedHallOrders, timetaker)
+			onNewOrder(e, timetaker)
+
 		case floorArrival := <-floorCh:
 			onFloorArrival(e, floorArrival, timetaker)
 
 		case <-timerCh:
-			// Close door
 			OnDoorTimeout(e, timetaker)
 
 		case <-motorStopCh:
-			//Maybe make it receive a struct (MotorStopEvent, idk)
 
-			//Inform other elevators
-			//Clear queue
-			//Try to reach new floor if between floors
-			fmt.Print("Is motor stopped")
+			e.SetBehaviour(elevator.MotorStop)
+			e.UpdateMyBackup()
 
+			if e.GetIsMaster() {
+				updateWorldViewCh <- *e.GetMyBackup()
+			}
+
+		case obstruction := <-obstructionCh:
+
+			e.SetIsObstructed(obstruction)
+			if obstruction {
+				e.SetDirection(elevator.Stop)
+			}
+			e.UpdateMyBackup()
+
+			if e.GetIsMaster() {
+				updateWorldViewCh <- *e.GetMyBackup()
+			}
 		}
 
 	}
@@ -52,24 +62,42 @@ func Fsm(e *elevator.Elevator, timetaker *timer.Timer, cabButtonCh <-chan events
 }
 
 func onFloorArrival(e *elevator.Elevator, floor int, _timer *timer.Timer) {
-	// Clear floor from queue
-	// Tell network
-	// Stop motor
 
 	e.SetFloor(floor)
 	elevator.FloorIndicator(floor)
 
 	switch e.GetBehaviour() {
+	case elevator.MotorStop:
+
+		if !anyRequests(*e) {
+			e.SetBehaviour(elevator.Idle)
+			elevator.MotorDirection(elevator.Stop)
+
+		} else if ShouldStop(*e) {
+			elevator.MotorDirection(elevator.Stop)
+			elevator.DoorOpenLight(true)
+			*e = ClearAtCurrentFloor(*e)
+			_timer.Start(e.GetDoorOpenDuration())
+			e.SetBehaviour(elevator.DoorOpen)
+			setAllLights(*e)
+
+		} else {
+			e.SetBehaviour(elevator.Moving)
+		}
+
+		e.UpdateMyBackup()
+
 	case elevator.Moving:
 		if ShouldStop(*e) {
 			elevator.MotorDirection(elevator.Stop)
 			elevator.DoorOpenLight(true)
 			*e = ClearAtCurrentFloor(*e)
 			_timer.Start(e.GetDoorOpenDuration())
-			setAllLights(*e)
 			e.SetBehaviour(elevator.DoorOpen)
-		}
+			e.UpdateMyBackup()
+			setAllLights(*e)
 
+		}
 	default:
 		break
 	}
@@ -96,12 +124,14 @@ func OnDoorTimeout(e *elevator.Elevator, _timer *timer.Timer) {
 		case elevator.DoorOpen:
 			_timer.Start(e.GetDoorOpenDuration())
 			*e = ClearAtCurrentFloor(*e)
+			e.UpdateMyBackup()
 			setAllLights(*e)
 		case elevator.Moving:
 			fallthrough
 		case elevator.Idle:
 			elevator.DoorOpenLight(false)
 			elevator.MotorDirection(e.GetDirection())
+			e.UpdateMyBackup()
 		}
 
 	default:
@@ -109,21 +139,37 @@ func OnDoorTimeout(e *elevator.Elevator, _timer *timer.Timer) {
 	}
 }
 
-func NewOrder(e *elevator.Elevator, floor int, order_type orders.OrderType, _timer *timer.Timer) {
+func insertAllHallOrders(e *elevator.Elevator, hallOrders [config.N_FLOORS][config.N_BUTTONS - 1]bool, timer *timer.Timer) {
+	for floor := 0; floor < config.N_FLOORS; floor++ {
+		for btn := 0; btn < config.N_BUTTONS-1; btn++ {
+			if hallOrders[floor][btn] {
+				insertOrder(e, orders.New(floor, orders.OrderType(btn)), timer)
+			} else {
+				e.SetRequest(floor, (driver.ButtonType)(btn), false)
+			}
+		}
+	}
+}
 
+func insertOrder(e *elevator.Elevator, order orders.Order, timer *timer.Timer) {
 	switch e.GetBehaviour() {
 	case elevator.DoorOpen:
-		if ShouldClearImmediately(*e, floor, order_type) {
-			_timer.Start(e.GetDoorOpenDuration())
+		if ShouldClearImmediately(*e, order.GetFloor(), order.GetOrderType()) {
+			fmt.Printf("Clearing order immediately: floor %d, button %d\n", order.GetFloor(), order.GetOrderType())
+			timer.Start(e.GetDoorOpenDuration())
 		} else {
-			e.SetRequest(floor, (driver.ButtonType)(order_type), true)
+			e.SetRequest(order.GetFloor(), (driver.ButtonType)(order.GetOrderType()), true)
 		}
+	default:
+		e.SetRequest(order.GetFloor(), (driver.ButtonType)(order.GetOrderType()), true)
+	}
+	e.UpdateMyBackup()
+	setAllLights(*e)
+}
 
-	case elevator.Moving:
-		e.SetRequest(floor, (driver.ButtonType)(order_type), true)
-
+func onNewOrder(e *elevator.Elevator, _timer *timer.Timer) {
+	switch e.GetBehaviour() {
 	case elevator.Idle:
-		e.SetRequest(floor, (driver.ButtonType)(order_type), true)
 		pair := ChooseDirection(*e)
 		e.SetDirection(pair.m_dirn)
 		e.SetBehaviour(pair.m_behaviour)
@@ -139,10 +185,13 @@ func NewOrder(e *elevator.Elevator, floor int, order_type orders.OrderType, _tim
 
 		case elevator.Idle:
 			break
-
 		}
 
+	default:
+		break
 	}
 
+	e.UpdateMyBackup()
 	setAllLights(*e)
+
 }

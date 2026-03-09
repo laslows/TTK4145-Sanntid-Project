@@ -1,33 +1,62 @@
 package initialize
 
 import (
+	"Sanntid/src/config"
 	"Sanntid/src/driver"
 	"Sanntid/src/elevator"
+	"Sanntid/src/network"
 	"fmt"
 )
 
-func Initialize(elev *elevator.Elevator) {
-	//opprette kontakt, finne ut hva slags rolle du har
-	//(hvis det allerede er en master i nettverket, blir du slave.
-	// Hvis du er den eneste heisen i nettverket blir du master,
-	// hvis to mastere merges sammen,
-	// eller hvis det ikke finnes en master i nettverket,
-	// brukes en enkel regel
-	// (f.eks. lavest IP-adresse eller heis-ID)
-	// for å bestemme hvem av de som skal være master,
-	// og hvem som skal være slave.
+func Initialize(e *elevator.Elevator) {
 
-	for elevator.FloorSensor() == -1 {
-		onInitBetweenFloors(elev)
+	clearAllLights()
+	elevator.DoorOpenLight(false)
+
+	fmt.Println("Initialiser heisen")
+	fmt.Printf("Initial floor: %d\n", e.GetFloor())
+
+	network.SendInitializationMessage(e.GetID())
+	worldView, gotWorldView := network.TryListenForWorldView()
+
+	if gotWorldView {
+
+		for _, b := range worldView {
+			if b != nil && b.GetID() == e.GetID() {
+				e.RestoreElevatorState(b)
+			} else if b != nil {
+				e.UpdateWorldView(b)
+			}
+		}
+
 	}
 
-	//Maybe listen for lost cab orders
+	fmt.Println("Direction is: ", e.GetDirection())
+	initOnFloor(e)
 
-	fmt.Print("Initialiser heisen")
+	e.TryUpdateIsMaster()
+	e.UpdateMyBackup()
+
 }
 
-func onInitBetweenFloors(e *elevator.Elevator) {
-	driver.SetMotorDirection(driver.MD_DOWN)
-	e.SetDirection(elevator.Down)
-	e.SetBehaviour(elevator.Moving)
+func initOnFloor(e *elevator.Elevator) {
+
+	for elevator.FloorSensor() == -1 {
+		driver.SetMotorDirection((driver.MotorDirection)(e.GetDirection()))
+		e.SetBehaviour(elevator.Moving)
+	}
+
+	driver.SetMotorDirection(driver.MD_Stop)
+	e.SetBehaviour(elevator.Idle)
+	e.SetDirection(elevator.Stop)
+	e.SetFloor(elevator.FloorSensor())
+
+}
+
+func clearAllLights() {
+	for floor := 0; floor < config.N_FLOORS; floor++ {
+		for btn := 0; btn < config.N_BUTTONS; btn++ {
+			elevator.RequestButtonLight(floor, (driver.ButtonType)(btn), false)
+		}
+	}
 }

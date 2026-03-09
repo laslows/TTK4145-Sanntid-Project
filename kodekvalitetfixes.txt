@@ -1,0 +1,6 @@
+- fjerne ubrukte getters og setters
+- endre til liten forbokstav på funksjoner som ikke eksporteres
+- Fjerne jsonstructene? (Spør studass)
+- endre inparametre til _ (vær konsekvent, i det minste)
+- flytte på funksjoner som burde flyttes
+

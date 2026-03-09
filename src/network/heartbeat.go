@@ -9,10 +9,11 @@ import (
 )
 
 const HEARTBEAT_PORT = "15555"
-const HEARTBEAT_RATE = 500 * time.Millisecond
 const HEARTBEAT_ADDR = "224.0.0.1:15555"
+const HEARTBEAT_RATE = 15 * time.Millisecond
+const HEARTBEAT_TIMEOUT = 500 * time.Millisecond
 
-func ListenForHeartbeats(elev *elevator.Elevator, changeMasterSlaveCh chan<- bool) {
+func ListenForHeartbeats(elev *elevator.Elevator, updateWorldViewCh chan<- elevator.Backup, peerLostCh chan<- int) {
 	//heartbeatAddrReceiver, err := net.ResolveUDPAddr("udp", ":" + HEARTBEAT_PORT)
 	heartbeatAddrReceiver, err := net.ResolveUDPAddr("udp4", HEARTBEAT_ADDR)
 
@@ -33,45 +34,33 @@ func ListenForHeartbeats(elev *elevator.Elevator, changeMasterSlaveCh chan<- boo
 	//Buffer to read incoming heartbeats into
 	buffer := make([]byte, 1024)
 
+	lastSeen := make(map[int]time.Time)
+
 	for {
-		//n is number of bytes received, remoteAddr is the address of the sender, err is error :(
+		conn.SetReadDeadline(time.Now().Add(HEARTBEAT_TIMEOUT))
 		n, _, err := conn.ReadFromUDP(buffer)
 
-		if err != nil {
-			fmt.Println("Error reading heartbeat:", err)
-			//Jump to next iteration of for
-			continue
-		}
+		if err == nil {
+			var heartBeat elevator.Backup
 
-		var heartBeat elevator.Backup
+			json.Unmarshal(buffer[:n], &heartBeat)
 
-		err = json.Unmarshal(buffer[:n], &heartBeat)
+			lastSeen[heartBeat.GetID()] = time.Now()
 
-		if err != nil {
-			fmt.Println("Error unmarshaling heartbeat:", err)
-			continue
-		}
+			if elev.TryUpdateWorldView(&heartBeat) {
+				updateWorldViewCh <- heartBeat
 
-		if elev.TryUpdateWorldView(&heartBeat) {
-			elev.UpdateWorldView(&heartBeat) //Could also be called from TryUpdateWorldView
-
-			if elev.TryUpdateIsMaster() {
-				//THis is true both if we switched from master to slave, and the other
-				changeMasterSlaveCh <- elev.GetIsMaster()
+				// Problem: how do the masters decide what backup to throw away (??)
 			}
-
-			fmt.Printf("Updated worldview with heartbeat from %s received to %s\n", heartBeat.GetPort(), elev.GetPort())
-
-			// Problem: how do the masters decide what backup to throw away (??)
 		}
 
-		// Hvis vi mottar heartbeat fra noen med lavere port og de er master
-		// blir vi slave
+		for peer, timestamp := range lastSeen {
+			if time.Now().Sub(timestamp) > HEARTBEAT_TIMEOUT {
+				delete(lastSeen, peer)
+				peerLostCh <- peer
+			}
+		}
 
-		//Do stuff with heartbeat now
-		//Reset heartbeat-timer
-
-		//fmt.Printf("Heartbeat from %s received to %s\n", heartBeat.GetPort(), elev.GetPort())
 	}
 }
 
@@ -96,7 +85,7 @@ func BroadcastHeartbeat(e *elevator.Elevator) {
 
 	for range ticker.C {
 
-		heartbeatPacket, err := json.Marshal(e.GetBackup())
+		heartbeatPacket, err := json.Marshal(e.GetMyBackup())
 		if err != nil {
 			fmt.Println("Error marshaling heartbeat:", err)
 			continue
@@ -109,11 +98,4 @@ func BroadcastHeartbeat(e *elevator.Elevator) {
 			continue
 		}
 	}
-}
-
-func heartbeatMonitor() {
-
-	//Make list/dictionary with len(N_elevators) of timers. Reset timer every time worldview is changed
-	//Update timer from heartbeatListener. Make channels for this
-
 }

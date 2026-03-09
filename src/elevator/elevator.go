@@ -13,6 +13,8 @@ import (
 //Should tidy up this file a lot. Maybe separate the get/set-functions, the driver functions and
 // the smart functions
 
+//TODO: differ between backup and b with better namings..
+
 type Direction int
 
 const (
@@ -40,13 +42,13 @@ const (
 
 type Elevator struct {
 	//Can maybe remove IP
-	m_IP        string
-	m_port      string
+	m_ID        int
 	m_floor     int
 	m_direction Direction
 	m_requests  [config.N_FLOORS][config.N_BUTTONS]bool
 	m_behaviour ElevatorBehaviour
 	m_isMaster  bool
+	m_isObstructed bool
 	m_myBackup  *Backup
 
 	m_worldView [config.N_ELEVATORS]*Backup
@@ -59,12 +61,11 @@ type Elevator struct {
 // Constructor
 func New(port string) *Elevator {
 	e := &Elevator{
-		m_IP:        getLocalIP(),
-		m_port:      port,
 		m_floor:     -1,
-		m_direction: Stop,
+		m_direction: Down,
 		m_behaviour: Idle,
 		m_isMaster:  true,
+		m_isObstructed: false,
 
 		m_worldView: [config.N_ELEVATORS]*Backup{},
 
@@ -75,13 +76,17 @@ func New(port string) *Elevator {
 		},
 	}
 
+	e.m_ID = getIDAsInt(getLocalIP(), port)
+
 	e.m_myBackup = &Backup{
-		m_IP:        e.m_IP,
-		m_port:      e.m_port,
-		m_floor:     e.m_floor,
-		m_direction: e.m_direction,
-		m_isMaster:  e.m_isMaster,
-		m_version:   0,
+		m_ID:                 e.m_ID,
+		m_floor:              e.m_floor,
+		m_direction:          e.m_direction,
+		m_isMaster:           e.m_isMaster,
+		m_version:            0,
+		m_behaviour:          Idle,
+		m_connectedToNetwork: true,
+		m_isObstructed:       false,
 	}
 
 	e.UpdateWorldView(e.m_myBackup)
@@ -110,7 +115,7 @@ func (e *Elevator) GetGlobalLights() [config.N_FLOORS][config.N_BUTTONS]bool {
 // Should maybe use a message id instead, to check if we have already received the message
 func (e *Elevator) UpdateWorldView(backup *Backup) {
 	for i, b := range e.m_worldView {
-		if b == nil || (b.m_IP == backup.m_IP && b.m_port == backup.m_port) {
+		if b == nil || (b.m_ID == backup.m_ID) {
 			e.m_worldView[i] = backup
 			return
 		}
@@ -118,52 +123,64 @@ func (e *Elevator) UpdateWorldView(backup *Backup) {
 }
 
 func (e *Elevator) TryUpdateWorldView(backup *Backup) bool {
-	// Update if new elevator, or if the incoming backup is newer.
+	// Update if new elevator, or if the incoming backup is newer, or if backup has reconnected.
 
 	for _, b := range e.m_worldView {
-		if b != nil && b.m_IP == backup.m_IP && b.m_port == backup.m_port {
-			return backup.m_version > b.m_version
+		if b != nil && b.m_ID == backup.m_ID {
+			return backup.m_version > b.m_version || !b.m_connectedToNetwork
 		}
 	}
 	return true
 }
 
-func getIPandPortAsInt(ip, port string) int {
+func getIDAsInt(ip, osID string) int {
 	ipString := strings.ReplaceAll(ip, ".", "")
-	ipPort := ipString + port
-	ipInt, err := strconv.Atoi(ipPort)
+	iDString := ipString + osID
+	idInt, err := strconv.Atoi(iDString)
 
 	if err != nil {
+		fmt.Println(iDString)
 		panic(fmt.Sprintf("Failed to convert IP to int: %v", err))
 	}
 
-	return ipInt
+	return idInt
+}
+
+
+func (e *Elevator) ShouldRedistributeOrders(backup *Backup) bool {
+	//SHould redistribute if new backup changes obstruction status, or if we lose connection or if we gain connection, or if we change motorstopstatus
+    for _, b := range e.m_worldView {
+		if b != nil && b.m_ID == backup.m_ID {
+			return (b.m_isObstructed != backup.m_isObstructed || b.GetHasMotorstop() != backup.GetHasMotorstop())
+		}
+	}
+	return false
 }
 
 func (e *Elevator) TryUpdateIsMaster() bool {
 	//If we are master and should be slave, or if we are slave and should be master,
 	// update isMaster and return true. Else return false
-	if (e.m_isMaster && !CheckIsMaster(*e)) || (!e.m_isMaster && CheckIsMaster(*e)) {
-		e.m_isMaster = CheckIsMaster(*e)
+	if (e.m_isMaster && !checkIsMaster(*e)) || (!e.m_isMaster && checkIsMaster(*e)) {
+		e.m_isMaster = checkIsMaster(*e)
 		return true
 	}
+
 	return false
 
 }
 
-func CheckIsMaster(e Elevator) bool {
-	myId := getIPandPortAsInt(e.m_IP, e.m_port)
+func checkIsMaster(e Elevator) bool {
 	master := true
 
 	for _, b := range e.m_worldView {
-		if b != nil {
-			master = master && (myId >= getIPandPortAsInt(b.m_IP, b.m_port))
+		if b != nil && b.m_connectedToNetwork {
+			master = master && (e.GetID() >= b.GetID())
 		}
 	}
 
 	//Remove this lol
 	if master {
-		fmt.Printf("I am master!")
+		fmt.Println("I am master!")
 	}
 
 	return master
@@ -181,15 +198,83 @@ func getLocalIP() string {
 	return localAddress.IP.String()
 }
 
-func (e *Elevator) GetBackup() *Backup {
+func (e *Elevator) GetMyBackup() *Backup {
 	//Would maybe be easier to store a pointer to own backup in elevator struct, and update it every time we update the worldview
 
 	for _, b := range e.m_worldView {
-		if b != nil && b.m_IP == e.m_IP && b.m_port == e.m_port {
+		if b != nil && b.m_ID == e.m_ID {
 			return b
 		}
 	}
 	return nil
+}
+
+func (e *Elevator) GetBackup(peerID int) *Backup {
+	for _, b := range e.m_worldView {
+		if b != nil && b.m_ID == peerID {
+			return b
+		}
+	}
+	return nil
+}
+
+func (e *Elevator) GetMasterID() int {
+	for _, b := range e.m_worldView {
+		if b != nil && b.m_isMaster {
+			return b.GetID()
+		}
+	}
+
+	fmt.Println("No master found in worldview")
+	return -1
+}
+
+func (e *Elevator) GainedConnectionToPrevDisconnectedPeer(peerID int) bool {
+	for _, b := range e.m_worldView {
+		if b != nil && b.m_ID == peerID {
+			return !b.m_connectedToNetwork
+		}
+	}
+	return false
+}
+
+func (e *Elevator) LoseConnectionToPeer(peerID int) {
+	for i, b := range e.m_worldView {
+		if b != nil && b.m_ID == peerID {
+			e.m_worldView[i].m_connectedToNetwork = false
+			return
+		}
+	}
+}
+
+func (e *Elevator) RestoreElevatorState(b *Backup) {
+
+	e.m_requests = b.m_requests
+	e.m_floor = b.m_floor
+	e.m_direction = b.m_direction
+
+	e.restoreMyBackup(b)
+
+}
+
+func (e *Elevator) ClearDisconnectedNodeQueue(){
+	for _, b := range e.m_worldView {
+		if b != nil && !b.m_connectedToNetwork {
+			for f := 0; f < config.N_FLOORS; f++ {
+				for btn := 0; btn < config.N_BUTTONS-1; btn++ {
+					b.m_requests[f][btn] = false
+				}
+			}
+		}
+	}
+}
+
+func (e *Elevator) SetIsObstructed(isObstructed bool) {
+	e.m_isObstructed = isObstructed
+}
+
+func (e *Elevator) GetWorldView() [config.N_ELEVATORS]*Backup {
+	return e.m_worldView
 }
 
 func (e *Elevator) GetFloor() int {
@@ -249,12 +334,8 @@ func (e *Elevator) SetIsMaster(isMaster bool) {
 	e.m_isMaster = isMaster
 }
 
-func (e *Elevator) GetIP() string {
-	return e.m_IP
-}
-
-func (e *Elevator) GetPort() string {
-	return e.m_port
+func (e *Elevator) GetID() int {
+	return e.m_ID
 }
 
 func FloorSensor() int {
@@ -291,4 +372,32 @@ func StopLight(on bool) {
 
 func MotorDirection(dir Direction) {
 	driver.SetMotorDirection(driver.MotorDirection(dir))
+}
+
+func DirectionToString(dir Direction) string {
+	switch dir {
+	case Down:
+		return "down"
+	case Up:
+		return "up"
+	case Stop:
+		return "stop"
+	default:
+		return ""
+	}
+}
+
+func BehaviourToString(behaviour ElevatorBehaviour) string {
+	switch behaviour {
+	case Idle:
+		return "idle"
+	case DoorOpen:
+		return "doorOpen"
+	case Moving:
+		return "moving"
+	case MotorStop:
+		return "motorStop"
+	default:
+		return ""
+	}
 }
