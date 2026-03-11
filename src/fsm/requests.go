@@ -7,7 +7,7 @@ import (
 	"Sanntid/src/orders"
 )
 
-//TODO: not pass whole elevator struct? 
+//TODO: not pass whole elevator struct?
 
 type DirnBehaviourPair struct {
 	m_dirn      elevator.Direction
@@ -81,6 +81,10 @@ func ClearAtCurrentFloor(e elevator.Elevator) elevator.Elevator {
 }
 
 func ShouldStop(e elevator.Elevator) bool {
+	if e.GetFloor() == 0 || e.GetFloor() == config.N_FLOORS-1 {
+		return true
+	}
+
 	switch e.GetDirection() {
 	case elevator.Down:
 		return (e.GetRequestAtFloor(e.GetFloor(), driver.BT_HallDown) ||
