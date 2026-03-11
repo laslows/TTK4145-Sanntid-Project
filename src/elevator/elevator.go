@@ -94,6 +94,11 @@ func New(port string) *Elevator {
 	return e
 }
 
+// GetGlobalLights returns a matrix of all requests seen by every elevator
+// in the system.  it is used only for debugging/diagnostic purposes; the
+// actual driver lamps should be driven from the local assignment table
+// (see GetLocalLights).  previously setAllLights used this function, which
+// caused every active hall order to light up on every car.
 func (e *Elevator) GetGlobalLights() [config.N_FLOORS][config.N_BUTTONS]bool {
 	lights := e.m_requests
 
@@ -109,6 +114,12 @@ func (e *Elevator) GetGlobalLights() [config.N_FLOORS][config.N_BUTTONS]bool {
 	}
 
 	return lights
+}
+
+// GetLocalLights returns the request table that this elevator will act on.
+// these are the orders that should be reflected on the physical lamps.
+func (e *Elevator) GetLocalLights() [config.N_FLOORS][config.N_BUTTONS]bool {
+	return e.m_requests
 }
 
 // Maybe this is all we need, and we dont need a function that cheks if new backup == old backup

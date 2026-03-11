@@ -105,12 +105,17 @@ func onFloorArrival(e *elevator.Elevator, floor int, _timer *timer.Timer) {
 	e.UpdateMyBackup()
 }
 
+// setAllLights updates the hardware lamps to reflect only the orders
+// that this elevator is responsible for.  the previous implementation OR‑ed
+// every elevator's request table (via GetGlobalLights), which meant all
+// hall lamps were lit on every car.  now we simply mirror the local request
+// matrix.
 func setAllLights(e elevator.Elevator) {
-	globalLights := e.GetGlobalLights()
+	localLights := e.GetRequests()
 
 	for floor := 0; floor < config.N_FLOORS; floor++ {
 		for btn := 0; btn < config.N_BUTTONS; btn++ {
-			elevator.RequestButtonLight(floor, (driver.ButtonType)(btn), globalLights[floor][btn])
+			elevator.RequestButtonLight(floor, (driver.ButtonType)(btn), localLights[floor][btn])
 		}
 	}
 }
