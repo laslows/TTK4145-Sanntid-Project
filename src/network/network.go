@@ -111,12 +111,10 @@ func SendHallOrder(order orders.Order, senderID, receiverId int) {
 		return
 	}
 
-	fmt.Println("Sending hall order: ", order, " from ", senderID, " to ", receiverId)
-
 	hallOrderMessage.m_payload = payload
 	hallOrderMessage.m_messageID = generateMessageID(hallOrderMessage)
 
-	fmt.Println("Sending hall order: ", order, " from ", senderID, " to ", receiverId)
+	fmt.Println("Sending hall order: ", order, " from ", senderID, " to ", receiverId, "message ID is: ", hallOrderMessage.m_messageID)
 
 	go BroadcastMessage(hallOrderMessage, nil)
 }
@@ -255,11 +253,7 @@ func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
 			continue
 		}
 
-		if cache.contains(message.m_messageID) {
-			continue
-		}
 
-		cache.add(message.m_messageID)
 
 		if message.m_messageType == Acknowledgement {
 			ch, exists := pendingAcks[message.m_messageID]
@@ -276,6 +270,14 @@ func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
 		//If not, send act and do code under
 
 		//Come here if ID == my ID or if receiverID is 0
+
+		if cache.contains(message.m_messageID) {
+			fmt.Println("Message already in cache: ", message.m_messageID)
+			continue
+		}
+
+		cache.add(message.m_messageID)
+		fmt.Println("New message, yaya")
 
 		switch message.m_messageType {
 		case HallOrderRequest:
@@ -378,6 +380,7 @@ func (m *Message) MarshalJSON() ([]byte, error) {
 		MessageType int
 		ReceiverID  int
 		SenderID    int
+		MessageID   uint64
 		Payload     json.RawMessage
 	}
 
@@ -385,6 +388,7 @@ func (m *Message) MarshalJSON() ([]byte, error) {
 		MessageType: int(m.m_messageType),
 		ReceiverID:  m.m_receiverID,
 		SenderID:    m.m_senderID,
+		MessageID:   m.m_messageID,
 		Payload:     m.m_payload,
 	})
 }
@@ -394,6 +398,7 @@ func (message *Message) UnmarshalJSON(data []byte) error {
 		MessageType int
 		ReceiverID  int
 		SenderID    int
+		MessageID   uint64
 		Payload     json.RawMessage
 	}
 
@@ -406,6 +411,7 @@ func (message *Message) UnmarshalJSON(data []byte) error {
 	message.m_messageType = messageType(messageJSON.MessageType)
 	message.m_receiverID = messageJSON.ReceiverID
 	message.m_senderID = messageJSON.SenderID
+	message.m_messageID = messageJSON.MessageID
 	message.m_payload = messageJSON.Payload
 
 	return nil
