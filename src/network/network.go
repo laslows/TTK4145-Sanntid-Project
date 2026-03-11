@@ -4,10 +4,10 @@ import (
 	"Sanntid/src/config"
 	"Sanntid/src/elevator"
 	"Sanntid/src/orders"
-	"hash/fnv"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"hash/fnv"
 	"net"
 	"time"
 )
@@ -33,8 +33,6 @@ type messageType int
 const (
 	HallOrderRequest messageType = iota
 	HallOrderRedistribution
-	//MotorStop
-	//OrderRedistribution
 	Initialization
 	WorldView
 	Acknowledgement
@@ -75,7 +73,6 @@ func BroadcastMessage(message Message, newHallOrderDistributionCh <-chan uint64)
 	}
 
 	ackCh := make(chan bool)
-
 	pendingAcks[message.m_messageID] = ackCh
 
 	ticker := time.NewTicker(ACKNOWLEDGEMENT_TIMEOUT)
@@ -168,7 +165,7 @@ func SendWorldView(worldView [config.N_ELEVATORS]*elevator.Backup, senderID, rec
 
 func SendInitializationMessage(senderID int) {
 	initializationMessage := Message{
-		m_messageType: Initialization,
+		m_messageType: Initialization, // Make not exported??
 		m_senderID:    senderID,
 		m_receiverID:  0, //Send to master
 	}
@@ -257,6 +254,12 @@ func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
 		if !(message.m_receiverID == e.GetID() || message.m_receiverID == 0) {
 			continue
 		}
+
+		if cache.contains(message.m_messageID) {
+			continue
+		}
+
+		cache.add(message.m_messageID)
 
 		if message.m_messageType == Acknowledgement {
 			ch, exists := pendingAcks[message.m_messageID]

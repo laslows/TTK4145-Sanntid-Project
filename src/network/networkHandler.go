@@ -21,5 +21,14 @@ func (cache *fifoCache) add(messageID uint64) {
 	cache.queue = append(cache.queue, messageID)
 }
 
+func (cache *fifoCache) contains(messageID uint64) bool {
+	for _, id := range cache.queue {
+		if id == messageID {
+			return true
+		}
+	}
+	return false
+}
+
 
 
