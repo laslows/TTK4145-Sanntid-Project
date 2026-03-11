@@ -72,7 +72,7 @@ func New(port string) *Elevator {
 		m_Config: struct {
 			m_doorOpenDuration time.Duration
 		}{
-			m_doorOpenDuration: 3 * time.Second,
+			m_doorOpenDuration: time.Duration(config.DOOR_OPEN_DURATION) * time.Second,
 		},
 	}
 
