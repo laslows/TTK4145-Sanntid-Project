@@ -26,6 +26,7 @@ const ACKNOWLEDGEMENT_TIMEOUT = 10 * time.Millisecond //TODO:better name
 
 var pendingAcks = make(map[uint64]chan bool)
 var cache = newFifoCache()
+var newHallOrderDistributionCh = make(chan uint64)
 
 type messageType int
 
@@ -46,13 +47,9 @@ type Message struct {
 	m_messageID   uint64
 }
 
-func BroadcastMessage(message Message, newHallOrderDistributionCh <-chan uint64) {
+func BroadcastMessage(message Message) {
 	//Send message to multicast address
 	messageAddrSender, err := net.ResolveUDPAddr("udp4", MESSAGE_ADDR)
-
-	//if id = myId break
-	// must check is even value on channel, and that we are in correct case
-	messageID := message.m_messageID
 
 	if err != nil {
 		fmt.Println("Error resolving multicast address:", err)
@@ -80,7 +77,7 @@ func BroadcastMessage(message Message, newHallOrderDistributionCh <-chan uint64)
 
 	for range ticker.C {
 		_, err = conn.Write(messageBytes)
-		fmt.Println("Broadcasting message: ", message.m_messageID)
+		fmt.Println("Broadcasting message: ", message.m_messageID, message.m_messageType)
 		if err != nil {
 			fmt.Println("Error writing to UDP connection:", err)
 			continue
@@ -89,11 +86,15 @@ func BroadcastMessage(message Message, newHallOrderDistributionCh <-chan uint64)
 		case <-ackCh:
 			delete(pendingAcks, message.m_messageID)
 			return
-		case newID := <-newHallOrderDistributionCh:
-			if messageID != newID {
+		default:
+		
+		/*case newID := <-newHallOrderDistributionCh:
+			if message.m_messageID != newID {
 				delete(pendingAcks, message.m_messageID)
+				fmt.Println("Break")
 				return
 			}
+			fmt.Println("Don't break")*/
 		}
 	}
 }
@@ -116,7 +117,7 @@ func SendHallOrder(order orders.Order, senderID, receiverId int) {
 
 	fmt.Println("Sending hall order: ", order, " from ", senderID, " to ", receiverId, "message ID is: ", hallOrderMessage.m_messageID)
 
-	go BroadcastMessage(hallOrderMessage, nil)
+	go BroadcastMessage(hallOrderMessage)
 }
 
 // Inputs a map with elevator id as key and assigned order as value. Should be called by master after running the hall request assignment algorithm
@@ -132,14 +133,15 @@ func SendHallOrderRedistribution(orderList [config.N_FLOORS][config.N_BUTTONS - 
 		//Handle error
 		return
 	}
-	messageIdChannel := make(chan uint64)
 	//Terminate old broadcasting
 
 	hallOrderRedistributionMessage.m_payload = payload
 	hallOrderRedistributionMessage.m_messageID = generateMessageID(hallOrderRedistributionMessage)
 
-	go BroadcastMessage(hallOrderRedistributionMessage, messageIdChannel)
-	messageIdChannel <- hallOrderRedistributionMessage.m_messageID
+	fmt.Println("sending to",receiverID)
+
+	go BroadcastMessage(hallOrderRedistributionMessage)
+	newHallOrderDistributionCh <- hallOrderRedistributionMessage.m_messageID
 }
 
 func SendWorldView(worldView [config.N_ELEVATORS]*elevator.Backup, senderID, receiverId int) {
@@ -158,7 +160,7 @@ func SendWorldView(worldView [config.N_ELEVATORS]*elevator.Backup, senderID, rec
 	worldViewMessage.m_payload = payload
 	worldViewMessage.m_messageID = generateMessageID(worldViewMessage)
 
-	go BroadcastMessage(worldViewMessage, nil)
+	go BroadcastMessage(worldViewMessage)
 }
 
 func SendInitializationMessage(senderID int) {
@@ -170,7 +172,7 @@ func SendInitializationMessage(senderID int) {
 
 	initializationMessage.m_messageID = generateMessageID(initializationMessage)
 
-	go BroadcastMessage(initializationMessage, nil)
+	go BroadcastMessage(initializationMessage)
 }
 
 func SendAcknowledgement(messageID uint64, senderID, receiverID int) {
@@ -189,7 +191,32 @@ func SendAcknowledgement(messageID uint64, senderID, receiverID int) {
 
 	acknowledgementMessage.m_payload = payload
 
-	go BroadcastMessage(acknowledgementMessage, nil)
+	messageAddrSender, err := net.ResolveUDPAddr("udp4", MESSAGE_ADDR)
+	//TODO: can we please not use err everywhere? very annoying :(
+	if err != nil {
+		fmt.Println("Error resolving multicast address:", err)
+		return
+	}
+
+	conn, err := net.DialUDP("udp", nil, messageAddrSender)
+	if err != nil {
+		fmt.Println("Error creating UDP connection:", err)
+		return
+	}
+	defer conn.Close()
+
+	messageBytes, err := json.Marshal(&acknowledgementMessage)
+	if err != nil {
+		fmt.Println("Error marshaling message:", err)
+		return
+	}
+
+	_, err = conn.Write(messageBytes)
+	fmt.Println("Broadcasting message: ", acknowledgementMessage.m_messageID)
+	if err != nil {
+		fmt.Println("Error writing to UDP connection:", err)
+		return
+	}
 }
 
 func generateMessageID(message Message) uint64 {
@@ -252,8 +279,6 @@ func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
 		if !(message.m_receiverID == e.GetID() || message.m_receiverID == 0) {
 			continue
 		}
-
-
 
 		if message.m_messageType == Acknowledgement {
 			ch, exists := pendingAcks[message.m_messageID]
