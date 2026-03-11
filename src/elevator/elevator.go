@@ -13,6 +13,8 @@ import (
 //Should tidy up this file a lot. Maybe separate the get/set-functions, the driver functions and
 // the smart functions
 
+//TODO: differ between backup and b with better namings..
+
 type Direction int
 
 const (
@@ -60,7 +62,7 @@ type Elevator struct {
 func New(port string) *Elevator {
 	e := &Elevator{
 		m_floor:     -1,
-		m_direction: Stop,
+		m_direction: Down,
 		m_behaviour: Idle,
 		m_isMaster:  true,
 		m_isObstructed: false,
@@ -146,10 +148,10 @@ func getIDAsInt(ip, osID string) int {
 
 
 func (e *Elevator) ShouldRedistributeOrders(backup *Backup) bool {
-	//SHould redistribute if new backup changes obstruction status, or if we lose connection or if we gain connection
+	//SHould redistribute if new backup changes obstruction status, or if we lose connection or if we gain connection, or if we change motorstopstatus
     for _, b := range e.m_worldView {
 		if b != nil && b.m_ID == backup.m_ID {
-			return (b.m_isObstructed != backup.m_isObstructed)
+			return (b.m_isObstructed != backup.m_isObstructed || b.GetHasMotorstop() != backup.GetHasMotorstop())
 		}
 	}
 	return false
@@ -248,6 +250,8 @@ func (e *Elevator) LoseConnectionToPeer(peerID int) {
 func (e *Elevator) RestoreElevatorState(b *Backup) {
 
 	e.m_requests = b.m_requests
+	e.m_floor = b.m_floor
+	e.m_direction = b.m_direction
 
 	e.restoreMyBackup(b)
 

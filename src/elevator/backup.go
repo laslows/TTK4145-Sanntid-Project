@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 )
 
+//TODO: maybe delete backup?? A bit weird maybe to store basically all information about myself twice
+
 type Backup struct {
 	m_ID                 int
 	m_floor              int
@@ -131,6 +133,10 @@ func (b *Backup) GetRequests() [config.N_FLOORS][config.N_BUTTONS]bool {
 
 func (b *Backup) GetIsObstructed() bool {
 	return b.m_isObstructed
+}
+
+func (b *Backup) GetHasMotorstop() bool {
+	return b.m_behaviour == MotorStop
 }
 
 func (b *Backup) GetConnectedToNetwork() bool {

@@ -1,7 +1,6 @@
 package timer
 
 import (
-	//"fmt"
 	"time"
 )
 
@@ -10,25 +9,21 @@ type Timer struct {
 	m_timerActive bool
 }
 
-// Constructor
 func New() *Timer {
 	return &Timer{}
 }
 
 func (t *Timer) Start(duration time.Duration) {
-	//fmt.Println("Start timer")
 	t.m_endTime = time.Now().Add(duration)
 	t.m_timerActive = true
 }
 
 func (t *Timer) RequestReset(duration time.Duration) {
-	//fmt.Println("Reset timer")
 	t.m_endTime = time.Now().Add(duration)
 	t.m_timerActive = true
 }
 
 func (t *Timer) Stop() {
-	//fmt.Println("Stopped timer")
 	t.m_timerActive = false
 }
 
