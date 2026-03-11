@@ -79,13 +79,13 @@ func onFloorArrival(e *elevator.Elevator, floor int, _timer *timer.Timer) {
 			*e = ClearAtCurrentFloor(*e)
 			_timer.Start(e.GetDoorOpenDuration())
 			e.SetBehaviour(elevator.DoorOpen)
+			// update backup before refreshing lamps so worldview doesn't re-enable the cleared request
+			e.UpdateMyBackup()
 			setAllLights(*e)
 
 		} else {
 			e.SetBehaviour(elevator.Moving)
 		}
-
-		e.UpdateMyBackup()
 
 	case elevator.Moving:
 		if ShouldStop(*e) {
@@ -101,6 +101,8 @@ func onFloorArrival(e *elevator.Elevator, floor int, _timer *timer.Timer) {
 	default:
 		break
 	}
+	// keep backup in sync after handling arrival
+	e.UpdateMyBackup()
 }
 
 func setAllLights(e elevator.Elevator) {

@@ -7,7 +7,7 @@ import (
 	"Sanntid/src/orders"
 )
 
-//TODO: not pass whole elevator struct? 
+//TODO: not pass whole elevator struct?
 
 type DirnBehaviourPair struct {
 	m_dirn      elevator.Direction
@@ -57,26 +57,12 @@ func anyRequests(e elevator.Elevator) bool {
 }
 
 func ClearAtCurrentFloor(e elevator.Elevator) elevator.Elevator {
-
+	// when the door opens at the current floor, every order for that floor
+	// has been fulfilled regardless of travel direction.  clear all of them
+	// unconditionally so the button lamps go out immediately.
 	e.SetRequest(e.GetFloor(), driver.BT_Cab, false)
-
-	switch e.GetDirection() {
-	case elevator.Up:
-		if !requestsAbove(e) && !e.GetRequestAtFloor(e.GetFloor(), driver.BT_HallUp) {
-			e.SetRequest(e.GetFloor(), driver.BT_HallDown, false)
-		}
-		e.SetRequest(e.GetFloor(), driver.BT_HallUp, false)
-
-	case elevator.Down:
-		if !requestsBelow(e) && !e.GetRequestAtFloor(e.GetFloor(), driver.BT_HallDown) {
-			e.SetRequest(e.GetFloor(), driver.BT_HallUp, false)
-		}
-		e.SetRequest(e.GetFloor(), driver.BT_HallDown, false)
-
-	default:
-		e.SetRequest(e.GetFloor(), driver.BT_HallUp, false)
-		e.SetRequest(e.GetFloor(), driver.BT_HallDown, false)
-	}
+	e.SetRequest(e.GetFloor(), driver.BT_HallUp, false)
+	e.SetRequest(e.GetFloor(), driver.BT_HallDown, false)
 	return e
 }
 
