@@ -4,10 +4,11 @@ import (
 	"Sanntid/src/config"
 	"Sanntid/src/elevator"
 	"Sanntid/src/orders"
-	"encoding/binary"
+	//"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"hash/fnv"
+	//"hash/fnv"
+	"math/rand/v2"
 	"net"
 	"time"
 )
@@ -23,6 +24,8 @@ const INITIALIZATION_TIMEOUT = 1 * time.Second
 const ACKNOWLEDGEMENT_TIMEOUT = 10 * time.Millisecond //TODO:better name
 
 var pendingAcks = make(map[uint64]chan bool) //TODO:where should variable exist
+
+var cache = newFifoCache()
 
 type messageType int
 
@@ -70,6 +73,7 @@ func BroadcastMessage(message Message, newHallOrderDistributionCh <-chan uint64)
 		fmt.Println("Error marshaling message:", err)
 		return
 	}
+
 	ackCh := make(chan bool)
 
 	pendingAcks[message.m_messageID] = ackCh
@@ -79,15 +83,18 @@ func BroadcastMessage(message Message, newHallOrderDistributionCh <-chan uint64)
 
 	for range ticker.C {
 		_, err = conn.Write(messageBytes)
+		fmt.Print("Broadcasting message: ", message.m_messageID)
 		if err != nil {
 			fmt.Println("Error writing to UDP connection:", err)
 			continue
 		}
 		select {
 		case <-ackCh:
+			delete(pendingAcks, message.m_messageID)
 			return
 		case newID := <-newHallOrderDistributionCh:
 			if messageID != newID {
+				delete(pendingAcks, message.m_messageID)
 				return
 			}
 		}
@@ -106,9 +113,14 @@ func SendHallOrder(order orders.Order, senderID, receiverId int) {
 		//Handle error
 		return
 	}
+	
+	fmt.Println("Sending hall order: ", order, " from ", senderID, " to ", receiverId)
+
 
 	hallOrderMessage.m_payload = payload
 	hallOrderMessage.m_messageID = generateMessageID(hallOrderMessage)
+
+	fmt.Println("Sending hall order: ", order, " from ", senderID, " to ", receiverId)
 
 	go BroadcastMessage(hallOrderMessage, nil)
 }
@@ -187,7 +199,7 @@ func SendAcknowledgement(messageID uint64, senderID, receiverID int) {
 }
 
 func generateMessageID(message Message) uint64 {
-	timeStamp := uint32(time.Now().Unix())
+	/*timeStamp := uint32(time.Now().Unix())
 
 	data, err := json.Marshal(message)
 	if err != nil {
@@ -202,7 +214,9 @@ func generateMessageID(message Message) uint64 {
 	hash.Write(buffer)
 
 	return hash.Sum64()
-	
+	*/
+
+	return uint64(rand.Uint64())
 }
 
 func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
