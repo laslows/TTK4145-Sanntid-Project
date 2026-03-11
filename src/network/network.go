@@ -4,14 +4,15 @@ import (
 	"Sanntid/src/config"
 	"Sanntid/src/elevator"
 	"Sanntid/src/orders"
-	//"encoding/binary"
+	"hash/fnv"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	//"hash/fnv"
-	"math/rand/v2"
 	"net"
 	"time"
 )
+
+//TODO: mutex
 
 const MESSAGE_PORT = "16666"
 
@@ -23,8 +24,7 @@ const INITIALIZATION_TIMEOUT = 1 * time.Second
 
 const ACKNOWLEDGEMENT_TIMEOUT = 10 * time.Millisecond //TODO:better name
 
-var pendingAcks = make(map[uint64]chan bool) //TODO:where should variable exist
-
+var pendingAcks = make(map[uint64]chan bool)
 var cache = newFifoCache()
 
 type messageType int
@@ -83,7 +83,7 @@ func BroadcastMessage(message Message, newHallOrderDistributionCh <-chan uint64)
 
 	for range ticker.C {
 		_, err = conn.Write(messageBytes)
-		fmt.Print("Broadcasting message: ", message.m_messageID)
+		fmt.Println("Broadcasting message: ", message.m_messageID)
 		if err != nil {
 			fmt.Println("Error writing to UDP connection:", err)
 			continue
@@ -113,9 +113,8 @@ func SendHallOrder(order orders.Order, senderID, receiverId int) {
 		//Handle error
 		return
 	}
-	
-	fmt.Println("Sending hall order: ", order, " from ", senderID, " to ", receiverId)
 
+	fmt.Println("Sending hall order: ", order, " from ", senderID, " to ", receiverId)
 
 	hallOrderMessage.m_payload = payload
 	hallOrderMessage.m_messageID = generateMessageID(hallOrderMessage)
@@ -139,13 +138,13 @@ func SendHallOrderRedistribution(orderList [config.N_FLOORS][config.N_BUTTONS - 
 		return
 	}
 	messageIdChannel := make(chan uint64)
-	messageIdChannel <- hallOrderRedistributionMessage.m_messageID
 	//Terminate old broadcasting
 
 	hallOrderRedistributionMessage.m_payload = payload
 	hallOrderRedistributionMessage.m_messageID = generateMessageID(hallOrderRedistributionMessage)
 
 	go BroadcastMessage(hallOrderRedistributionMessage, messageIdChannel)
+	messageIdChannel <- hallOrderRedistributionMessage.m_messageID
 }
 
 func SendWorldView(worldView [config.N_ELEVATORS]*elevator.Backup, senderID, receiverId int) {
@@ -199,7 +198,7 @@ func SendAcknowledgement(messageID uint64, senderID, receiverID int) {
 }
 
 func generateMessageID(message Message) uint64 {
-	/*timeStamp := uint32(time.Now().Unix())
+	timeStamp := uint32(time.Now().Unix())
 
 	data, err := json.Marshal(message)
 	if err != nil {
@@ -214,9 +213,6 @@ func generateMessageID(message Message) uint64 {
 	hash.Write(buffer)
 
 	return hash.Sum64()
-	*/
-
-	return uint64(rand.Uint64())
 }
 
 func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
