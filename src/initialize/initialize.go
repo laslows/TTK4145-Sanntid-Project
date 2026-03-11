@@ -8,27 +8,15 @@ import (
 	"fmt"
 )
 
-//Move to elevator package ?
-
 func Initialize(e *elevator.Elevator) {
 
 	clearAllLights()
-
-	for elevator.FloorSensor() == -1 {
-		onInitBetweenFloors(e)
-	}
-
-	driver.SetMotorDirection(driver.MD_Stop)
-	e.SetBehaviour(elevator.Idle)
-	e.SetDirection(elevator.Stop)
-	e.SetFloor(elevator.FloorSensor())
+	elevator.DoorOpenLight(false)
 
 	fmt.Println("Initialiser heisen")
-
 	fmt.Printf("Initial floor: %d\n", e.GetFloor())
 
 	network.SendInitializationMessage(e.GetID())
-
 	worldView, gotWorldView := network.TryListenForWorldView()
 
 	if gotWorldView {
@@ -41,20 +29,28 @@ func Initialize(e *elevator.Elevator) {
 			}
 		}
 
-		fmt.Println(e.GetRequests())
-
-		//setAllLights(*e)
 	}
+
+	fmt.Println("Direction is: ", e.GetDirection())
+	initOnFloor(e)
 
 	e.TryUpdateIsMaster()
 	e.UpdateMyBackup()
 
 }
 
-func onInitBetweenFloors(e *elevator.Elevator) {
-	driver.SetMotorDirection(driver.MD_DOWN)
-	e.SetDirection(elevator.Down)
-	e.SetBehaviour(elevator.Moving)
+func initOnFloor(e *elevator.Elevator) {
+
+	for elevator.FloorSensor() == -1 {
+		driver.SetMotorDirection((driver.MotorDirection)(e.GetDirection()))
+		e.SetBehaviour(elevator.Moving)
+	}
+
+	driver.SetMotorDirection(driver.MD_Stop)
+	e.SetBehaviour(elevator.Idle)
+	e.SetDirection(elevator.Stop)
+	e.SetFloor(elevator.FloorSensor())
+
 }
 
 func clearAllLights() {

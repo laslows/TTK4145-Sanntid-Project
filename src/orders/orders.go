@@ -19,7 +19,6 @@ type Order struct {
 	m_orderType OrderType
 }
 
-// Continue on this
 func New(floor int, orderType OrderType) Order {
 	return Order{
 		m_floor:     floor,
@@ -35,7 +34,7 @@ func (o Order) GetOrderType() OrderType {
 	return o.m_orderType
 }
 
-func (o* Order) MarshalJSON() ([]byte, error) {
+func (o *Order) MarshalJSON() ([]byte, error) {
 	type OrderJSON struct {
 		Floor     int
 		OrderType int
