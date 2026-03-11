@@ -4,10 +4,11 @@ import (
 	"Sanntid/src/config"
 	"Sanntid/src/elevator"
 	"Sanntid/src/orders"
-	"encoding/binary"
+	//"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"hash/fnv"
+	//"hash/fnv"
+	"math/rand"
 	"net"
 	"time"
 )
@@ -24,13 +25,21 @@ const INITIALIZATION_TIMEOUT = 1 * time.Second
 
 const ACKNOWLEDGEMENT_TIMEOUT = 10 * time.Millisecond //TODO:better name
 
-var pendingAcks = make(map[uint64]chan bool)
+
 var cache = newFifoCache()
-var newHallOrderDistributionCh = make(chan uint64)
+var newerHallOrderDistributionCh = make(chan uint64)
+var receiverOfDistributionIDCh = make(chan int)
+
+
+// A bit weird that this is mutexed and not the other variables
+// TODO: Make new()
+var pendingAcks = SafePendingAcks{
+	m_pendingAcks: make(map[uint64]chan bool),
+}	
 
 type messageType int
 
-// Make not exported??
+// TODO: Make not exported??
 const (
 	HallOrderRequest messageType = iota
 	HallOrderRedistribution
@@ -70,31 +79,37 @@ func BroadcastMessage(message Message) {
 	}
 
 	ackCh := make(chan bool)
-	pendingAcks[message.m_messageID] = ackCh
+	pendingAcks.m_mutex.Lock()
+	pendingAcks.m_pendingAcks[message.m_messageID] = ackCh
+	pendingAcks.m_mutex.Unlock()
 
 	ticker := time.NewTicker(ACKNOWLEDGEMENT_TIMEOUT)
 	defer ticker.Stop()
 
 	for range ticker.C {
 		_, err = conn.Write(messageBytes)
-		fmt.Println("Broadcasting message: ", message.m_messageID, message.m_messageType)
+		fmt.Println("Broadcasting message: ", message.m_messageID, message.m_messageType, " to ", message.m_receiverID)
 		if err != nil {
 			fmt.Println("Error writing to UDP connection:", err)
 			continue
 		}
 		select {
 		case <-ackCh:
-			delete(pendingAcks, message.m_messageID)
+			pendingAcks.m_mutex.Lock()
+			delete(pendingAcks.m_pendingAcks, message.m_messageID)
+			pendingAcks.m_mutex.Unlock()
 			return
-		default:
-		
-		/*case newID := <-newHallOrderDistributionCh:
-			if message.m_messageID != newID {
-				delete(pendingAcks, message.m_messageID)
+
+		case newID := <-newerHallOrderDistributionCh:
+			newReceiverID := <-receiverOfDistributionIDCh
+			if message.m_messageID != newID && newReceiverID == message.m_receiverID {
+				pendingAcks.m_mutex.Lock()
+				delete(pendingAcks.m_pendingAcks, message.m_messageID)
+				pendingAcks.m_mutex.Unlock()
 				fmt.Println("Break")
 				return
 			}
-			fmt.Println("Don't break")*/
+			fmt.Println("Don't break")
 		}
 	}
 }
@@ -138,10 +153,12 @@ func SendHallOrderRedistribution(orderList [config.N_FLOORS][config.N_BUTTONS - 
 	hallOrderRedistributionMessage.m_payload = payload
 	hallOrderRedistributionMessage.m_messageID = generateMessageID(hallOrderRedistributionMessage)
 
-	fmt.Println("sending to",receiverID)
+	fmt.Println("sending to", receiverID)
 
 	go BroadcastMessage(hallOrderRedistributionMessage)
-	newHallOrderDistributionCh <- hallOrderRedistributionMessage.m_messageID
+	
+	newerHallOrderDistributionCh <- hallOrderRedistributionMessage.m_messageID
+	receiverOfDistributionIDCh <- receiverID
 }
 
 func SendWorldView(worldView [config.N_ELEVATORS]*elevator.Backup, senderID, receiverId int) {
@@ -212,7 +229,7 @@ func SendAcknowledgement(messageID uint64, senderID, receiverID int) {
 	}
 
 	_, err = conn.Write(messageBytes)
-	fmt.Println("Broadcasting message: ", acknowledgementMessage.m_messageID)
+	fmt.Println("Broadcasting ack: ", acknowledgementMessage.m_messageID)
 	if err != nil {
 		fmt.Println("Error writing to UDP connection:", err)
 		return
@@ -220,7 +237,7 @@ func SendAcknowledgement(messageID uint64, senderID, receiverID int) {
 }
 
 func generateMessageID(message Message) uint64 {
-	timeStamp := uint32(time.Now().Unix())
+	/*timeStamp := uint32(time.Now().Unix())
 
 	data, err := json.Marshal(message)
 	if err != nil {
@@ -234,7 +251,9 @@ func generateMessageID(message Message) uint64 {
 	hash.Write(data)
 	hash.Write(buffer)
 
-	return hash.Sum64()
+	return hash.Sum64()*/
+
+	return rand.Uint64()
 }
 
 func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
@@ -276,28 +295,30 @@ func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
 			continue
 		}
 
-		if !(message.m_receiverID == e.GetID() || message.m_receiverID == 0) {
+		if !(message.m_receiverID == e.GetID() || 
+		(message.m_receiverID == 0 && message.m_senderID != e.GetID())) {
 			continue
 		}
 
 		if message.m_messageType == Acknowledgement {
-			ch, exists := pendingAcks[message.m_messageID]
+			fmt.Println("received ack", message.m_messageID)
+			pendingAcks.m_mutex.Lock()
+			ch, exists := pendingAcks.m_pendingAcks[message.m_messageID]
+			pendingAcks.m_mutex.Unlock()
 
 			if exists {
-				ch <- true
+				select {
+				case ch <- true:
+				default:
+				}
 			}
 
 			continue
 		}
 
 		SendAcknowledgement(message.m_messageID, e.GetID(), message.m_senderID)
-		//if in cache: send act + continue
-		//If not, send act and do code under
-
-		//Come here if ID == my ID or if receiverID is 0
 
 		if cache.contains(message.m_messageID) {
-			fmt.Println("Message already in cache: ", message.m_messageID)
 			continue
 		}
 
