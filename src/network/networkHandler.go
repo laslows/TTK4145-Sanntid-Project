@@ -2,11 +2,11 @@ package network
 
 import "sync"
 
-const FIFO_CAPACITY = 100
+const FIFO_CAPACITY = 10
 
 type SafePendingAcks struct {
-	m_pendingAcks 	    map[uint64]chan bool
-	m_mutex	sync.RWMutex
+	m_pendingAcks map[uint64]chan bool
+	m_mutex       sync.RWMutex
 }
 
 type fifoCache struct {
@@ -43,5 +43,3 @@ func (cache *fifoCache) contains(messageID uint64) bool {
 	}
 	return false
 }
-
-
