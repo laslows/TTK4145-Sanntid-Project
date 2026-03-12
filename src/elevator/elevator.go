@@ -154,7 +154,9 @@ func (e *Elevator) ShouldRedistributeOrders(backup *Backup) bool {
 			return (b.m_isObstructed != backup.m_isObstructed || b.GetHasMotorstop() != backup.GetHasMotorstop())
 		}
 	}
-	return false
+
+	//Kan kun skje om peeren ikke finnes i worldview
+	return true
 }
 
 func (e *Elevator) TryUpdateIsMaster() bool {

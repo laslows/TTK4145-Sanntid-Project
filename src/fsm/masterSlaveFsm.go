@@ -15,7 +15,6 @@ func MasterFsm(e *elevator.Elevator, hallButtonCh <-chan orders.Order, assignedO
 	localAssignedHallOrdersCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool, updateWorldViewCh <-chan elevator.Backup, peerLostCh <-chan int,
 	peerConnectedCh <-chan int) {
 
-	
 	if !e.GetIsMaster() {
 		fmt.Println("Immediately switching to slave")
 		go SlaveFsm(e, hallButtonCh, assignedOrdersFromMasterCh, localAssignedHallOrdersCh, updateWorldViewCh, peerLostCh, peerConnectedCh)
@@ -158,9 +157,6 @@ func onUpdateWorldView(e *elevator.Elevator) {
 	e.TryUpdateIsMaster()
 	setAllLights(*e)
 
-	//Also check motorstop
-	//Also check other stuff
-
 }
 
 func redistributeHallOrders(e *elevator.Elevator, hallOrder *orders.Order, localAssignedHallOrdersCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool) {
@@ -174,4 +170,3 @@ func redistributeHallOrders(e *elevator.Elevator, hallOrder *orders.Order, local
 	}
 
 }
-
