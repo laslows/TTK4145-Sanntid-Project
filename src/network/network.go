@@ -186,10 +186,7 @@ func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
 			//pendingAcks.m_mutex.RUnlock()
 
 			if exists {
-				select {
-				case ch <- true:
-				default:
-				}
+				ch <- true
 			}
 
 			continue
