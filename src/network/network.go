@@ -40,11 +40,11 @@ type messageType int
 
 // TODO: Make not exported??
 const (
-	HallOrderRequest messageType = iota
-	HallOrderRedistribution
-	Initialization
-	WorldView
-	Acknowledgement
+	hallOrderRequest messageType = iota
+	hallOrderRedistribution
+	initialization
+	worldView
+	acknowledgement
 )
 
 type Message struct {
@@ -180,7 +180,7 @@ func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
 			continue
 		}
 
-		if message.m_messageType == Acknowledgement {
+		if message.m_messageType == acknowledgement {
 			//pendingAcks.m_mutex.RLock()
 			ch, exists := pendingAcks.m_pendingAcks[message.m_messageID]
 			//pendingAcks.m_mutex.RUnlock()
@@ -204,7 +204,7 @@ func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
 		cache.add(message.m_messageID)
 
 		switch message.m_messageType {
-		case HallOrderRequest:
+		case hallOrderRequest:
 			var hallOrderRequest orders.Order
 			err = json.Unmarshal(message.m_payload, &hallOrderRequest)
 
@@ -216,7 +216,7 @@ func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
 
 			hallButtonCh <- hallOrderRequest
 
-		case HallOrderRedistribution:
+		case hallOrderRedistribution:
 
 			if e.GetIsMaster() {
 				continue
@@ -232,7 +232,7 @@ func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
 
 			assignedOrdersFromMasterCh <- hallOrderAssignments
 
-		case Initialization:
+		case initialization:
 
 			peerConnectedCh <- message.m_senderID
 
@@ -283,7 +283,7 @@ func TryListenForWorldView() ([config.N_ELEVATORS]*elevator.Backup, bool) {
 			continue
 		}
 
-		if message.m_messageType != WorldView {
+		if message.m_messageType != worldView {
 			continue
 		}
 
@@ -302,7 +302,7 @@ func TryListenForWorldView() ([config.N_ELEVATORS]*elevator.Backup, bool) {
 
 func SendHallOrder(order orders.Order, senderID, receiverId int) {
 	hallOrderMessage := Message{
-		m_messageType: HallOrderRequest,
+		m_messageType: hallOrderRequest,
 		m_senderID:    senderID,
 		m_receiverID:  receiverId,
 	}
@@ -324,7 +324,7 @@ func SendHallOrder(order orders.Order, senderID, receiverId int) {
 // Inputs a map with elevator id as key and assigned order as value. Should be called by master after running the hall request assignment algorithm
 func SendHallOrderRedistribution(orderList [config.N_FLOORS][config.N_BUTTONS - 1]bool, senderID, receiverID int) {
 	hallOrderRedistributionMessage := Message{
-		m_messageType: HallOrderRedistribution,
+		m_messageType: hallOrderRedistribution,
 		m_senderID:    senderID,
 		m_receiverID:  receiverID,
 	}
@@ -347,7 +347,7 @@ func SendHallOrderRedistribution(orderList [config.N_FLOORS][config.N_BUTTONS - 
 
 func SendWorldView(worldView [config.N_ELEVATORS]*elevator.Backup, senderID, receiverId int) {
 	worldViewMessage := Message{
-		m_messageType: WorldView,
+		m_messageType: worldView,
 		m_senderID:    senderID,
 		m_receiverID:  receiverId,
 	}
@@ -366,7 +366,7 @@ func SendWorldView(worldView [config.N_ELEVATORS]*elevator.Backup, senderID, rec
 
 func SendInitializationMessage(senderID int) {
 	initializationMessage := Message{
-		m_messageType: Initialization, // Make not exported??
+		m_messageType: initialization, // Make not exported??
 		m_senderID:    senderID,
 		m_receiverID:  0, //Send to master
 	}
@@ -378,7 +378,7 @@ func SendInitializationMessage(senderID int) {
 
 func SendAcknowledgement(messageID uint64, senderID, receiverID int) {
 	acknowledgementMessage := Message{
-		m_messageType: Acknowledgement,
+		m_messageType: acknowledgement,
 		m_senderID:    senderID,
 		m_receiverID:  receiverID,
 		m_messageID:   messageID,
