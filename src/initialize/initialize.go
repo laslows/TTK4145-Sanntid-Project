@@ -51,6 +51,9 @@ func initOnFloor(e *elevator.Elevator) {
 	e.SetDirection(elevator.Stop)
 	e.SetFloor(elevator.FloorSensor())
 
+	//TODO: Spør studass om det er mulig at heien starter med døra åpen/med obstruksjon
+	//e.SetIsObstructed(driver.GetObstruction())
+
 }
 
 func clearAllLights() {
