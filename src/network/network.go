@@ -122,7 +122,7 @@ func generateMessageID(message Message) uint64 {
 }
 
 func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
-	assignedOrdersFromMasterCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool, peerConnectedCh chan<- int) {
+	assignedOrdersFromMasterCh chan<- map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool, peerConnectedCh chan<- int) {
 	//heartbeatAddrReceiver, err := net.ResolveUDPAddr("udp", ":" + HEARTBEAT_PORT)
 	messageAddrReceiver, err := net.ResolveUDPAddr("udp4", MESSAGE_ADDR)
 
@@ -206,7 +206,7 @@ func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
 				continue
 			}
 
-			var hallOrderAssignments [config.N_FLOORS][config.N_BUTTONS - 1]bool
+			var hallOrderAssignments map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool
 			err = json.Unmarshal(message.m_payload, &hallOrderAssignments)
 
 			if err != nil {
@@ -305,14 +305,14 @@ func SendHallOrder(order orders.Order, senderID, receiverId int) {
 }
 
 // Inputs a map with elevator id as key and assigned order as value. Should be called by master after running the hall request assignment algorithm
-func SendHallOrderRedistribution(orderList [config.N_FLOORS][config.N_BUTTONS - 1]bool, senderID, receiverID int) {
+func SendHallOrderRedistribution(globalOrderList map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool, senderID, receiverID int) {
 	hallOrderRedistributionMessage := Message{
 		m_messageType: HallOrderRedistribution,
 		m_senderID:    senderID,
 		m_receiverID:  receiverID,
 	}
 
-	payload, err := json.Marshal(&orderList)
+	payload, err := json.Marshal(&globalOrderList)
 	if err != nil {
 		//Handle error
 		return

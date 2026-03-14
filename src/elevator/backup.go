@@ -12,6 +12,7 @@ type Backup struct {
 	m_floor              int
 	m_direction          Direction
 	m_requests           [config.N_FLOORS][config.N_BUTTONS]bool
+	m_pendingHallOrders  [config.N_FLOORS][config.N_BUTTONS - 1]bool
 	m_isMaster           bool
 	m_behaviour          ElevatorBehaviour
 	m_isObstructed       bool
@@ -28,6 +29,7 @@ func (b *Backup) MarshalJSON() ([]byte, error) {
 		Floor              int
 		Direction          int
 		Requests           [config.N_FLOORS][config.N_BUTTONS]bool
+		PendingHallOrders  [config.N_FLOORS][config.N_BUTTONS - 1]bool
 		IsMaster           bool
 		IsObstructed       bool
 		Version            int
@@ -40,6 +42,7 @@ func (b *Backup) MarshalJSON() ([]byte, error) {
 		Floor:              b.m_floor,
 		Direction:          int(b.m_direction),
 		Requests:           b.m_requests,
+		PendingHallOrders:  b.m_pendingHallOrders,
 		IsMaster:           b.m_isMaster,
 		IsObstructed:       b.m_isObstructed,
 		Version:            b.m_version,
@@ -55,6 +58,7 @@ func (b *Backup) UnmarshalJSON(data []byte) error {
 		Floor              int
 		Direction          int
 		Requests           [config.N_FLOORS][config.N_BUTTONS]bool
+		PendingHallOrders  [config.N_FLOORS][config.N_BUTTONS - 1]bool
 		IsMaster           bool
 		IsObstructed       bool
 		Version            int
@@ -72,6 +76,7 @@ func (b *Backup) UnmarshalJSON(data []byte) error {
 	b.m_floor = backupJSON.Floor
 	b.m_direction = Direction(backupJSON.Direction)
 	b.m_requests = backupJSON.Requests
+	b.m_pendingHallOrders = backupJSON.PendingHallOrders
 	b.m_isMaster = backupJSON.IsMaster
 	b.m_isObstructed = backupJSON.IsObstructed
 	b.m_version = backupJSON.Version
@@ -96,6 +101,7 @@ func (e *Elevator) UpdateMyBackup() {
 	e.UpdateWorldView(e.m_myBackup)
 }
 
+//TODO: master henter pendingOrders når du dør???
 func (e *Elevator) restoreMyBackup(b *Backup) {
 	//Maybe just do directly in restoreElevatorState
 
@@ -110,6 +116,19 @@ func (e *Elevator) restoreMyBackup(b *Backup) {
 
 	e.UpdateWorldView(e.m_myBackup)
 }
+
+func (b *Backup) ClearFromPendingOrders(globalOrderAssignments map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool) {
+	for _, orderList := range globalOrderAssignments {
+		for floor := range orderList {
+			for button := range orderList[floor] {
+				if orderList[floor][button] {
+					b.m_pendingHallOrders[floor][button] = false
+				}
+			}
+		}
+	}
+}
+
 
 func (b *Backup) GetID() int {
 	return b.m_ID

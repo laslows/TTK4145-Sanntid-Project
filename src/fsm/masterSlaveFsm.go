@@ -12,7 +12,7 @@ import (
 //TODO: make master redistribute orders when new peer
 //TODO: maybe use defer ?? Codequalityfix
 
-func MasterFsm(e *elevator.Elevator, hallButtonCh <-chan orders.Order, assignedOrdersFromMasterCh <-chan [config.N_FLOORS][config.N_BUTTONS - 1]bool,
+func MasterFsm(e *elevator.Elevator, hallButtonCh <-chan orders.Order, assignedOrdersFromMasterCh <-chan map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool,
 	localAssignedHallOrdersCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool, updateWorldViewCh <-chan elevator.Backup, peerLostCh <-chan int,
 	peerConnectedCh <-chan int) {
 
@@ -22,6 +22,9 @@ func MasterFsm(e *elevator.Elevator, hallButtonCh <-chan orders.Order, assignedO
 		go SlaveFsm(e, hallButtonCh, assignedOrdersFromMasterCh, localAssignedHallOrdersCh, updateWorldViewCh, peerLostCh, peerConnectedCh)
 		return
 	}
+
+//find pending orders in backups
+//clear own pending orders
 
 Loop:
 	for {
@@ -95,7 +98,7 @@ Loop:
 
 // Kanskje vi kan returne fra masterFsm om vi bli slave, og starte denne. Og så motsatt ??
 // Idk om dette er en god løsning..
-func SlaveFsm(e *elevator.Elevator, hallButtonCh <-chan orders.Order, assignedOrdersFromMasterCh <-chan [config.N_FLOORS][config.N_BUTTONS - 1]bool,
+func SlaveFsm(e *elevator.Elevator, hallButtonCh <-chan orders.Order, assignedOrdersFromMasterCh <-chan map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool,
 	localAssignedHallOrdersCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool, updateWorldViewCh <-chan elevator.Backup, peerLostCh <-chan int,
 	peerConnectedCh <-chan int) {
 
@@ -138,9 +141,10 @@ Loop:
 
 			fmt.Println("Gained connection to peer. I am slave, so will not send message.")
 
-		case orderList := <-assignedOrdersFromMasterCh:
+		case globalOrderList := <-assignedOrdersFromMasterCh:
 
-			localAssignedHallOrdersCh <- orderList
+			e.GetMyBackup().ClearFromPendingOrders(globalOrderList)
+			localAssignedHallOrdersCh <- globalOrderList[e.GetID()]
 
 		}
 
@@ -168,9 +172,9 @@ func redistributeHallOrders(e *elevator.Elevator, hallOrder *orders.Order, local
 
 	globalOrderAssignments := runHallRequestAlgorithm(e, hallOrder)
 	localAssignedHallOrdersCh <- globalOrderAssignments[e.GetID()]
-	for id, orderList := range globalOrderAssignments {
+	for id := range globalOrderAssignments {
 		if id != e.GetID() {
-			network.SendHallOrderRedistribution(orderList, e.GetID(), id)
+			network.SendHallOrderRedistribution(globalOrderAssignments, e.GetID(), id)
 		}
 	}
 

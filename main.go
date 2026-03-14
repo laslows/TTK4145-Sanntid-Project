@@ -28,7 +28,7 @@ func main() {
 
 	cabButtonCh := make(chan orders.Order)
 	hallButtonCh := make(chan orders.Order)
-	assignedOrdersFromMasterCh := make(chan [config.N_FLOORS][config.N_BUTTONS - 1]bool)
+	assignedOrdersFromMasterCh := make(chan map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool)
 	localAssignedHallOrdersCh := make(chan [config.N_FLOORS][config.N_BUTTONS - 1]bool)
 	floorCh := make(chan int)
 	timerCh := make(chan bool)
