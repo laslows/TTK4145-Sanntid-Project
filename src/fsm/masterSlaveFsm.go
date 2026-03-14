@@ -22,6 +22,9 @@ func MasterFsm(e *elevator.Elevator, hallButtonCh <-chan orders.Order, assignedO
 		return
 	}
 
+	redistributeHallOrders(e, nil, localAssignedHallOrdersCh)
+	e.ClearDisconnectedNodeQueue()
+
 	//Print all known orders in worldview as [][]
 
 	hallRequests := [config.N_FLOORS][config.N_BUTTONS-1]bool{}
@@ -144,12 +147,13 @@ Loop:
 			fmt.Println("We lost peer ", peer)
 
 			e.LoseConnectionToPeer(peer)
-			e.ClearDisconnectedNodeQueue()
 
 			e.TryUpdateIsMaster()
 			if e.GetIsMaster() {
 				fmt.Println("Switching to master because I lost connection to everyone")
 				break Loop
+			} else {
+				e.ClearDisconnectedNodeQueue()
 			}
 
 		case peer := <-peerConnectedCh:
