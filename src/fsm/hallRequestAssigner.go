@@ -96,6 +96,12 @@ func runHallRequestAlgorithm(e *elevator.Elevator, hallOrder *orders.Order) map[
 		return hallOrderAssignmentMap
 	}
 
+	for _, backup := range e.GetWorldView() {
+		if backup != nil && (backup.GetIsObstructed() || backup.GetHasMotorstop()) {
+			hallOrderAssignmentMap[backup.GetID()] = [config.N_FLOORS][config.N_BUTTONS - 1]bool{}
+		}
+	}
+
 	return hallOrderAssignmentMap
 }
 
