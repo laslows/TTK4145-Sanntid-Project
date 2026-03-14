@@ -84,7 +84,7 @@ func BroadcastMessage(message Message) {
 
 	for {
 		_, err = conn.Write(messageBytes)
-		fmt.Println("Broadcasting message: ", message.m_messageID, message.m_messageType, " to ", message.m_receiverID)
+		//fmt.Println("Broadcasting message: ", message.m_messageID, message.m_messageType, " to ", message.m_receiverID)
 		if err != nil {
 			fmt.Println("Error writing to UDP connection:", err)
 			continue

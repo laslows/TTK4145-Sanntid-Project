@@ -16,12 +16,31 @@ func MasterFsm(e *elevator.Elevator, hallButtonCh <-chan orders.Order, assignedO
 	localAssignedHallOrdersCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool, updateWorldViewCh <-chan elevator.Backup, peerLostCh <-chan int,
 	peerConnectedCh <-chan int) {
 
-	
 	if !e.GetIsMaster() {
 		fmt.Println("Immediately switching to slave")
 		go SlaveFsm(e, hallButtonCh, assignedOrdersFromMasterCh, localAssignedHallOrdersCh, updateWorldViewCh, peerLostCh, peerConnectedCh)
 		return
 	}
+
+	//Print all known orders in worldview as [][]
+
+	hallRequests := [config.N_FLOORS][config.N_BUTTONS-1]bool{}
+
+	for _, backup := range e.GetWorldView() {
+		if backup == nil {
+			continue
+		}
+
+		backupRequests := backup.GetRequests()
+		for i, row := range backupRequests {
+			for j, value := range row[:len(row)-1] {
+				hallRequests[i][j] = hallRequests[i][j] || value
+			}	
+		}
+	}
+	
+	fmt.Println("Known orders in worldview: ", hallRequests)
+
 
 Loop:
 	for {
@@ -129,7 +148,7 @@ Loop:
 
 			e.TryUpdateIsMaster()
 			if e.GetIsMaster() {
-				fmt.Println("Switching to master")
+				fmt.Println("Switching to master because I lost connection to everyone")
 				break Loop
 			}
 
@@ -175,4 +194,3 @@ func redistributeHallOrders(e *elevator.Elevator, hallOrder *orders.Order, local
 	}
 
 }
-
