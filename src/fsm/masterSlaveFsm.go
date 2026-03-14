@@ -61,6 +61,8 @@ Loop:
 
 		case heartBeat := <-updateWorldViewCh:
 
+			//TODO: maybe fix that disonnected node gets overwritten with zero when connecting again
+
 			if e.ShouldRedistributeOrders(&heartBeat) {
 				e.UpdateWorldView(&heartBeat)
 				redistributeHallOrders(e, nil, localAssignedHallOrdersCh)
