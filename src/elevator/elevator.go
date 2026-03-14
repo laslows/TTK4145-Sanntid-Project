@@ -241,7 +241,7 @@ func (e *Elevator) GainedConnectionToPrevDisconnectedPeer(peerID int) bool {
 
 func (e *Elevator) LoseConnectionToPeer(peerID int) {
 	for i, b := range e.m_worldView {
-		if b != nil && b.m_ID == peerID {
+		if b != nil && b.m_ID == peerID && e.m_ID != peerID {
 			e.m_worldView[i].m_connectedToNetwork = false
 			return
 		}
