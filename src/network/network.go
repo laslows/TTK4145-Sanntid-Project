@@ -20,6 +20,7 @@ const MESSAGE_ADDR = "224.0.0.1:16666"
 // Maybe move this to initialization package, but that would require us to import it
 const INITIALIZATION_TIMEOUT = 1 * time.Second
 const ACK_RETRANSMIT_INTERVAL = 1000 * time.Millisecond //TODO:better name
+const BROADCAST_TIMEOUT = 2500 * time.Millisecond
 
 var cache = newFifoCache()
 var pendingAcks = newSafePendingAcks()
@@ -77,6 +78,9 @@ func BroadcastMessage(message Message) {
 
 	ticker := time.NewTicker(ACK_RETRANSMIT_INTERVAL)
 	defer ticker.Stop()
+	broadcastTimeout := time.NewTicker(BROADCAST_TIMEOUT)
+	defer broadcastTimeout.Stop()
+
 
 	for {
 		_, err = conn.Write(messageBytes)
@@ -97,6 +101,8 @@ func BroadcastMessage(message Message) {
 			fmt.Println("Sending new hall order distribution, but to another elevator")
 		case <-ticker.C:
 			continue
+		case <-broadcastTimeout.C:
+			return
 		}
 
 	}
