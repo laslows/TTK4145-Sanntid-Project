@@ -23,8 +23,8 @@ const ACK_RETRANSMIT_INTERVAL = 1000 * time.Millisecond //TODO:better name
 
 var cache = newFifoCache()
 var pendingAcks = newSafePendingAcks()
+var pendingHallOrderByMessageID = newSafePendingHallOrders()
 var hallRedistributionUpdateCh = make(chan redistributionUpdate)
-
 
 type messageType int
 
@@ -168,6 +168,11 @@ func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
 		if message.m_messageType == Acknowledgement {
 
 			ch, exists := pendingAcks.get(message.m_messageID)
+			order, orderExists := pendingHallOrderByMessageID.get(message.m_messageID)
+			if orderExists {
+				e.SetPendingHallRequest(order.GetFloor(), int(order.GetOrderType()), false)
+				pendingHallOrderByMessageID.delete(message.m_messageID)
+			}
 
 			if exists {
 				select {
@@ -283,11 +288,16 @@ func TryListenForWorldView() ([config.N_ELEVATORS]*elevator.Backup, bool) {
 
 }
 
-func SendHallOrder(order orders.Order, senderID, receiverId int) {
+func SendHallOrder(e *elevator.Elevator, order orders.Order, receiverID int) {
+
+	if e.GetPendingHallRequest(order.GetFloor(), int(order.GetOrderType())) {
+		return
+	}
+
 	hallOrderMessage := Message{
 		m_messageType: HallOrderRequest,
-		m_senderID:    senderID,
-		m_receiverID:  receiverId,
+		m_senderID:    e.GetID(),
+		m_receiverID:  receiverID,
 	}
 
 	payload, err := json.Marshal(&order)
@@ -298,10 +308,27 @@ func SendHallOrder(order orders.Order, senderID, receiverId int) {
 
 	hallOrderMessage.m_payload = payload
 	hallOrderMessage.m_messageID = generateMessageID(hallOrderMessage)
+	pendingHallOrderByMessageID.insert(hallOrderMessage.m_messageID, order)
+	e.SetPendingHallRequest(order.GetFloor(), int(order.GetOrderType()), true)
 
-	fmt.Println("Sending hall order: ", order, " from ", senderID, " to ", receiverId, "message ID is: ", hallOrderMessage.m_messageID)
+	fmt.Println("Sending hall order: ", order, " from ", e.GetID(), " to ", receiverID, "message ID is: ", hallOrderMessage.m_messageID)
 
 	go BroadcastMessage(hallOrderMessage)
+}
+
+//Call this every time we enter slavefsm
+func RestoreAndResendPendingHallOrders(e *elevator.Elevator, receiverID int) {
+
+	pending := e.GetMyBackup().GetPendingHallRequests()
+	for floor := 0; floor < config.N_FLOORS; floor++ {
+		for btn := 0; btn < config.N_BUTTONS-1; btn++ {
+			if !pending[floor][btn] {
+				continue
+			}
+
+			SendHallOrder(e, orders.New(floor, orders.OrderType(btn)), receiverID)
+		}
+	}
 }
 
 // Inputs a map with elevator id as key and assigned order as value. Should be called by master after running the hall request assignment algorithm

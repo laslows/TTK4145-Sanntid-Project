@@ -8,15 +8,16 @@ import (
 //TODO: maybe delete backup?? A bit weird maybe to store basically all information about myself twice
 
 type Backup struct {
-	m_ID                 int
-	m_floor              int
-	m_direction          Direction
-	m_requests           [config.N_FLOORS][config.N_BUTTONS]bool
-	m_isMaster           bool
-	m_behaviour          ElevatorBehaviour
-	m_isObstructed       bool
-	m_version            int
-	m_connectedToNetwork bool
+	m_ID                  int
+	m_floor               int
+	m_direction           Direction
+	m_requests            [config.N_FLOORS][config.N_BUTTONS]bool
+	m_pendingHallRequests [config.N_FLOORS][config.N_BUTTONS - 1]bool
+	m_isMaster            bool
+	m_behaviour           ElevatorBehaviour
+	m_isObstructed        bool
+	m_version             int
+	m_connectedToNetwork  bool
 }
 
 // Må lage egendefinert json-Marshaller og unmarshaller fordi json ikke klarer å håndtere egendefinert type
@@ -24,42 +25,45 @@ type Backup struct {
 
 func (b *Backup) MarshalJSON() ([]byte, error) {
 	type BackupJSON struct {
-		ID                 int
-		Floor              int
-		Direction          int
-		Requests           [config.N_FLOORS][config.N_BUTTONS]bool
-		IsMaster           bool
-		IsObstructed       bool
-		Version            int
-		ConnectedToNetwork bool
-		Behaviour          int
+		ID                  int
+		Floor               int
+		Direction           int
+		Requests            [config.N_FLOORS][config.N_BUTTONS]bool
+		PendingHallRequests [config.N_FLOORS][config.N_BUTTONS - 1]bool
+		IsMaster            bool
+		IsObstructed        bool
+		Version             int
+		ConnectedToNetwork  bool
+		Behaviour           int
 	}
 
 	return json.Marshal(&BackupJSON{
-		ID:                 b.m_ID,
-		Floor:              b.m_floor,
-		Direction:          int(b.m_direction),
-		Requests:           b.m_requests,
-		IsMaster:           b.m_isMaster,
-		IsObstructed:       b.m_isObstructed,
-		Version:            b.m_version,
-		ConnectedToNetwork: b.m_connectedToNetwork,
-		Behaviour:          int(b.m_behaviour),
+		ID:                  b.m_ID,
+		Floor:               b.m_floor,
+		Direction:           int(b.m_direction),
+		Requests:            b.m_requests,
+		PendingHallRequests: b.m_pendingHallRequests,
+		IsMaster:            b.m_isMaster,
+		IsObstructed:        b.m_isObstructed,
+		Version:             b.m_version,
+		ConnectedToNetwork:  b.m_connectedToNetwork,
+		Behaviour:           int(b.m_behaviour),
 	})
 }
 
 // Egendefinert unmarshaler
 func (b *Backup) UnmarshalJSON(data []byte) error {
 	type BackupJSON struct {
-		ID                 int
-		Floor              int
-		Direction          int
-		Requests           [config.N_FLOORS][config.N_BUTTONS]bool
-		IsMaster           bool
-		IsObstructed       bool
-		Version            int
-		Behaviour          int
-		ConnectedToNetwork bool
+		ID                  int
+		Floor               int
+		Direction           int
+		Requests            [config.N_FLOORS][config.N_BUTTONS]bool
+		PendingHallRequests [config.N_FLOORS][config.N_BUTTONS - 1]bool
+		IsMaster            bool
+		IsObstructed        bool
+		Version             int
+		Behaviour           int
+		ConnectedToNetwork  bool
 	}
 
 	var backupJSON BackupJSON
@@ -72,6 +76,7 @@ func (b *Backup) UnmarshalJSON(data []byte) error {
 	b.m_floor = backupJSON.Floor
 	b.m_direction = Direction(backupJSON.Direction)
 	b.m_requests = backupJSON.Requests
+	b.m_pendingHallRequests = backupJSON.PendingHallRequests
 	b.m_isMaster = backupJSON.IsMaster
 	b.m_isObstructed = backupJSON.IsObstructed
 	b.m_version = backupJSON.Version
@@ -102,6 +107,7 @@ func (e *Elevator) restoreMyBackup(b *Backup) {
 	e.m_myBackup.m_floor = e.m_floor
 	e.m_myBackup.m_direction = e.m_direction
 	e.m_myBackup.m_requests = e.m_requests
+	e.m_myBackup.m_pendingHallRequests = e.m_myBackup.m_pendingHallRequests
 	e.m_myBackup.m_isMaster = e.m_isMaster
 	e.m_myBackup.m_behaviour = e.m_behaviour
 	e.m_myBackup.m_version = b.m_version + 1
@@ -141,4 +147,8 @@ func (b *Backup) GetHasMotorstop() bool {
 
 func (b *Backup) GetConnectedToNetwork() bool {
 	return b.m_connectedToNetwork
+}
+
+func (b *Backup) GetPendingHallRequests() [config.N_FLOORS][config.N_BUTTONS - 1]bool {
+	return b.m_pendingHallRequests
 }

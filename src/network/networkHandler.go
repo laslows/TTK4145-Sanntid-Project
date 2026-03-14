@@ -1,6 +1,9 @@
 package network
 
-import "sync"
+import (
+	"Sanntid/src/orders"
+	"sync"
+)
 
 const FIFO_CAPACITY = 10
 
@@ -9,11 +12,13 @@ type SafePendingAcks struct {
 	m_mutex       sync.RWMutex
 }
 
+
 func newSafePendingAcks() *SafePendingAcks {
 	return &SafePendingAcks{
 		m_pendingAcks: make(map[uint64]chan bool),
 	}
 }
+
 
 func (p *SafePendingAcks) insert(messageID uint64, ch chan bool) {
 	p.m_mutex.Lock()
@@ -35,6 +40,39 @@ func (p *SafePendingAcks) delete(messageID uint64) {
 	defer p.m_mutex.Unlock()
 
 	delete(p.m_pendingAcks, messageID)
+}
+
+type safePendingHallOrders struct {
+	m_orders map[uint64]orders.Order
+	m_mutex  sync.RWMutex
+}
+
+func newSafePendingHallOrders() *safePendingHallOrders {
+	return &safePendingHallOrders{
+		m_orders: make(map[uint64]orders.Order),
+	}
+}
+
+func (p *safePendingHallOrders) insert(messageID uint64, order orders.Order) {
+	p.m_mutex.Lock()
+	defer p.m_mutex.Unlock()
+
+	p.m_orders[messageID] = order
+}
+
+func (p *safePendingHallOrders) get(messageID uint64) (orders.Order, bool) {
+	p.m_mutex.RLock()
+	defer p.m_mutex.RUnlock()
+
+	order, exists := p.m_orders[messageID]
+	return order, exists
+}
+
+func (p *safePendingHallOrders) delete(messageID uint64) {
+	p.m_mutex.Lock()
+	defer p.m_mutex.Unlock()
+
+	delete(p.m_orders, messageID)
 }
 
 type fifoCache struct {
@@ -73,6 +111,6 @@ func (cache *fifoCache) contains(messageID uint64) bool {
 }
 
 type redistributionUpdate struct {
-    m_messageID  uint64
-    m_receiverID int
+	m_messageID  uint64
+	m_receiverID int
 }

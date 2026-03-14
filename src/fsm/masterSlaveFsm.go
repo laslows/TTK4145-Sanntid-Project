@@ -16,12 +16,13 @@ func MasterFsm(e *elevator.Elevator, hallButtonCh <-chan orders.Order, assignedO
 	localAssignedHallOrdersCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool, updateWorldViewCh <-chan elevator.Backup, peerLostCh <-chan int,
 	peerConnectedCh <-chan int) {
 
-	
 	if !e.GetIsMaster() {
 		fmt.Println("Immediately switching to slave")
 		go SlaveFsm(e, hallButtonCh, assignedOrdersFromMasterCh, localAssignedHallOrdersCh, updateWorldViewCh, peerLostCh, peerConnectedCh)
 		return
 	}
+
+	//Check if I have pending hall orders, give them to myself
 
 Loop:
 	for {
@@ -101,6 +102,7 @@ func SlaveFsm(e *elevator.Elevator, hallButtonCh <-chan orders.Order, assignedOr
 
 	fmt.Println("I am slave")
 	fmt.Printf("Master is: %d \n", e.GetMasterID())
+	network.RestoreAndResendPendingHallOrders(e, e.GetMasterID())
 
 Loop:
 	for {
@@ -109,7 +111,7 @@ Loop:
 		case buttonEvent := <-hallButtonCh:
 			//Give to masterHallOrderRequest
 
-			network.SendHallOrder(buttonEvent, e.GetID(), e.GetMasterID())
+			network.SendHallOrder(e, buttonEvent, e.GetMasterID())
 
 		case heartBeat := <-updateWorldViewCh:
 
@@ -175,4 +177,3 @@ func redistributeHallOrders(e *elevator.Elevator, hallOrder *orders.Order, local
 	}
 
 }
-
