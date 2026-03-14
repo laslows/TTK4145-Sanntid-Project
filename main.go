@@ -47,7 +47,5 @@ func main() {
 	go network.BroadcastHeartbeat(elev)
 	go network.ListenForMessages(elev, hallButtonCh, assignedOrdersFromMasterCh, peerConnectedCh)
 
-	select {
-	// Keep main alive
-	}
+	select {}
 }
