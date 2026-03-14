@@ -14,6 +14,7 @@ import (
 // the smart functions
 
 //TODO: differ between backup and b with better namings..
+//TODO: maybe mutex?
 
 type Direction int
 

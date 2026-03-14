@@ -12,8 +12,6 @@ import (
 	"time"
 )
 
-//TODO: make get and set for pendingacks
-
 const MESSAGE_PORT = "16666"
 
 // Maybe change to not multicast??
@@ -21,20 +19,12 @@ const MESSAGE_ADDR = "224.0.0.1:16666"
 
 // Maybe move this to initialization package, but that would require us to import it
 const INITIALIZATION_TIMEOUT = 1 * time.Second
-
-const ACKNOWLEDGEMENT_TIMEOUT = 1000 * time.Millisecond //TODO:better name
-
+const ACK_RETRANSMIT_INTERVAL = 1000 * time.Millisecond //TODO:better name
 
 var cache = newFifoCache()
-var newerHallOrderDistributionCh = make(chan uint64)
-var receiverOfDistributionIDCh = make(chan int)
+var pendingAcks = newSafePendingAcks()
+var hallRedistributionUpdateCh = make(chan redistributionUpdate)
 
-
-// A bit weird that this is mutexed and not the other variables
-// TODO: Make new()
-var pendingAcks = SafePendingAcks{
-	m_pendingAcks: make(map[uint64]chan bool),
-}	
 
 type messageType int
 
@@ -54,6 +44,9 @@ type Message struct {
 	m_payload     json.RawMessage
 	m_messageID   uint64
 }
+
+//TODO: max retries? Timeout? So it doesn't send messages for ever if no ack received
+// (edge case if we change master for example)
 
 func BroadcastMessage(message Message) {
 	//Send message to multicast address
@@ -77,13 +70,12 @@ func BroadcastMessage(message Message) {
 		return
 	}
 
-	
 	ackCh := make(chan bool, 1)
 	pendingAcks.insert(message.m_messageID, ackCh)
 	//Always do this when we leave broadcast
 	defer pendingAcks.delete(message.m_messageID)
 
-	ticker := time.NewTicker(ACKNOWLEDGEMENT_TIMEOUT)
+	ticker := time.NewTicker(ACK_RETRANSMIT_INTERVAL)
 	defer ticker.Stop()
 
 	for {
@@ -97,9 +89,8 @@ func BroadcastMessage(message Message) {
 		case <-ackCh:
 			return
 
-		case newID := <-newerHallOrderDistributionCh:
-			newReceiverID := <-receiverOfDistributionIDCh
-			if message.m_messageID != newID && newReceiverID == message.m_receiverID {
+		case update := <-hallRedistributionUpdateCh:
+			if message.m_messageID != update.m_messageID && update.m_receiverID == message.m_receiverID {
 				fmt.Println("Sending newer order distribution")
 				return
 			}
@@ -169,15 +160,15 @@ func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
 			continue
 		}
 
-		if !(message.m_receiverID == e.GetID() || 
-		(message.m_receiverID == 0 && message.m_senderID != e.GetID())) {
+		if !(message.m_receiverID == e.GetID() ||
+			(message.m_receiverID == 0 && message.m_senderID != e.GetID())) {
 			continue
 		}
 
 		if message.m_messageType == Acknowledgement {
-			
+
 			ch, exists := pendingAcks.get(message.m_messageID)
-			
+
 			if exists {
 				select {
 				case ch <- true:
@@ -292,7 +283,6 @@ func TryListenForWorldView() ([config.N_ELEVATORS]*elevator.Backup, bool) {
 
 }
 
-
 func SendHallOrder(order orders.Order, senderID, receiverId int) {
 	hallOrderMessage := Message{
 		m_messageType: HallOrderRequest,
@@ -333,9 +323,11 @@ func SendHallOrderRedistribution(orderList [config.N_FLOORS][config.N_BUTTONS - 
 	hallOrderRedistributionMessage.m_messageID = generateMessageID(hallOrderRedistributionMessage)
 
 	go BroadcastMessage(hallOrderRedistributionMessage)
-	
-	newerHallOrderDistributionCh <- hallOrderRedistributionMessage.m_messageID
-	receiverOfDistributionIDCh <- receiverID
+
+	hallRedistributionUpdateCh <- redistributionUpdate{
+		m_messageID:  hallOrderRedistributionMessage.m_messageID,
+		m_receiverID: receiverID,
+	}
 }
 
 func SendWorldView(worldView [config.N_ELEVATORS]*elevator.Backup, senderID, receiverId int) {
