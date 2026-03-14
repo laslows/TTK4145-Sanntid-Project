@@ -25,7 +25,6 @@ var cache = newFifoCache()
 var pendingAcks = newSafePendingAcks()
 var hallRedistributionUpdateCh = make(chan redistributionUpdate)
 
-
 type messageType int
 
 // TODO: Make not exported??
@@ -165,6 +164,10 @@ func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
 			continue
 		}
 
+		if !e.GetConnectedToNetwork() && message.m_messageType != Acknowledgement {
+			continue
+		}
+
 		if message.m_messageType == Acknowledgement {
 
 			ch, exists := pendingAcks.get(message.m_messageID)
@@ -283,7 +286,10 @@ func TryListenForWorldView() ([config.N_ELEVATORS]*elevator.Backup, bool) {
 
 }
 
-func SendHallOrder(order orders.Order, senderID, receiverId int) {
+func SendHallOrder(order orders.Order, senderID, receiverId int, e *elevator.Elevator) {
+	if !e.GetConnectedToNetwork() {
+		return
+	}
 	hallOrderMessage := Message{
 		m_messageType: HallOrderRequest,
 		m_senderID:    senderID,
@@ -305,7 +311,10 @@ func SendHallOrder(order orders.Order, senderID, receiverId int) {
 }
 
 // Inputs a map with elevator id as key and assigned order as value. Should be called by master after running the hall request assignment algorithm
-func SendHallOrderRedistribution(orderList [config.N_FLOORS][config.N_BUTTONS - 1]bool, senderID, receiverID int) {
+func SendHallOrderRedistribution(orderList [config.N_FLOORS][config.N_BUTTONS - 1]bool, senderID, receiverID int, e *elevator.Elevator) {
+	if !e.GetConnectedToNetwork() {
+		return
+	}
 	hallOrderRedistributionMessage := Message{
 		m_messageType: HallOrderRedistribution,
 		m_senderID:    senderID,
@@ -330,7 +339,10 @@ func SendHallOrderRedistribution(orderList [config.N_FLOORS][config.N_BUTTONS - 
 	}
 }
 
-func SendWorldView(worldView [config.N_ELEVATORS]*elevator.Backup, senderID, receiverId int) {
+func SendWorldView(worldView [config.N_ELEVATORS]*elevator.Backup, senderID, receiverId int, e *elevator.Elevator) {
+	if !e.GetConnectedToNetwork() {
+		return
+	}
 	worldViewMessage := Message{
 		m_messageType: WorldView,
 		m_senderID:    senderID,
@@ -349,7 +361,10 @@ func SendWorldView(worldView [config.N_ELEVATORS]*elevator.Backup, senderID, rec
 	go BroadcastMessage(worldViewMessage)
 }
 
-func SendInitializationMessage(senderID int) {
+func SendInitializationMessage(senderID int, e *elevator.Elevator) {
+	if !e.GetConnectedToNetwork() {
+		return
+	}
 	initializationMessage := Message{
 		m_messageType: Initialization, // Make not exported??
 		m_senderID:    senderID,

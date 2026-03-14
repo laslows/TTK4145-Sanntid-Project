@@ -41,6 +41,10 @@ func ListenForHeartbeats(elev *elevator.Elevator, updateWorldViewCh chan<- eleva
 		n, _, err := conn.ReadFromUDP(buffer)
 
 		if err == nil {
+			if !elev.GetConnectedToNetwork() {
+				continue
+			}
+
 			var heartBeat elevator.Backup
 
 			json.Unmarshal(buffer[:n], &heartBeat)
@@ -84,6 +88,10 @@ func BroadcastHeartbeat(e *elevator.Elevator) {
 	defer ticker.Stop()
 
 	for range ticker.C {
+
+		if !e.GetConnectedToNetwork() {
+			continue
+		}
 
 		heartbeatPacket, err := json.Marshal(e.GetMyBackup())
 		if err != nil {

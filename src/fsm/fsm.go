@@ -12,7 +12,7 @@ import (
 //TODO: Fix naming conventions
 
 func Fsm(e *elevator.Elevator, timetaker *timer.Timer, cabButtonCh <-chan orders.Order, floorCh <-chan int, timerCh <-chan bool,
-	motorStopCh <-chan bool, obstructionCh <-chan bool, localAssignedHallOrdersCh <-chan [config.N_FLOORS][config.N_BUTTONS - 1]bool, updateWorldViewCh chan<- elevator.Backup) {
+	motorStopCh <-chan bool, obstructionCh <-chan bool, networkDisconnectCh <-chan bool, localAssignedHallOrdersCh <-chan [config.N_FLOORS][config.N_BUTTONS - 1]bool, updateWorldViewCh chan<- elevator.Backup) {
 
 	onNewOrder(e, timetaker)
 
@@ -38,6 +38,24 @@ func Fsm(e *elevator.Elevator, timetaker *timer.Timer, cabButtonCh <-chan orders
 		case <-motorStopCh:
 
 			e.SetBehaviour(elevator.MotorStop)
+			e.UpdateMyBackup()
+
+			if e.GetIsMaster() {
+				updateWorldViewCh <- *e.GetMyBackup()
+			}
+
+		case <-networkDisconnectCh:
+
+			wasConnected := e.GetConnectedToNetwork()
+			e.SetConnectedToNetwork(!wasConnected)
+			fmt.Printf("Network connection toggled: %t\n", !wasConnected)
+			elevator.StopLight(!e.GetConnectedToNetwork())
+			if !wasConnected {
+				// Just reconnected, let masterSlaveFsm handle
+			} else {
+				// Just disconnected, become master
+				e.SetIsMaster(true)
+			}
 			e.UpdateMyBackup()
 
 			if e.GetIsMaster() {

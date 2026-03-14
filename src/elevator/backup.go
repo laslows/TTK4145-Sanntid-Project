@@ -90,7 +90,7 @@ func (e *Elevator) UpdateMyBackup() {
 	e.m_myBackup.m_floor = e.m_floor
 	e.m_myBackup.m_requests = e.m_requests
 	e.m_myBackup.m_isObstructed = e.m_isObstructed
-	e.m_myBackup.m_connectedToNetwork = true //Should always be true for me
+	e.m_myBackup.m_connectedToNetwork = e.m_connectedToNetwork
 	e.m_myBackup.m_behaviour = e.m_behaviour
 
 	e.UpdateWorldView(e.m_myBackup)

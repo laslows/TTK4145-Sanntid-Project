@@ -16,7 +16,6 @@ func MasterFsm(e *elevator.Elevator, hallButtonCh <-chan orders.Order, assignedO
 	localAssignedHallOrdersCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool, updateWorldViewCh <-chan elevator.Backup, peerLostCh <-chan int,
 	peerConnectedCh <-chan int) {
 
-	
 	if !e.GetIsMaster() {
 		fmt.Println("Immediately switching to slave")
 		go SlaveFsm(e, hallButtonCh, assignedOrdersFromMasterCh, localAssignedHallOrdersCh, updateWorldViewCh, peerLostCh, peerConnectedCh)
@@ -72,7 +71,7 @@ Loop:
 			fmt.Println("We gained peer ", peer)
 
 			fmt.Println("Gained connection to peer. Sending worldview")
-			network.SendWorldView(e.GetWorldView(), e.GetID(), peer)
+			network.SendWorldView(e.GetWorldView(), e.GetID(), peer, e)
 			//redistributeHallOrders(e, nil, localAssignedHallOrdersCh)
 
 			e.TryUpdateIsMaster()
@@ -109,7 +108,7 @@ Loop:
 		case buttonEvent := <-hallButtonCh:
 			//Give to masterHallOrderRequest
 
-			network.SendHallOrder(buttonEvent, e.GetID(), e.GetMasterID())
+			network.SendHallOrder(buttonEvent, e.GetID(), e.GetMasterID(), e)
 
 		case heartBeat := <-updateWorldViewCh:
 
@@ -170,9 +169,8 @@ func redistributeHallOrders(e *elevator.Elevator, hallOrder *orders.Order, local
 	localAssignedHallOrdersCh <- globalOrderAssignments[e.GetID()]
 	for id, orderList := range globalOrderAssignments {
 		if id != e.GetID() {
-			network.SendHallOrderRedistribution(orderList, e.GetID(), id)
+			network.SendHallOrderRedistribution(orderList, e.GetID(), id, e)
 		}
 	}
 
 }
-

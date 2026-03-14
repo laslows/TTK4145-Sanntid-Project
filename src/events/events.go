@@ -1,6 +1,7 @@
 package events
 
 import (
+	"fmt"
 	"time"
 
 	"Sanntid/src/config"
@@ -11,11 +12,12 @@ import (
 )
 
 func InputPoller(cabButtonCh chan<- orders.Order, hallButtonCh chan<- orders.Order, floorCh chan<- int,
-	timerCh chan<- bool, motorStopCh chan<- bool, obstructionCh chan<- bool, e *elevator.Elevator, timetaker *timer.Timer) {
+	timerCh chan<- bool, motorStopCh chan<- bool, obstructionCh chan<- bool, networkDisconnectCh chan<- bool, e *elevator.Elevator, timetaker *timer.Timer) {
 	//Can only send on channels, not receive.
 
 	var prevButtons [config.N_FLOORS][config.N_BUTTONS]bool
 	var prevFloor int = -1
+	var prevStopButton bool = false
 
 	motorStopWatchdog := timer.New()
 	var requestResetWatchdog = true
@@ -40,6 +42,14 @@ func InputPoller(cabButtonCh chan<- orders.Order, hallButtonCh chan<- orders.Ord
 				prevButtons[f][btn] = v
 			}
 		}
+
+		// Check stop button for network disconnect
+		stopPressed := elevator.StopButton()
+		if stopPressed && !prevStopButton {
+			fmt.Println("Stop button pressed, toggling network")
+			networkDisconnectCh <- true
+		}
+		prevStopButton = stopPressed
 
 		//Check new floor arrival
 		f := elevator.FloorSensor()

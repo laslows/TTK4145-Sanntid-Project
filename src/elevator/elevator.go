@@ -43,14 +43,15 @@ const (
 
 type Elevator struct {
 	//Can maybe remove IP
-	m_ID        int
-	m_floor     int
-	m_direction Direction
-	m_requests  [config.N_FLOORS][config.N_BUTTONS]bool
-	m_behaviour ElevatorBehaviour
-	m_isMaster  bool
-	m_isObstructed bool
-	m_myBackup  *Backup
+	m_ID                 int
+	m_floor              int
+	m_direction          Direction
+	m_requests           [config.N_FLOORS][config.N_BUTTONS]bool
+	m_behaviour          ElevatorBehaviour
+	m_isMaster           bool
+	m_isObstructed       bool
+	m_connectedToNetwork bool
+	m_myBackup           *Backup
 
 	m_worldView [config.N_ELEVATORS]*Backup
 
@@ -62,11 +63,12 @@ type Elevator struct {
 // Constructor
 func New(port string) *Elevator {
 	e := &Elevator{
-		m_floor:     -1,
-		m_direction: Down,
-		m_behaviour: Idle,
-		m_isMaster:  true,
-		m_isObstructed: false,
+		m_floor:              -1,
+		m_direction:          Down,
+		m_behaviour:          Idle,
+		m_isMaster:           true,
+		m_isObstructed:       false,
+		m_connectedToNetwork: true,
 
 		m_worldView: [config.N_ELEVATORS]*Backup{},
 
@@ -147,10 +149,9 @@ func getIDAsInt(ip, osID string) int {
 	return idInt
 }
 
-
 func (e *Elevator) ShouldRedistributeOrders(backup *Backup) bool {
 	//SHould redistribute if new backup changes obstruction status, or if we lose connection or if we gain connection, or if we change motorstopstatus
-    for _, b := range e.m_worldView {
+	for _, b := range e.m_worldView {
 		if b != nil && b.m_ID == backup.m_ID {
 			return (b.m_isObstructed != backup.m_isObstructed || b.GetHasMotorstop() != backup.GetHasMotorstop())
 		}
@@ -258,7 +259,7 @@ func (e *Elevator) RestoreElevatorState(b *Backup) {
 
 }
 
-func (e *Elevator) ClearDisconnectedNodeQueue(){
+func (e *Elevator) ClearDisconnectedNodeQueue() {
 	for _, b := range e.m_worldView {
 		if b != nil && !b.m_connectedToNetwork {
 			for f := 0; f < config.N_FLOORS; f++ {
@@ -324,6 +325,14 @@ func (e *Elevator) GetIsMaster() bool {
 
 func (e *Elevator) SetIsMaster(isMaster bool) {
 	e.m_isMaster = isMaster
+}
+
+func (e *Elevator) GetConnectedToNetwork() bool {
+	return e.m_connectedToNetwork
+}
+
+func (e *Elevator) SetConnectedToNetwork(connected bool) {
+	e.m_connectedToNetwork = connected
 }
 
 func (e *Elevator) GetID() int {
