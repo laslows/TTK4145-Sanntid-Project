@@ -18,8 +18,8 @@ const MESSAGE_PORT = "16666"
 const MESSAGE_ADDR = "224.0.0.1:16666"
 
 // Maybe move this to initialization package, but that would require us to import it
-const INITIALIZATION_TIMEOUT = 1 * time.Second
-const ACK_RETRANSMIT_INTERVAL = 1000 * time.Millisecond //TODO:better name
+const INITIALIZATION_TIMEOUT = 1000 * time.Millisecond
+const RETRY_BROADCAST_RATE = 10 * time.Millisecond //TODO:better name
 const BROADCAST_TIMEOUT = 2500 * time.Millisecond
 
 var cache = newFifoCache()
@@ -76,7 +76,7 @@ func BroadcastMessage(message Message) {
 	//Always do this when we leave broadcast
 	defer pendingAcks.delete(message.m_messageID)
 
-	ticker := time.NewTicker(ACK_RETRANSMIT_INTERVAL)
+	ticker := time.NewTicker(RETRY_BROADCAST_RATE)
 	defer ticker.Stop()
 	broadcastTimeout := time.NewTicker(BROADCAST_TIMEOUT)
 	defer broadcastTimeout.Stop()
@@ -98,10 +98,10 @@ func BroadcastMessage(message Message) {
 				fmt.Println("Sending newer order distribution")
 				return
 			}
-			fmt.Println("Sending new hall order distribution, but to another elevator")
 		case <-ticker.C:
 			continue
 		case <-broadcastTimeout.C:
+			fmt.Println("Broadcast timeout reached")
 			return
 		}
 

@@ -10,8 +10,8 @@ import (
 
 const HEARTBEAT_PORT = "15555"
 const HEARTBEAT_ADDR = "224.0.0.1:15555"
-const HEARTBEAT_RATE = 15 * time.Millisecond
-const HEARTBEAT_TIMEOUT = 500 * time.Millisecond
+const HEARTBEAT_RATE = 10 * time.Millisecond
+const HEARTBEAT_TIMEOUT = 250 * time.Millisecond
 
 func ListenForHeartbeats(elev *elevator.Elevator, updateWorldViewCh chan<- elevator.Backup, peerLostCh chan<- int) {
 	//heartbeatAddrReceiver, err := net.ResolveUDPAddr("udp", ":" + HEARTBEAT_PORT)
