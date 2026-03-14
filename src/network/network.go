@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-//TODO: mutex
+//TODO: make get and set for pendingacks
 
 const MESSAGE_PORT = "16666"
 
@@ -77,10 +77,11 @@ func BroadcastMessage(message Message) {
 		return
 	}
 
-	ackCh := make(chan bool)
-	//pendingAcks.m_mutex.Lock()
-	pendingAcks.m_pendingAcks[message.m_messageID] = ackCh
-	//pendingAcks.m_mutex.Unlock()
+	
+	ackCh := make(chan bool, 1)
+	pendingAcks.insert(message.m_messageID, ackCh)
+	//Always do this when we leave broadcast
+	defer pendingAcks.delete(message.m_messageID)
 
 	ticker := time.NewTicker(ACKNOWLEDGEMENT_TIMEOUT)
 	defer ticker.Stop()
@@ -94,24 +95,17 @@ func BroadcastMessage(message Message) {
 		}
 		select {
 		case <-ackCh:
-			//pendingAcks.m_mutex.Lock()
-			delete(pendingAcks.m_pendingAcks, message.m_messageID)
-			//pendingAcks.m_mutex.Unlock()
 			return
 
 		case newID := <-newerHallOrderDistributionCh:
 			newReceiverID := <-receiverOfDistributionIDCh
 			if message.m_messageID != newID && newReceiverID == message.m_receiverID {
-				//pendingAcks.m_mutex.Lock()
-				delete(pendingAcks.m_pendingAcks, message.m_messageID)
-				//pendingAcks.m_mutex.Unlock()
 				fmt.Println("Sending newer order distribution")
 				return
 			}
 			fmt.Println("Sending new hall order distribution, but to another elevator")
 		case <-ticker.C:
 			continue
-			//fmt.Printf("Acknowledgement timeout for message ID: %d, resending message\n", message.m_messageID)
 		}
 
 	}
@@ -181,9 +175,8 @@ func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
 		}
 
 		if message.m_messageType == Acknowledgement {
-			//pendingAcks.m_mutex.RLock()
-			ch, exists := pendingAcks.m_pendingAcks[message.m_messageID]
-			//pendingAcks.m_mutex.RUnlock()
+			
+			ch, exists := pendingAcks.get(message.m_messageID)
 			
 			if exists {
 				select {

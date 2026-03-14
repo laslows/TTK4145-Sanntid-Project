@@ -9,6 +9,28 @@ type SafePendingAcks struct {
 	m_mutex       sync.RWMutex
 }
 
+func (p *SafePendingAcks) insert(messageID uint64, ch chan bool) {
+	p.m_mutex.Lock()
+	defer p.m_mutex.Unlock()
+
+	p.m_pendingAcks[messageID] = ch
+}
+
+func (p *SafePendingAcks) get(messageID uint64) (chan bool, bool) {
+	p.m_mutex.RLock()
+	defer p.m_mutex.RUnlock()
+
+	ch, exists := p.m_pendingAcks[messageID]
+	return ch, exists
+}
+
+func (p *SafePendingAcks) delete(messageID uint64) {
+	p.m_mutex.Lock()
+	defer p.m_mutex.Unlock()
+
+	delete(p.m_pendingAcks, messageID)
+}
+
 type fifoCache struct {
 	capacity int
 	queue    []uint64
