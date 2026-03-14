@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"hash/fnv"
 	"net"
+	"sync"
 	"time"
 )
 
@@ -25,6 +26,7 @@ const INITIALIZATION_TIMEOUT = 1 * time.Second
 const ACKNOWLEDGEMENT_TIMEOUT = 10 * time.Millisecond //TODO:better name
 
 var pendingAcks = make(map[uint64]chan bool)
+var pendingAcksMutex sync.RWMutex
 var cache = newFifoCache()
 
 type messageType int
@@ -73,7 +75,9 @@ func BroadcastMessage(message Message, newHallOrderDistributionCh <-chan uint64)
 	}
 
 	ackCh := make(chan bool)
+	pendingAcksMutex.Lock()
 	pendingAcks[message.m_messageID] = ackCh
+	pendingAcksMutex.Unlock()
 
 	ticker := time.NewTicker(ACKNOWLEDGEMENT_TIMEOUT)
 	defer ticker.Stop()
@@ -87,11 +91,15 @@ func BroadcastMessage(message Message, newHallOrderDistributionCh <-chan uint64)
 		}
 		select {
 		case <-ackCh:
+			pendingAcksMutex.Lock()
 			delete(pendingAcks, message.m_messageID)
+			pendingAcksMutex.Unlock()
 			return
 		case newID := <-newHallOrderDistributionCh:
 			if messageID != newID {
+				pendingAcksMutex.Lock()
 				delete(pendingAcks, message.m_messageID)
+				pendingAcksMutex.Unlock()
 				return
 			}
 		}
@@ -253,13 +261,17 @@ func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
 			continue
 		}
 
-
-
 		if message.m_messageType == Acknowledgement {
+			pendingAcksMutex.RLock()
 			ch, exists := pendingAcks[message.m_messageID]
+			pendingAcksMutex.RUnlock()
 
 			if exists {
-				ch <- true
+				select {
+				case ch <- true:
+				default:
+					// Channel might be closed or full, ignore
+				}
 			}
 
 			continue

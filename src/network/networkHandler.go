@@ -1,10 +1,13 @@
 package network
 
+import "sync"
+
 const FIFO_CAPACITY = 100
 
 type fifoCache struct {
 	capacity int
 	queue    []uint64
+	mutex    sync.RWMutex
 }
 
 func newFifoCache() *fifoCache {
@@ -15,6 +18,8 @@ func newFifoCache() *fifoCache {
 }
 
 func (cache *fifoCache) add(messageID uint64) {
+	cache.mutex.Lock()
+	defer cache.mutex.Unlock()
 	if len(cache.queue) >= cache.capacity {
 		cache.queue = cache.queue[1:]
 	}
@@ -22,6 +27,8 @@ func (cache *fifoCache) add(messageID uint64) {
 }
 
 func (cache *fifoCache) contains(messageID uint64) bool {
+	cache.mutex.RLock()
+	defer cache.mutex.RUnlock()
 	for _, id := range cache.queue {
 		if id == messageID {
 			return true
@@ -29,6 +36,3 @@ func (cache *fifoCache) contains(messageID uint64) bool {
 	}
 	return false
 }
-
-
-
