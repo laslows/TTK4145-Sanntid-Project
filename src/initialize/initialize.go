@@ -31,6 +31,7 @@ func Initialize(e *elevator.Elevator) {
 
 	}
 
+	fmt.Println("Floor is: ", e.GetFloor())
 	fmt.Println("Direction is: ", e.GetDirection())
 	initOnFloor(e)
 
@@ -41,8 +42,16 @@ func Initialize(e *elevator.Elevator) {
 
 func initOnFloor(e *elevator.Elevator) {
 
+	//TODO: spør studass om dette er nødvendig. 
+	// Problemet oppstår kun dersom heisen flyttes manuelt mens den står stille, og så drepes den..
+	initDirection := (int)(e.GetDirection())
+	if initDirection == 0 && elevator.FloorSensor() == -1 {
+		initDirection = -1
+	}
+
+
 	for elevator.FloorSensor() == -1 {
-		driver.SetMotorDirection((driver.MotorDirection)(e.GetDirection()))
+		driver.SetMotorDirection((driver.MotorDirection)(initDirection))
 		e.SetBehaviour(elevator.Moving)
 	}
 
@@ -50,6 +59,9 @@ func initOnFloor(e *elevator.Elevator) {
 	e.SetBehaviour(elevator.Idle)
 	e.SetDirection(elevator.Stop)
 	e.SetFloor(elevator.FloorSensor())
+
+	//TODO: Spør studass om det er mulig at heien starter med døra åpen/med obstruksjon
+	//e.SetIsObstructed(driver.GetObstruction())
 
 }
 
