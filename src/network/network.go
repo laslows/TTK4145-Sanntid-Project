@@ -14,7 +14,7 @@ const MESSAGE_ADDR = "224.0.0.1:16666"
 
 const INITIALIZATION_TIMEOUT = 1000 * time.Millisecond
 const RETRY_BROADCAST_RATE = 10 * time.Millisecond
-const BROADCAST_TIMEOUT = 2500 * time.Millisecond
+const BROADCAST_TIMEOUT = 250 * time.Millisecond
 
 var g_pendingAcks = newSafePendingAcks()
 var g_hallRedistributionUpdateCh = make(chan redistributionUpdate, 1)

@@ -13,12 +13,12 @@ import (
 //TODO: maybe use defer ?? Codequalityfix
 
 func MasterFsm(e *elevator.Elevator, hallButtonCh <-chan orders.Order, assignedOrdersFromMasterCh <-chan [config.N_FLOORS][config.N_BUTTONS - 1]bool,
-	localAssignedHallOrdersCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool, updateWorldViewCh <-chan elevator.Backup, peerLostCh <-chan int,
+	localAssignedHallOrdersCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool, tryUpdateWorldViewCh <-chan elevator.Backup, peerLostCh <-chan int,
 	peerConnectedCh <-chan int) {
 
 	if !e.GetIsMaster() {
 		fmt.Println("Immediately switching to slave")
-		go SlaveFsm(e, hallButtonCh, assignedOrdersFromMasterCh, localAssignedHallOrdersCh, updateWorldViewCh, peerLostCh, peerConnectedCh)
+		go SlaveFsm(e, hallButtonCh, assignedOrdersFromMasterCh, localAssignedHallOrdersCh, tryUpdateWorldViewCh, peerLostCh, peerConnectedCh)
 		return
 	}
 
@@ -59,9 +59,13 @@ Loop:
 				fmt.Println("Order already in queue, not sending to algorithm")
 			}
 
-		case heartBeat := <-updateWorldViewCh:
+		case heartBeat := <-tryUpdateWorldViewCh:
 
 			//TODO: maybe fix that disonnected node gets overwritten with zero when connecting again
+
+			if !e.TryUpdateWorldView(&heartBeat) {
+				continue
+			}
 
 			if e.ShouldRedistributeOrders(&heartBeat) {
 				e.UpdateWorldView(&heartBeat)
@@ -113,14 +117,14 @@ Loop:
 	//Maybe make onMasterSlaveChange-function
 	e.SetIsMaster(false)
 	e.UpdateMyBackup()
-	go SlaveFsm(e, hallButtonCh, assignedOrdersFromMasterCh, localAssignedHallOrdersCh, updateWorldViewCh, peerLostCh, peerConnectedCh)
+	go SlaveFsm(e, hallButtonCh, assignedOrdersFromMasterCh, localAssignedHallOrdersCh, tryUpdateWorldViewCh, peerLostCh, peerConnectedCh)
 
 }
 
 // Kanskje vi kan returne fra masterFsm om vi bli slave, og starte denne. Og så motsatt ??
 // Idk om dette er en god løsning..
 func SlaveFsm(e *elevator.Elevator, hallButtonCh <-chan orders.Order, assignedOrdersFromMasterCh <-chan [config.N_FLOORS][config.N_BUTTONS - 1]bool,
-	localAssignedHallOrdersCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool, updateWorldViewCh <-chan elevator.Backup, peerLostCh <-chan int,
+	localAssignedHallOrdersCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool, tryUpdateWorldViewCh <-chan elevator.Backup, peerLostCh <-chan int,
 	peerConnectedCh <-chan int) {
 
 	fmt.Println("I am slave")
@@ -135,7 +139,11 @@ Loop:
 
 			network.SendHallOrder(buttonEvent, e.GetID(), e.GetMasterID())
 
-		case heartBeat := <-updateWorldViewCh:
+		case heartBeat := <-tryUpdateWorldViewCh:
+
+			if !e.TryUpdateWorldView(&heartBeat) {
+				continue
+			}
 
 			e.UpdateWorldView(&heartBeat)
 			onUpdateWorldView(e)
@@ -175,7 +183,7 @@ Loop:
 
 	e.SetIsMaster(true)
 	e.UpdateMyBackup()
-	go MasterFsm(e, hallButtonCh, assignedOrdersFromMasterCh, localAssignedHallOrdersCh, updateWorldViewCh, peerLostCh, peerConnectedCh)
+	go MasterFsm(e, hallButtonCh, assignedOrdersFromMasterCh, localAssignedHallOrdersCh, tryUpdateWorldViewCh, peerLostCh, peerConnectedCh)
 
 }
 

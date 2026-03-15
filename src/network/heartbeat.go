@@ -22,20 +22,14 @@ func BroadcastHeartbeat(e *elevator.Elevator) {
 
 	for range ticker.C {
 
-		heartbeatPacket, err := json.Marshal(e.GetMyBackup())
-		if err != nil {
-			continue
-		}
+		heartbeatPacket, _ := json.Marshal(e.GetMyBackup())
 
-		_, err = conn.Write(heartbeatPacket)
+		conn.Write(heartbeatPacket)
 
-		if err != nil {
-			continue
-		}
 	}
 }
 
-func ListenForHeartbeats(elev *elevator.Elevator, updateWorldViewCh chan<- elevator.Backup, peerLostCh chan<- int) {
+func ListenForHeartbeats(tryUpdateWorldViewCh chan<- elevator.Backup, peerLostCh chan<- int) {
 
 	multicastAddr, _ := net.ResolveUDPAddr("udp4", HEARTBEAT_ADDR)
 
@@ -56,10 +50,7 @@ func ListenForHeartbeats(elev *elevator.Elevator, updateWorldViewCh chan<- eleva
 
 			peerLastSeen[heartBeat.GetID()] = time.Now()
 
-			//TODO: move this
-			if elev.TryUpdateWorldView(&heartBeat) {
-				updateWorldViewCh <- heartBeat
-			}
+			tryUpdateWorldViewCh <- heartBeat
 		}
 
 		for peer, timestamp := range peerLastSeen {
