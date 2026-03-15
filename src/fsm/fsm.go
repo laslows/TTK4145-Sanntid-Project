@@ -61,7 +61,7 @@ func Fsm(e *elevator.Elevator, timetaker *timer.Timer, cabButtonCh <-chan orders
 
 }
 
-func onFloorArrival(e *elevator.Elevator, floor int, _timer *timer.Timer) {
+func onFloorArrival(e *elevator.Elevator, floor int, timer *timer.Timer) {
 
 	e.SetFloor(floor)
 	elevator.FloorIndicator(floor)
@@ -77,7 +77,7 @@ func onFloorArrival(e *elevator.Elevator, floor int, _timer *timer.Timer) {
 			elevator.MotorDirection(elevator.Stop)
 			elevator.DoorOpenLight(true)
 			*e = ClearAtCurrentFloor(*e)
-			_timer.Start(e.GetDoorOpenDuration())
+			timer.Start(e.GetDoorOpenDuration())
 			e.SetBehaviour(elevator.DoorOpen)
 			setAllLights(*e)
 
@@ -92,7 +92,7 @@ func onFloorArrival(e *elevator.Elevator, floor int, _timer *timer.Timer) {
 			elevator.MotorDirection(elevator.Stop)
 			elevator.DoorOpenLight(true)
 			*e = ClearAtCurrentFloor(*e)
-			_timer.Start(e.GetDoorOpenDuration())
+			timer.Start(e.GetDoorOpenDuration())
 			e.SetBehaviour(elevator.DoorOpen)
 			e.UpdateMyBackup()
 			setAllLights(*e)
@@ -113,7 +113,7 @@ func setAllLights(e elevator.Elevator) {
 	}
 }
 
-func OnDoorTimeout(e *elevator.Elevator, _timer *timer.Timer) {
+func OnDoorTimeout(e *elevator.Elevator, timer *timer.Timer) {
 	switch e.GetBehaviour() {
 	case elevator.DoorOpen:
 		pair := ChooseDirection(*e)
@@ -122,7 +122,7 @@ func OnDoorTimeout(e *elevator.Elevator, _timer *timer.Timer) {
 
 		switch e.GetBehaviour() {
 		case elevator.DoorOpen:
-			_timer.Start(e.GetDoorOpenDuration())
+			timer.Start(e.GetDoorOpenDuration())
 			*e = ClearAtCurrentFloor(*e)
 			e.UpdateMyBackup()
 			setAllLights(*e)
@@ -167,7 +167,7 @@ func insertOrder(e *elevator.Elevator, order orders.Order, timer *timer.Timer) {
 	setAllLights(*e)
 }
 
-func onNewOrder(e *elevator.Elevator, _timer *timer.Timer) {
+func onNewOrder(e *elevator.Elevator, timer *timer.Timer) {
 	switch e.GetBehaviour() {
 	case elevator.Idle:
 		pair := ChooseDirection(*e)
@@ -177,7 +177,7 @@ func onNewOrder(e *elevator.Elevator, _timer *timer.Timer) {
 		switch pair.m_behaviour {
 		case elevator.DoorOpen:
 			elevator.DoorOpenLight(true)
-			_timer.Start(e.GetDoorOpenDuration())
+			timer.Start(e.GetDoorOpenDuration())
 			*e = ClearAtCurrentFloor(*e)
 
 		case elevator.Moving:
