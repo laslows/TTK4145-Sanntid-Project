@@ -38,7 +38,7 @@ func BroadcastMessage(senderID, receiverID int, messageType messageType, payload
 
 	messageBytes, _ := json.Marshal(&message)
 
-	ackCh := make(chan bool, 1)
+	ackCh := make(chan struct{}, 1)
 	g_pendingAcks.insert(message.m_messageID, ackCh)
 	defer g_pendingAcks.delete(message.m_messageID)
 
@@ -59,6 +59,7 @@ func BroadcastMessage(senderID, receiverID int, messageType messageType, payload
 		case <-ackCh:
 			return
 
+		//TODO: this does not work
 		case update := <-g_hallRedistributionUpdateCh:
 			if message.m_messageID != update.m_messageID && update.m_receiverID == message.m_receiverID {
 				fmt.Println("Sending newer order distribution")
@@ -104,7 +105,7 @@ func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
 
 			if exists {
 				select {
-				case ch <- true:
+				case ch <- struct{}{}:
 				default:
 				}
 			}

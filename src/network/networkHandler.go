@@ -5,24 +5,24 @@ import "sync"
 const FIFO_CAPACITY = 10
 
 type SafePendingAcks struct {
-	m_pendingAcks map[uint64]chan bool
+	m_pendingAcks map[uint64]chan struct{}
 	m_mutex       sync.RWMutex
 }
 
 func newSafePendingAcks() *SafePendingAcks {
 	return &SafePendingAcks{
-		m_pendingAcks: make(map[uint64]chan bool),
+		m_pendingAcks: make(map[uint64]chan struct{}),
 	}
 }
 
-func (p *SafePendingAcks) insert(messageID uint64, ch chan bool) {
+func (p *SafePendingAcks) insert(messageID uint64, ch chan struct{}) {
 	p.m_mutex.Lock()
 	defer p.m_mutex.Unlock()
 
 	p.m_pendingAcks[messageID] = ch
 }
 
-func (p *SafePendingAcks) get(messageID uint64) (chan bool, bool) {
+func (p *SafePendingAcks) get(messageID uint64) (chan struct{}, bool) {
 	p.m_mutex.RLock()
 	defer p.m_mutex.RUnlock()
 
