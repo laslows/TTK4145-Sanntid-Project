@@ -72,7 +72,40 @@ func (buffer *fifoBuffer) contains(messageID uint64) bool {
 	return false
 }
 
-type redistributionUpdate struct {
-    m_messageID  uint64
-    m_receiverID int
+type SafeRedistributionCancels struct {
+	m_cancels map[int]chan struct{}
+	m_mutex   sync.Mutex
+}
+
+func newSafeRedistributionCancels() *SafeRedistributionCancels {
+	return &SafeRedistributionCancels{
+		m_cancels: make(map[int]chan struct{}),
+	}
+}
+
+func (registry *SafeRedistributionCancels) replace(receiverID int) chan struct{} {
+	registry.m_mutex.Lock()
+	defer registry.m_mutex.Unlock()
+
+	if oldCancelCh, exists := registry.m_cancels[receiverID]; exists {
+		close(oldCancelCh)
+	}
+
+	newCancelCh := make(chan struct{})
+	registry.m_cancels[receiverID] = newCancelCh
+	return newCancelCh
+}
+
+func (registry *SafeRedistributionCancels) clearIfCurrent(receiverID int, candidate chan struct{}) {
+	registry.m_mutex.Lock()
+	defer registry.m_mutex.Unlock()
+
+	current, exists := registry.m_cancels[receiverID]
+	if !exists {
+		return
+	}
+
+	if current == candidate {
+		delete(registry.m_cancels, receiverID)
+	}
 }
