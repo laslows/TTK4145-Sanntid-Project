@@ -34,7 +34,6 @@ const (
 )
 
 type Elevator struct {
-	//Can maybe remove IP
 	m_ID        int
 	m_floor     int
 	m_direction Direction
@@ -51,7 +50,6 @@ type Elevator struct {
 	}
 }
 
-// Constructor
 func New(port string) *Elevator {
 	e := &Elevator{
 		m_floor:     -1,
@@ -94,7 +92,6 @@ func (e *Elevator) GetGlobalLights() [config.N_FLOORS][config.N_BUTTONS]bool {
 		if b != nil {
 			for f := 0; f < config.N_FLOORS; f++ {
 				for btn := 0; btn < 2; btn++ {
-					// Local elevator should not turn on global cab lights
 					lights[f][btn] = lights[f][btn] || b.m_requests[f][btn]
 				}
 			}
@@ -151,15 +148,12 @@ func (e *Elevator) ShouldRedistributeOrders(backup *Backup) bool {
 }
 
 func (e *Elevator) TryUpdateIsMaster() bool {
-	//If we are master and should be slave, or if we are slave and should be master,
-	// update isMaster and return true. Else return false
-	if (e.m_isMaster && !checkIsMaster(*e)) || (!e.m_isMaster && checkIsMaster(*e)) {
-		e.m_isMaster = checkIsMaster(*e)
+	shouldBeMaster := checkIsMaster(*e)
+	if e.m_isMaster != shouldBeMaster {
+		e.m_isMaster = shouldBeMaster
 		return true
 	}
-
 	return false
-
 }
 
 func checkIsMaster(e Elevator) bool {
@@ -191,8 +185,10 @@ func getLocalIP() string {
 	return localAddress.IP.String()
 }
 
+//TODO: maybe not return pointer.. Whuuups
+//TODO: fix whole weird backup/worldview thing. Mybackup-pointer should be
+//same as pointer in worldview
 func (e *Elevator) GetMyBackup() *Backup {
-	//Would maybe be easier to store a pointer to own backup in elevator struct, and update it every time we update the worldview
 
 	for _, b := range e.m_worldView {
 		if b != nil && b.m_ID == e.m_ID {
@@ -249,6 +245,7 @@ func (e *Elevator) SetIsObstructed(isObstructed bool) {
 	e.m_isObstructed = isObstructed
 }
 
+//TODO: Maybe not return pointers
 func (e *Elevator) GetWorldView() [config.N_ELEVATORS]*Backup {
 	return e.m_worldView
 }

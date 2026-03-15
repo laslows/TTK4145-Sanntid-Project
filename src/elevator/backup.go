@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 )
 
-//TODO: maybe delete backup?? A bit weird maybe to store basically all information about myself twice
-
 type Backup struct {
 	m_ID                 int
 	m_floor              int
@@ -18,9 +16,6 @@ type Backup struct {
 	m_version            int
 	m_connectedToNetwork bool
 }
-
-// Må lage egendefinert json-Marshaller og unmarshaller fordi json ikke klarer å håndtere egendefinert type
-// (Direction) og fordi vi ikke kan eksportere medlemsvariabler i Backup
 
 func (b *Backup) MarshalJSON() ([]byte, error) {
 	type BackupJSON struct {
@@ -48,7 +43,6 @@ func (b *Backup) MarshalJSON() ([]byte, error) {
 	})
 }
 
-// Egendefinert unmarshaler
 func (b *Backup) UnmarshalJSON(data []byte) error {
 	type BackupJSON struct {
 		ID                 int
@@ -81,8 +75,7 @@ func (b *Backup) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// This is ugly..
-// We will tidy up later :D
+
 func (e *Elevator) UpdateMyBackup() {
 	e.m_myBackup.m_version++
 	e.m_myBackup.m_isMaster = e.m_isMaster
@@ -90,15 +83,13 @@ func (e *Elevator) UpdateMyBackup() {
 	e.m_myBackup.m_floor = e.m_floor
 	e.m_myBackup.m_requests = e.m_requests
 	e.m_myBackup.m_isObstructed = e.m_isObstructed
-	e.m_myBackup.m_connectedToNetwork = true //Should always be true for me
+	e.m_myBackup.m_connectedToNetwork = true
 	e.m_myBackup.m_behaviour = e.m_behaviour
 
 	e.UpdateWorldView(e.m_myBackup)
 }
 
 func (e *Elevator) restoreMyBackup(b *Backup) {
-	//Maybe just do directly in restoreElevatorState
-
 	e.m_myBackup.m_floor = e.m_floor
 	e.m_myBackup.m_direction = e.m_direction
 	e.m_myBackup.m_requests = e.m_requests
@@ -106,7 +97,7 @@ func (e *Elevator) restoreMyBackup(b *Backup) {
 	e.m_myBackup.m_behaviour = e.m_behaviour
 	e.m_myBackup.m_version = b.m_version + 1
 	e.m_myBackup.m_isObstructed = e.m_isObstructed
-	e.m_myBackup.m_connectedToNetwork = true //Should always be true for me
+	e.m_myBackup.m_connectedToNetwork = true
 
 	e.UpdateWorldView(e.m_myBackup)
 }
