@@ -103,21 +103,21 @@ func (e *Elevator) GetGlobalLights() [config.N_FLOORS][config.N_BUTTONS]bool {
 
 // Maybe this is all we need, and we dont need a function that cheks if new backup == old backup
 // Should maybe use a message id instead, to check if we have already received the message
-func (e *Elevator) UpdateWorldView(backup *Backup) {
+func (e *Elevator) UpdateWorldView(incomingBackup *Backup) {
 	for i, b := range e.m_worldView {
-		if b == nil || (b.m_ID == backup.m_ID) {
-			e.m_worldView[i] = backup
+		if b == nil || (b.m_ID == incomingBackup.m_ID) {
+			e.m_worldView[i] = incomingBackup
 			return
 		}
 	}
 }
 
-func (e *Elevator) TryUpdateWorldView(backup *Backup) bool {
+func (e *Elevator) TryUpdateWorldView(incomingBackup *Backup) bool {
 	// Update if new elevator, or if the incoming backup is newer, or if backup has reconnected.
 
 	for _, b := range e.m_worldView {
-		if b != nil && b.m_ID == backup.m_ID {
-			return backup.m_version > b.m_version || !b.m_connectedToNetwork
+		if b != nil && b.m_ID == incomingBackup.m_ID {
+			return incomingBackup.m_version > b.m_version || !b.m_connectedToNetwork
 		}
 	}
 	return true
@@ -137,11 +137,11 @@ func getIDAsInt(ip, osID string) int {
 }
 
 //TODO: move to fsm?
-func (e *Elevator) ShouldRedistributeOrders(backup *Backup) bool {
+func (e *Elevator) ShouldRedistributeOrders(incomingBackup *Backup) bool {
 	//SHould redistribute if new backup changes obstruction status, or if we lose connection or if we gain connection, or if we change motorstopstatus
     for _, b := range e.m_worldView {
-		if b != nil && b.m_ID == backup.m_ID {
-			return (b.m_isObstructed != backup.m_isObstructed || b.GetHasMotorstop() != backup.GetHasMotorstop())
+		if b != nil && b.m_ID == incomingBackup.m_ID {
+			return (b.m_isObstructed != incomingBackup.m_isObstructed || b.GetHasMotorstop() != incomingBackup.GetHasMotorstop())
 		}
 	}
 	return false
@@ -301,7 +301,6 @@ func (e *Elevator) SetIsMaster(isMaster bool) {
 func (e *Elevator) GetID() int {
 	return e.m_ID
 }
-
 
 func DirectionToString(dir Direction) string {
 	switch dir {
