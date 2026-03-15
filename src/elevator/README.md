@@ -2,7 +2,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Course-TTK4145-f4a6c1?style=for-the-badge" alt="TTK4145 badge" />
-  <img src="https://img.shields.io/badge/Project-Elevator%20Module-e88cab?style=for-the-badge" alt="Project badge" />
+  <img src="https://img.shields.io/badge/Module-Elevator-e88cab?style=for-the-badge" alt="Project badge" />
   <img src="https://img.shields.io/badge/Language-Go-f8d7e4?style=for-the-badge" alt="Go badge" />
 </p>
 
