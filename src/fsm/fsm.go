@@ -33,7 +33,7 @@ func Fsm(e *elevator.Elevator, timetaker *timer.Timer, cabButtonCh <-chan orders
 			onFloorArrival(e, floorArrival, timetaker)
 
 		case <-timerCh:
-			OnDoorTimeout(e, timetaker)
+			onDoorTimeout(e, timetaker)
 
 		case <-motorStopCh:
 
@@ -73,10 +73,10 @@ func onFloorArrival(e *elevator.Elevator, floor int, timer *timer.Timer) {
 			e.SetBehaviour(elevator.Idle)
 			elevator.MotorDirection(elevator.Stop)
 
-		} else if ShouldStop(*e) {
+		} else if shouldStop(*e) {
 			elevator.MotorDirection(elevator.Stop)
 			elevator.DoorOpenLight(true)
-			*e = ClearAtCurrentFloor(*e)
+			*e = clearAtCurrentFloor(*e)
 			timer.Start(e.GetDoorOpenDuration())
 			e.SetBehaviour(elevator.DoorOpen)
 			setAllLights(*e)
@@ -88,10 +88,10 @@ func onFloorArrival(e *elevator.Elevator, floor int, timer *timer.Timer) {
 		e.UpdateMyBackup()
 
 	case elevator.Moving:
-		if ShouldStop(*e) {
+		if shouldStop(*e) {
 			elevator.MotorDirection(elevator.Stop)
 			elevator.DoorOpenLight(true)
-			*e = ClearAtCurrentFloor(*e)
+			*e = clearAtCurrentFloor(*e)
 			timer.Start(e.GetDoorOpenDuration())
 			e.SetBehaviour(elevator.DoorOpen)
 			e.UpdateMyBackup()
@@ -113,17 +113,17 @@ func setAllLights(e elevator.Elevator) {
 	}
 }
 
-func OnDoorTimeout(e *elevator.Elevator, timer *timer.Timer) {
+func onDoorTimeout(e *elevator.Elevator, timer *timer.Timer) {
 	switch e.GetBehaviour() {
 	case elevator.DoorOpen:
-		pair := ChooseDirection(*e)
+		pair := chooseDirection(*e)
 		e.SetDirection(pair.m_dirn)
 		e.SetBehaviour(pair.m_behaviour)
 
 		switch e.GetBehaviour() {
 		case elevator.DoorOpen:
 			timer.Start(e.GetDoorOpenDuration())
-			*e = ClearAtCurrentFloor(*e)
+			*e = clearAtCurrentFloor(*e)
 			e.UpdateMyBackup()
 			setAllLights(*e)
 		case elevator.Moving:
@@ -154,7 +154,7 @@ func insertAllHallOrders(e *elevator.Elevator, hallOrders [config.N_FLOORS][conf
 func insertOrder(e *elevator.Elevator, order orders.Order, timer *timer.Timer) {
 	switch e.GetBehaviour() {
 	case elevator.DoorOpen:
-		if ShouldClearImmediately(*e, order.GetFloor(), order.GetOrderType()) {
+		if shouldClearImmediately(*e, order.GetFloor(), order.GetOrderType()) {
 			fmt.Printf("Clearing order immediately: floor %d, button %d\n", order.GetFloor(), order.GetOrderType())
 			timer.Start(e.GetDoorOpenDuration())
 		} else {
@@ -170,7 +170,7 @@ func insertOrder(e *elevator.Elevator, order orders.Order, timer *timer.Timer) {
 func onNewOrder(e *elevator.Elevator, timer *timer.Timer) {
 	switch e.GetBehaviour() {
 	case elevator.Idle:
-		pair := ChooseDirection(*e)
+		pair := chooseDirection(*e)
 		e.SetDirection(pair.m_dirn)
 		e.SetBehaviour(pair.m_behaviour)
 
@@ -178,7 +178,7 @@ func onNewOrder(e *elevator.Elevator, timer *timer.Timer) {
 		case elevator.DoorOpen:
 			elevator.DoorOpenLight(true)
 			timer.Start(e.GetDoorOpenDuration())
-			*e = ClearAtCurrentFloor(*e)
+			*e = clearAtCurrentFloor(*e)
 
 		case elevator.Moving:
 			elevator.MotorDirection(pair.m_dirn)

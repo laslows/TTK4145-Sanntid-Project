@@ -19,7 +19,7 @@ const BROADCAST_TIMEOUT = 250 * time.Millisecond
 var g_pendingAcks = newSafePendingAcks()
 var g_hallRedistributionUpdateCh = make(chan redistributionUpdate, 1)
 
-func BroadcastMessage(senderID, receiverID int, messageType messageType, payload json.RawMessage) {
+func broadcastMessage(senderID, receiverID int, messageType messageType, payload json.RawMessage) {
 	message := message{
 		m_messageType: messageType,
 		m_senderID:    senderID,
@@ -115,7 +115,7 @@ func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
 
 			continue
 		}
-		SendAcknowledgement(incomingMessage.m_messageID, e.GetID(), incomingMessage.m_senderID)
+		sendAcknowledgement(incomingMessage.m_messageID, e.GetID(), incomingMessage.m_senderID)
 
 		if messageBuffer.contains(incomingMessage.m_messageID) {
 			continue
@@ -191,25 +191,25 @@ func SendHallOrder(order orders.Order, senderID, receiverId int) {
 
 	fmt.Println("Sending hall order: ", order, " from ", senderID, " to ", receiverId)
 
-	go BroadcastMessage(senderID, receiverId, HallOrderRequest, payload)
+	go broadcastMessage(senderID, receiverId, HallOrderRequest, payload)
 }
 
 func SendHallOrderRedistribution(orderList [config.N_FLOORS][config.N_BUTTONS - 1]bool, senderID, receiverID int) {
 	payload, _ := json.Marshal(&orderList)
-	go BroadcastMessage(senderID, receiverID, HallOrderRedistribution, payload)
+	go broadcastMessage(senderID, receiverID, HallOrderRedistribution, payload)
 }
 
 func SendWorldView(worldView [config.N_ELEVATORS]*elevator.Backup, senderID, receiverId int) {
 	payload, _ := json.Marshal(worldView)
 
-	go BroadcastMessage(senderID, receiverId, WorldView, payload)
+	go broadcastMessage(senderID, receiverId, WorldView, payload)
 }
 
 func SendInitializationMessage(senderID int) {
-	go BroadcastMessage(senderID, 0, Initialization, nil)
+	go broadcastMessage(senderID, 0, Initialization, nil)
 }
 
-func SendAcknowledgement(messageID uint64, senderID, receiverID int) {
+func sendAcknowledgement(messageID uint64, senderID, receiverID int) {
 	acknowledgementMessage := message{
 		m_messageType: Acknowledgement,
 		m_senderID:    senderID,

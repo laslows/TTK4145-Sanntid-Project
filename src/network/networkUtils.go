@@ -2,27 +2,27 @@ package network
 
 import "sync"
 
-const FIFO_CAPACITY = 10
+const FIFO_CAPACITY = 100
 
-type SafePendingAcks struct {
+type safePendingAcks struct {
 	m_pendingAcks map[uint64]chan struct{}
 	m_mutex       sync.RWMutex
 }
 
-func newSafePendingAcks() *SafePendingAcks {
-	return &SafePendingAcks{
+func newSafePendingAcks() *safePendingAcks {
+	return &safePendingAcks{
 		m_pendingAcks: make(map[uint64]chan struct{}),
 	}
 }
 
-func (p *SafePendingAcks) insert(messageID uint64, ch chan struct{}) {
+func (p *safePendingAcks) insert(messageID uint64, ch chan struct{}) {
 	p.m_mutex.Lock()
 	defer p.m_mutex.Unlock()
 
 	p.m_pendingAcks[messageID] = ch
 }
 
-func (p *SafePendingAcks) get(messageID uint64) (chan struct{}, bool) {
+func (p *safePendingAcks) get(messageID uint64) (chan struct{}, bool) {
 	p.m_mutex.RLock()
 	defer p.m_mutex.RUnlock()
 
@@ -30,7 +30,7 @@ func (p *SafePendingAcks) get(messageID uint64) (chan struct{}, bool) {
 	return ch, exists
 }
 
-func (p *SafePendingAcks) delete(messageID uint64) {
+func (p *safePendingAcks) delete(messageID uint64) {
 	p.m_mutex.Lock()
 	defer p.m_mutex.Unlock()
 

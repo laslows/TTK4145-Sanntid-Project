@@ -12,12 +12,12 @@ import (
 
 //TODO:fix name
 
-type SystemState struct {
+type systemState struct {
 	HallRequests [][]bool                 `json:"hallRequests"`
-	States       map[string]ElevatorState `json:"states"`
+	States       map[string]elevatorState `json:"states"`
 }
 
-type ElevatorState struct {
+type elevatorState struct {
 	Behaviour   string `json:"behaviour"`
 	Floor       int    `json:"floor"`
 	Direction   string `json:"direction"`
@@ -25,7 +25,7 @@ type ElevatorState struct {
 }
 
 func createJSONDataForHallRequestAlgorithm(e *elevator.Elevator, hallOrder *orders.Order) string {
-	states := make(map[string]ElevatorState)
+	states := make(map[string]elevatorState)
 
 	hallRequests := make([][]bool, config.N_FLOORS)
 
@@ -48,7 +48,7 @@ func createJSONDataForHallRequestAlgorithm(e *elevator.Elevator, hallOrder *orde
 		backupRequests := backup.GetRequests()
 		if backup.GetBehaviour() != elevator.MotorStop && !backup.GetIsObstructed() && backup.GetConnectedToNetwork() {
 
-			states[strconv.Itoa(backup.GetID())] = ElevatorState{
+			states[strconv.Itoa(backup.GetID())] = elevatorState{
 				Behaviour:   elevator.BehaviourToString(backup.GetBehaviour()),
 				Floor:       backup.GetFloor(),
 				Direction:   elevator.DirectionToString(backup.GetDirection()),
@@ -66,7 +66,7 @@ func createJSONDataForHallRequestAlgorithm(e *elevator.Elevator, hallOrder *orde
 		}
 	}
 
-	system := SystemState{
+	system := systemState{
 		HallRequests: hallRequests,
 		States:       states,
 	}

@@ -18,7 +18,7 @@ func MasterFsm(e *elevator.Elevator, hallButtonCh <-chan orders.Order, assignedO
 
 	if !e.GetIsMaster() {
 		fmt.Println("Immediately switching to slave")
-		go SlaveFsm(e, hallButtonCh, assignedOrdersFromMasterCh, localAssignedHallOrdersCh, tryUpdateWorldViewCh, peerLostCh, peerConnectedCh)
+		go slaveFsm(e, hallButtonCh, assignedOrdersFromMasterCh, localAssignedHallOrdersCh, tryUpdateWorldViewCh, peerLostCh, peerConnectedCh)
 		return
 	}
 
@@ -117,13 +117,13 @@ Loop:
 	//Maybe make onMasterSlaveChange-function
 	e.SetIsMaster(false)
 	e.UpdateMyBackup()
-	go SlaveFsm(e, hallButtonCh, assignedOrdersFromMasterCh, localAssignedHallOrdersCh, tryUpdateWorldViewCh, peerLostCh, peerConnectedCh)
+	go slaveFsm(e, hallButtonCh, assignedOrdersFromMasterCh, localAssignedHallOrdersCh, tryUpdateWorldViewCh, peerLostCh, peerConnectedCh)
 
 }
 
 // Kanskje vi kan returne fra masterFsm om vi bli slave, og starte denne. Og så motsatt ??
 // Idk om dette er en god løsning..
-func SlaveFsm(e *elevator.Elevator, hallButtonCh <-chan orders.Order, assignedOrdersFromMasterCh <-chan [config.N_FLOORS][config.N_BUTTONS - 1]bool,
+func slaveFsm(e *elevator.Elevator, hallButtonCh <-chan orders.Order, assignedOrdersFromMasterCh <-chan [config.N_FLOORS][config.N_BUTTONS - 1]bool,
 	localAssignedHallOrdersCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool, tryUpdateWorldViewCh <-chan elevator.Backup, peerLostCh <-chan int,
 	peerConnectedCh <-chan int) {
 

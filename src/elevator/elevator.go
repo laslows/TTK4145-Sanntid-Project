@@ -24,14 +24,6 @@ const (
 	Up
 )
 
-type Button int
-
-const (
-	HallUp Button = iota
-	HallDown
-	Cab
-)
-
 type ElevatorBehaviour int
 
 const (
@@ -210,14 +202,6 @@ func (e *Elevator) GetMyBackup() *Backup {
 	return nil
 }
 
-func (e *Elevator) GetBackup(peerID int) *Backup {
-	for _, b := range e.m_worldView {
-		if b != nil && b.m_ID == peerID {
-			return b
-		}
-	}
-	return nil
-}
 
 func (e *Elevator) GetMasterID() int {
 	for _, b := range e.m_worldView {
@@ -228,15 +212,6 @@ func (e *Elevator) GetMasterID() int {
 
 	fmt.Println("No master found in worldview")
 	return -1
-}
-
-func (e *Elevator) GainedConnectionToPrevDisconnectedPeer(peerID int) bool {
-	for _, b := range e.m_worldView {
-		if b != nil && b.m_ID == peerID {
-			return !b.m_connectedToNetwork
-		}
-	}
-	return false
 }
 
 func (e *Elevator) LoseConnectionToPeer(peerID int) {
