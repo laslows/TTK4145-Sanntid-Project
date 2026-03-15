@@ -43,8 +43,8 @@
 │   │   ├── networkHandler.go
 │   │   └── README.md
 │   ├── orders/
-│   └── timer/
-└── README.md <---------- YOU'RE HERE!
+│   ├── timer/
+|   └── README.md <---------- YOU'RE HERE!
 ```
 ---
 
