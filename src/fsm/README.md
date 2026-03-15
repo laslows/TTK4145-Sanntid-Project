@@ -33,3 +33,6 @@ The FSM module contains the logic for controlling the elevators hardware, as wel
 
 The executable is executed in the code by navigating to the file `"./src/fsm/hall_request_assigner/hall_request_assigner"` in the `hallRequestAssigner`, and built by creating JSONdata for the active requests and running
 `dmd main.d config.d elevator_algorithm.d elevator_state.d optimal_hall_requests.d d-json/jsonx.d -w -g -ofhall_request_assigner` in `build.sh` for windows machines, and swapping out the `dmd` for `gdc` on arm64 machines (which i quirkily have) or equivalent for Linux.
+
+![Primary Backup](../../assets/primaryBackup.drawio%20(1).png" Primary and Backup functionality")
+> **_NOTE_**: This module was created before we started implementing the elevator, which means things are bound to differ slightly from our actual logic.
