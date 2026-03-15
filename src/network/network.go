@@ -17,15 +17,14 @@ const RETRY_BROADCAST_RATE = 10 * time.Millisecond
 const BROADCAST_TIMEOUT = 2500 * time.Millisecond
 
 var g_pendingAcks = newSafePendingAcks()
-var g_hallRedistributionUpdateCh = make(chan redistributionUpdate)
-
+var g_hallRedistributionUpdateCh = make(chan redistributionUpdate, 1)
 
 func BroadcastMessage(senderID, receiverID int, messageType messageType, payload json.RawMessage) {
 	message := message{
 		m_messageType: messageType,
 		m_senderID:    senderID,
 		m_receiverID:  receiverID,
-		m_payload: payload,
+		m_payload:     payload,
 	}
 
 	message.m_messageID = generateMessageID(message)
@@ -38,7 +37,7 @@ func BroadcastMessage(senderID, receiverID int, messageType messageType, payload
 	}
 
 	messageBytes, _ := json.Marshal(&message)
-	
+
 	ackCh := make(chan bool, 1)
 	g_pendingAcks.insert(message.m_messageID, ackCh)
 	defer g_pendingAcks.delete(message.m_messageID)
@@ -65,6 +64,7 @@ func BroadcastMessage(senderID, receiverID int, messageType messageType, payload
 				fmt.Println("Sending newer order distribution")
 				return
 			}
+			fmt.Println("Extracted my own message")
 		case <-retryTicker.C:
 			continue
 		case <-broadcastTimeout.C:
@@ -74,7 +74,6 @@ func BroadcastMessage(senderID, receiverID int, messageType messageType, payload
 		}
 	}
 }
-
 
 func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
 	assignedOrdersFromMasterCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool, peerConnectedCh chan<- int) {
@@ -111,14 +110,13 @@ func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
 			}
 
 			continue
-		} 
+		}
 		SendAcknowledgement(incomingMessage.m_messageID, e.GetID(), incomingMessage.m_senderID)
 
 		if messageBuffer.contains(incomingMessage.m_messageID) {
 			continue
-		} 
+		}
 		messageBuffer.add(incomingMessage.m_messageID)
-		
 
 		switch incomingMessage.m_messageType {
 		case HallOrderRequest:
@@ -157,7 +155,6 @@ func TryListenForWorldView() ([config.N_ELEVATORS]*elevator.Backup, bool) {
 
 	buffer := make([]byte, 1024)
 
-
 	for {
 		n, _, err := conn.ReadFromUDP(buffer)
 		if err != nil {
@@ -172,7 +169,7 @@ func TryListenForWorldView() ([config.N_ELEVATORS]*elevator.Backup, bool) {
 
 		var message message
 		json.Unmarshal(buffer[:n], &message)
-	
+
 		if message.m_messageType != WorldView {
 			continue
 		}
@@ -195,7 +192,6 @@ func SendHallOrder(order orders.Order, senderID, receiverId int) {
 
 func SendHallOrderRedistribution(orderList [config.N_FLOORS][config.N_BUTTONS - 1]bool, senderID, receiverID int) {
 	payload, _ := json.Marshal(&orderList)
-
 	go BroadcastMessage(senderID, receiverID, HallOrderRedistribution, payload)
 }
 
