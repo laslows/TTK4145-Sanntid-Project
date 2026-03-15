@@ -22,68 +22,28 @@ var g_pendingAcks = newSafePendingAcks()
 var g_hallRedistributionUpdateCh = make(chan redistributionUpdate)
 
 
-type messageType int
 
-// TODO: Make not exported??
-const (
-	HallOrderRequest messageType = iota
-	HallOrderRedistribution
-	Initialization
-	WorldView
-	Acknowledgement
-)
+func BroadcastMessage(message message) {
+	multicastAddr, _ := net.ResolveUDPAddr("udp4", MESSAGE_ADDR)
 
-type Message struct {
-	m_messageType messageType
-	m_senderID    int
-	m_receiverID  int
-	m_payload     json.RawMessage
-	m_messageID   uint64
-}
-
-//TODO: max retries? Timeout? So it doesn't send messages for ever if no ack received
-// (edge case if we change master for example)
-
-func BroadcastMessage(message Message) {
-	//Send message to multicast address
-	messageAddrSender, err := net.ResolveUDPAddr("udp4", MESSAGE_ADDR)
-
-	if err != nil {
-		fmt.Println("Error resolving multicast address:", err)
-		return
-	}
-
-	conn, err := net.DialUDP("udp", nil, messageAddrSender)
-	if err != nil {
-		fmt.Println("Error creating UDP connection:", err)
-		return
-	}
+	conn, _ := net.DialUDP("udp4", nil, multicastAddr)
 	defer conn.Close()
 
-	messageBytes, err := json.Marshal(&message)
-	if err != nil {
-		fmt.Println("Error marshaling message:", err)
-		return
-	}
-
+	messageBytes, _ := json.Marshal(&message)
+	
 	ackCh := make(chan bool, 1)
 	g_pendingAcks.insert(message.m_messageID, ackCh)
-	//Always do this when we leave broadcast
 	defer g_pendingAcks.delete(message.m_messageID)
 
-	ticker := time.NewTicker(RETRY_BROADCAST_RATE)
-	defer ticker.Stop()
+	retryTicker := time.NewTicker(RETRY_BROADCAST_RATE)
+	defer retryTicker.Stop()
 	broadcastTimeout := time.NewTicker(BROADCAST_TIMEOUT)
 	defer broadcastTimeout.Stop()
 
 
 	for {
-		_, err = conn.Write(messageBytes)
-		//fmt.Println("Broadcasting message: ", message.m_messageID, message.m_messageType, " to ", message.m_receiverID)
-		if err != nil {
-			fmt.Println("Error writing to UDP connection:", err)
-			continue
-		}
+		conn.Write(messageBytes)
+
 		select {
 		case <-ackCh:
 			return
@@ -93,18 +53,16 @@ func BroadcastMessage(message Message) {
 				fmt.Println("Sending newer order distribution")
 				return
 			}
-		case <-ticker.C:
+		case <-retryTicker.C:
 			continue
 		case <-broadcastTimeout.C:
 			fmt.Println("Broadcast timeout reached")
 			return
 		}
-
 	}
-
 }
 
-func generateMessageID(message Message) uint64 {
+func generateMessageID(message message) uint64 {
 	timeStamp := uint32(time.Now().Unix())
 
 	data, err := json.Marshal(&message)
@@ -125,25 +83,12 @@ func generateMessageID(message Message) uint64 {
 func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
 	assignedOrdersFromMasterCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool, peerConnectedCh chan<- int) {
 
-	var cache = newFifoCache()
+	var messageBuffer = newFifoBuffer()
 
-	messageAddrReceiver, err := net.ResolveUDPAddr("udp4", MESSAGE_ADDR)
-
-	if err != nil {
-		fmt.Println("Error resolving UDP address:", err)
-		return
-	}
-
-	//conn, err := net.ListenUDP("udp", heartbeatAddrReceiver)
-	conn, err := net.ListenMulticastUDP("udp4", nil, messageAddrReceiver)
-
-	if err != nil {
-		fmt.Println("Error listening for messages:", err)
-		return
-	}
+	multicastAddr, _ := net.ResolveUDPAddr("udp4", MESSAGE_ADDR)
+	conn, _ := net.ListenMulticastUDP("udp4", nil, multicastAddr)
 	defer conn.Close()
 
-	//Buffer to read incoming messages into
 	buffer := make([]byte, 1024)
 
 	for {
@@ -154,23 +99,18 @@ func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
 			continue
 		}
 
-		var message Message
+		var incomingMessage message
 
-		err = json.Unmarshal(buffer[:n], &message)
+		json.Unmarshal(buffer[:n], &incomingMessage)
 
-		if err != nil {
-			fmt.Println("Error unmarshaling message:", err)
+		if !(incomingMessage.m_receiverID == e.GetID() ||
+			(incomingMessage.m_receiverID == 0 && incomingMessage.m_senderID != e.GetID())) {
 			continue
 		}
 
-		if !(message.m_receiverID == e.GetID() ||
-			(message.m_receiverID == 0 && message.m_senderID != e.GetID())) {
-			continue
-		}
+		if incomingMessage.m_messageType == Acknowledgement {
 
-		if message.m_messageType == Acknowledgement {
-
-			ch, exists := g_pendingAcks.get(message.m_messageID)
+			ch, exists := g_pendingAcks.get(incomingMessage.m_messageID)
 
 			if exists {
 				select {
@@ -180,26 +120,19 @@ func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
 			}
 
 			continue
-		}
+		} 
+		SendAcknowledgement(incomingMessage.m_messageID, e.GetID(), incomingMessage.m_senderID)
 
-		SendAcknowledgement(message.m_messageID, e.GetID(), message.m_senderID)
-
-		if cache.contains(message.m_messageID) {
+		if messageBuffer.contains(incomingMessage.m_messageID) {
 			continue
-		}
+		} 
+		messageBuffer.add(incomingMessage.m_messageID)
+		
 
-		cache.add(message.m_messageID)
-
-		switch message.m_messageType {
+		switch incomingMessage.m_messageType {
 		case HallOrderRequest:
 			var hallOrderRequest orders.Order
-			err = json.Unmarshal(message.m_payload, &hallOrderRequest)
-
-			if err != nil {
-				fmt.Println("Error unmarshaling hall order:", err)
-				continue
-			}
-			//Handle hall order. Use cost function.
+			json.Unmarshal(incomingMessage.m_payload, &hallOrderRequest)
 
 			hallButtonCh <- hallOrderRequest
 
@@ -210,46 +143,29 @@ func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
 			}
 
 			var hallOrderAssignments [config.N_FLOORS][config.N_BUTTONS - 1]bool
-			err = json.Unmarshal(message.m_payload, &hallOrderAssignments)
-
-			if err != nil {
-				fmt.Println("Error unmarshaling hall order assignment:", err)
-				continue
-			}
+			json.Unmarshal(incomingMessage.m_payload, &hallOrderAssignments)
 
 			assignedOrdersFromMasterCh <- hallOrderAssignments
 
 		case Initialization:
 
-			peerConnectedCh <- message.m_senderID
+			peerConnectedCh <- incomingMessage.m_senderID
 
 		}
-
 	}
-
 }
 
 func TryListenForWorldView() ([config.N_ELEVATORS]*elevator.Backup, bool) {
 
 	var worldView [config.N_ELEVATORS]*elevator.Backup
 
-	messageAddrReceiver, err := net.ResolveUDPAddr("udp4", MESSAGE_ADDR)
-	if err != nil {
-		fmt.Println("Error resolving UDP address:", err)
-		return worldView, false
-	}
-
-	conn, err := net.ListenMulticastUDP("udp4", nil, messageAddrReceiver)
-	if err != nil {
-		fmt.Println("Error listening for messages:", err)
-		return worldView, false
-	}
+	messageAddrReceiver, _ := net.ResolveUDPAddr("udp4", MESSAGE_ADDR)
+	conn, _ := net.ListenMulticastUDP("udp4", nil, messageAddrReceiver)
+	conn.SetReadDeadline(time.Now().Add(INITIALIZATION_TIMEOUT))
 	defer conn.Close()
 
-	//Buffer to read incoming messages into
 	buffer := make([]byte, 1024)
 
-	conn.SetReadDeadline(time.Now().Add(INITIALIZATION_TIMEOUT))
 
 	for {
 		n, _, err := conn.ReadFromUDP(buffer)
@@ -263,22 +179,14 @@ func TryListenForWorldView() ([config.N_ELEVATORS]*elevator.Backup, bool) {
 			return worldView, false
 		}
 
-		var message Message
-		err = json.Unmarshal(buffer[:n], &message)
-		if err != nil {
-			fmt.Println("Error unmarshaling message:", err)
-			continue
-		}
-
+		var message message
+		json.Unmarshal(buffer[:n], &message)
+	
 		if message.m_messageType != WorldView {
 			continue
 		}
 
-		err = json.Unmarshal(message.m_payload, &worldView)
-		if err != nil {
-			fmt.Println("Error unmarshaling world view:", err)
-			continue
-		}
+		json.Unmarshal(message.m_payload, &worldView)
 
 		fmt.Println("Got worldView.")
 		return worldView, true
@@ -287,17 +195,13 @@ func TryListenForWorldView() ([config.N_ELEVATORS]*elevator.Backup, bool) {
 }
 
 func SendHallOrder(order orders.Order, senderID, receiverId int) {
-	hallOrderMessage := Message{
+	hallOrderMessage := message{
 		m_messageType: HallOrderRequest,
 		m_senderID:    senderID,
 		m_receiverID:  receiverId,
 	}
 
-	payload, err := json.Marshal(&order)
-	if err != nil {
-		//Handle error
-		return
-	}
+	payload, _ := json.Marshal(&order)
 
 	hallOrderMessage.m_payload = payload
 	hallOrderMessage.m_messageID = generateMessageID(hallOrderMessage)
@@ -307,20 +211,14 @@ func SendHallOrder(order orders.Order, senderID, receiverId int) {
 	go BroadcastMessage(hallOrderMessage)
 }
 
-// Inputs a map with elevator id as key and assigned order as value. Should be called by master after running the hall request assignment algorithm
 func SendHallOrderRedistribution(orderList [config.N_FLOORS][config.N_BUTTONS - 1]bool, senderID, receiverID int) {
-	hallOrderRedistributionMessage := Message{
+	hallOrderRedistributionMessage := message{
 		m_messageType: HallOrderRedistribution,
 		m_senderID:    senderID,
 		m_receiverID:  receiverID,
 	}
 
-	payload, err := json.Marshal(&orderList)
-	if err != nil {
-		//Handle error
-		return
-	}
-	//Terminate old broadcasting
+	payload, _ := json.Marshal(&orderList)
 
 	hallOrderRedistributionMessage.m_payload = payload
 	hallOrderRedistributionMessage.m_messageID = generateMessageID(hallOrderRedistributionMessage)
@@ -334,17 +232,13 @@ func SendHallOrderRedistribution(orderList [config.N_FLOORS][config.N_BUTTONS - 
 }
 
 func SendWorldView(worldView [config.N_ELEVATORS]*elevator.Backup, senderID, receiverId int) {
-	worldViewMessage := Message{
+	worldViewMessage := message{
 		m_messageType: WorldView,
 		m_senderID:    senderID,
 		m_receiverID:  receiverId,
 	}
 
-	payload, err := json.Marshal(worldView)
-	if err != nil {
-		//Handle error
-		return
-	}
+	payload, _ := json.Marshal(worldView)
 
 	worldViewMessage.m_payload = payload
 	worldViewMessage.m_messageID = generateMessageID(worldViewMessage)
@@ -353,10 +247,10 @@ func SendWorldView(worldView [config.N_ELEVATORS]*elevator.Backup, senderID, rec
 }
 
 func SendInitializationMessage(senderID int) {
-	initializationMessage := Message{
-		m_messageType: Initialization, // Make not exported??
+	initializationMessage := message{
+		m_messageType: Initialization,
 		m_senderID:    senderID,
-		m_receiverID:  0, //Send to master
+		m_receiverID:  0,
 	}
 
 	initializationMessage.m_messageID = generateMessageID(initializationMessage)
@@ -365,86 +259,23 @@ func SendInitializationMessage(senderID int) {
 }
 
 func SendAcknowledgement(messageID uint64, senderID, receiverID int) {
-	acknowledgementMessage := Message{
+	acknowledgementMessage := message{
 		m_messageType: Acknowledgement,
 		m_senderID:    senderID,
 		m_receiverID:  receiverID,
 		m_messageID:   messageID,
 	}
 
-	payload, err := json.Marshal(messageID)
-	if err != nil {
-		//Handle error
-		return
-	}
+	payload, _ := json.Marshal(messageID)
 
 	acknowledgementMessage.m_payload = payload
 
-	messageAddrSender, err := net.ResolveUDPAddr("udp4", MESSAGE_ADDR)
-	//TODO: can we please not use err everywhere? very annoying :(
-	if err != nil {
-		fmt.Println("Error resolving multicast address:", err)
-		return
-	}
+	multicastAddr, _ := net.ResolveUDPAddr("udp4", MESSAGE_ADDR)
 
-	conn, err := net.DialUDP("udp", nil, messageAddrSender)
-	if err != nil {
-		fmt.Println("Error creating UDP connection:", err)
-		return
-	}
+	conn, _ := net.DialUDP("udp4", nil, multicastAddr)
 	defer conn.Close()
 
-	messageBytes, err := json.Marshal(&acknowledgementMessage)
-	if err != nil {
-		fmt.Println("Error marshaling message:", err)
-		return
-	}
+	messageBytes, _ := json.Marshal(&acknowledgementMessage)
 
-	_, err = conn.Write(messageBytes)
-	if err != nil {
-		fmt.Println("Error writing to UDP connection:", err)
-		return
-	}
-}
-
-func (m *Message) MarshalJSON() ([]byte, error) {
-	type MessageJSON struct {
-		MessageType int
-		ReceiverID  int
-		SenderID    int
-		MessageID   uint64
-		Payload     json.RawMessage
-	}
-
-	return json.Marshal(&MessageJSON{
-		MessageType: int(m.m_messageType),
-		ReceiverID:  m.m_receiverID,
-		SenderID:    m.m_senderID,
-		MessageID:   m.m_messageID,
-		Payload:     m.m_payload,
-	})
-}
-
-func (message *Message) UnmarshalJSON(data []byte) error {
-	type MessageJSON struct {
-		MessageType int
-		ReceiverID  int
-		SenderID    int
-		MessageID   uint64
-		Payload     json.RawMessage
-	}
-
-	var messageJSON MessageJSON
-	err := json.Unmarshal(data, &messageJSON)
-	if err != nil {
-		return err
-	}
-
-	message.m_messageType = messageType(messageJSON.MessageType)
-	message.m_receiverID = messageJSON.ReceiverID
-	message.m_senderID = messageJSON.SenderID
-	message.m_messageID = messageJSON.MessageID
-	message.m_payload = messageJSON.Payload
-
-	return nil
+	conn.Write(messageBytes)
 }

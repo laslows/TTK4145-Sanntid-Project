@@ -37,34 +37,34 @@ func (p *SafePendingAcks) delete(messageID uint64) {
 	delete(p.m_pendingAcks, messageID)
 }
 
-type fifoCache struct {
+type fifoBuffer struct {
 	m_capacity int
 	m_queue    []uint64
 	m_mutex    sync.RWMutex
 }
 
-func newFifoCache() *fifoCache {
-	return &fifoCache{
+func newFifoBuffer() *fifoBuffer {
+	return &fifoBuffer{
 		m_capacity: FIFO_CAPACITY,
 		m_queue:    make([]uint64, 0, FIFO_CAPACITY),
 	}
 }
 
-func (cache *fifoCache) add(messageID uint64) {
-	cache.m_mutex.Lock()
-	defer cache.m_mutex.Unlock()
+func (buffer *fifoBuffer) add(messageID uint64) {
+	buffer.m_mutex.Lock()
+	defer buffer.m_mutex.Unlock()
 
-	if len(cache.m_queue) >= cache.m_capacity {
-		cache.m_queue = cache.m_queue[1:]
+	if len(buffer.m_queue) >= buffer.m_capacity {
+		buffer.m_queue = buffer.m_queue[1:]
 	}
-	cache.m_queue = append(cache.m_queue, messageID)
+	buffer.m_queue = append(buffer.m_queue, messageID)
 }
 
-func (cache *fifoCache) contains(messageID uint64) bool {
-	cache.m_mutex.RLock()
-	defer cache.m_mutex.RUnlock()
+func (buffer *fifoBuffer) contains(messageID uint64) bool {
+	buffer.m_mutex.RLock()
+	defer buffer.m_mutex.RUnlock()
 
-	for _, id := range cache.m_queue {
+	for _, id := range buffer.m_queue {
 		if id == messageID {
 			return true
 		}
