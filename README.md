@@ -67,6 +67,72 @@ To simulate netimpair and package loss, run the executable
 sudo netimpair -p 12345,23456,34567 --loss 25
 ```
 > which gives a package loss of 25% to the ports 12345, 23456, and 34567
+>
+---
+
+# Folder Structure
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Project-TTK4145%20Elevator-f4a6c1?style=for-the-badge" alt="Project badge" />
+  <img src="https://img.shields.io/badge/Language-Go-f8d7e4?style=for-the-badge" alt="Go badge" />
+</p>
+
+<p align="center">
+  Overview of the project structure.
+</p>
+
+---
+
+```text
+TTK4145-SANNTID-PROJECT
+├── elevator-server/
+├── Project-resources/
+├── simulator/
+│   ├── src/
+│   ├── SimElevatorServer
+│   ├── SimElevatorServer.o
+│   └── simulator.con
+├── src/
+│   ├── config/
+│   │   └── config.go
+│   ├── driver/
+│   │   └── driver.go
+│   ├── elevator/
+│   │   ├── backup.go
+│   │   ├── elevator.go
+│   │   └── README.md
+│   ├── events/
+│   │   └── events.go
+│   ├── fsm/
+│   │   ├── hall_request_assigner/
+│   │   ├── fsm.go
+│   │   ├── hallRequestAssigner.go
+│   │   ├── masterSlaveFsm.go
+│   │   ├── README.md
+│   │   └── requests.go
+│   ├── initialize/
+│   │   └── initialize.go
+│   ├── network/
+│   │   ├── heartbeat.go
+│   │   ├── network.go
+│   │   ├── networkHandler.go
+│   │   └── README.md
+│   ├── orders/
+│   └── timer/
+├── go.mod
+├── main.go
+├── namingConventions.txt
+└── README.md
+```
+
+---
+
+## Notes
+
+* `main.go` is the entry point of the project.
+* `src/` contains the main application logic.
+* `simulator/` contains the simulator and related files.
+
 
 <p align="center">
   made for TTK4145
