@@ -109,6 +109,7 @@ TTK4145-SANNTID-PROJECT
 │   │   └── events.go
 │   ├── fsm/
 │   │   ├── hall_request_assigner/
+│   │   │   ├── 
 │   │   ├── fsm.go
 │   │   ├── hallRequestAssigner.go
 │   │   ├── masterSlaveFsm.go
@@ -126,7 +127,7 @@ TTK4145-SANNTID-PROJECT
 ├── go.mod
 ├── main.go
 ├── namingConventions.txt
-└── README.md
+└── README.md <---------- YOU'RE HERE!
 ```
 
 ---
@@ -141,9 +142,9 @@ TTK4145-SANNTID-PROJECT
 
 ## Main Modules
 
-The project is divided into a few main modules located in the `src/` folder. The most important parts are the elevator logic, the finite-state machine (FSM), and the network logic.
+The project is divided into a few main modules located in the [`src/`](src/README.md) folder. The most important parts are the [`elevator logic`](src/elevator/README.md), the [`finite-state machine (FSM)`](src/fsm/README.md), and the network logic.
 
-The `elevator` module defines the elevator state and backup data structures. The `fsm` module contains the primary-backup logic between master and slave instances, handles requests, and integrates the hall request assigner executable used in the project. The network module is responsible for communication between elevators and for sharing state across the system.
+The `elevator` module defines the elevator state and backup data structures. The `fsm` module contains the primary-backup logic between master and slave instances, handles requests, and integrates the hall request assigner executable used in the project. The `network` module is responsible for communication between elevators and for sharing state across the system.
 
 
 <p align="center">
