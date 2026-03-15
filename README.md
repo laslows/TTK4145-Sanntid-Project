@@ -16,8 +16,19 @@
 
 This project was developed for the **TTK4145** elevator lab and implements software for controlling **n elevators across m floors**. The goal is to build a distributed and fault-tolerant system that handles hall calls and cab calls reliably, while continuing to behave sensibly during failures.
 
-The system is built around the core lab requirements: no calls should be lost, button lights represent a service guarantee, and elevators should continue operating as reasonably as possible even if communication is interrupted.
+The system is built around the core lab requirements: no calls should be lost, button lights represent a service guarantee, door should function, and elevators should continue operating as reasonably as possible even if communication is interrupted. These assumptions were given in the project description:
 
+[
+> 1. There is always at least one elevator that is not in a failure state
+>    - I.e. there is always at least one elevator that can serve calls
+>    - "No failure" includes the door obstruction: At least one elevator will be able to close its doors
+> 2. Cab call redundancy with a single elevator or a disconnected elevator is not required
+>    - Given assumption 1, a system containing only one elevator is assumed to be unable to fail
+>    - In a system containing more than one elevator, a disconnected elevator will not have more failures
+> 3. No network partitioning: There will never be a situation where there are multiple sets of two or more elevators with no connection between them
+>    - Note that this needs 4 or more elevators to become applicable, which we will not test anyway
+> 
+](https://github.com/TTK4145/Project)
 ---
 
 ## Executable
