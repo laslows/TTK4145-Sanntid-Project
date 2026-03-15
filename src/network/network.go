@@ -71,6 +71,9 @@ func BroadcastMessage(senderID, receiverID int, messageType messageType, payload
 		case <-broadcastTimeout.C:
 			fmt.Println("Broadcast timeout reached")
 			//Send orders back to master, so master can resend
+
+			//If master, redistribute
+			//if slave, give to myself (???). Or iterate and send to master
 			return
 		}
 	}
