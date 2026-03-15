@@ -15,16 +15,34 @@
 ## Elevator module
 
 ```text
-│   
-├── src/
-│   │ 
-│   ├── elevator/
-│   │   ├── backup.go
-│   │   ├── elevator.go
-│   │   └── `README.md`
+
+├── elevator/
+│   ├── backup.go
+│   ├── elevator.go
+│   └── `README.md`
 ```
 ---
 
-The elevator module contains the structs for the elevator and elevator behaviour as well as its backup for updating worldview and such.
+The elevator module contains the core state representation and synchronization logic for each elevator instance.
 
-#TODO: add more...
+It has two main pieces:
+
+- **Elevator state:** tracks current floor, direction, active requests, and behavior.
+- **Backup state:** a serializable snapshot of elevator state used for network synchronization and fault tolerance.
+
+The module also maintains a **worldview**: a shared view of all elevators' backups used for master election and order distribution.
+
+---
+
+### Overview
+
+- `elevator.go`: elevator state machine helpers, request tracking, and world-view management
+- `backup.go`: backup (serialized state) struct + JSON serialization helpers
+
+---
+
+> Quick notes
+
+> The *master elevator* is elected based on the highest ID in the worldview.
+> Backups store the last known state of peers and can restore local state after reconnection.
+> The backup version number is used to resolve newer vs older state.

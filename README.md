@@ -9,7 +9,7 @@
 <p align="center">
   Distributed and fault-tolerant elevator control software for the TTK4145 elevator lab.
 </p>
-
+<!-- FOR BEST VIEWING PLEASURE READ ON GITHUB REPO PAGE -->
 ---
 
 # Introduction
