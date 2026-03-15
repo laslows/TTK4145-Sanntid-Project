@@ -73,11 +73,6 @@ sudo netimpair -p 12345,23456,34567 --loss 25
 # Folder Structure
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Project-TTK4145%20Elevator-f4a6c1?style=for-the-badge" alt="Project badge" />
-  <img src="https://img.shields.io/badge/Language-Go-f8d7e4?style=for-the-badge" alt="Go badge" />
-</p>
-
-<p align="center">
   Overview of the project structure.
 </p>
 
@@ -137,9 +132,9 @@ TTK4145-SANNTID-PROJECT
 
 ### Main Modules
 
-The project is divided into a few main modules located in the src/ folder. The most important parts are the elevator logic, the finite-state machine (FSM), and the network logic.
+The project is divided into a few main modules located in the `src/` folder. The most important parts are the elevator logic, the finite-state machine (FSM), and the network logic.
 
-The elevator module defines the elevator state and backup data structures. The fsm module contains the primary-backup logic between master and slave instances, handles requests, and integrates the hall request assigner executable used in the project. The network module is responsible for communication between elevators and for sharing state across the system.
+The `elevator` module defines the elevator state and backup data structures. The `fsm` module contains the primary-backup logic between master and slave instances, handles requests, and integrates the hall request assigner executable used in the project. The network module is responsible for communication between elevators and for sharing state across the system.
 
 
 <p align="center">
