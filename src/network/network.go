@@ -4,10 +4,8 @@ import (
 	"Sanntid/src/config"
 	"Sanntid/src/elevator"
 	"Sanntid/src/orders"
-	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"hash/fnv"
 	"net"
 	"time"
 )
@@ -22,12 +20,22 @@ var g_pendingAcks = newSafePendingAcks()
 var g_hallRedistributionUpdateCh = make(chan redistributionUpdate)
 
 
+func BroadcastMessage(senderID, receiverID int, messageType messageType, payload json.RawMessage) {
+	message := message{
+		m_messageType: messageType,
+		m_senderID:    senderID,
+		m_receiverID:  receiverID,
+		m_payload: payload,
+	}
 
-func BroadcastMessage(message message) {
-	multicastAddr, _ := net.ResolveUDPAddr("udp4", MESSAGE_ADDR)
+	message.m_messageID = generateMessageID(message)
 
-	conn, _ := net.DialUDP("udp4", nil, multicastAddr)
-	defer conn.Close()
+	if message.m_messageType == HallOrderRedistribution {
+		g_hallRedistributionUpdateCh <- redistributionUpdate{
+			m_messageID:  message.m_messageID,
+			m_receiverID: message.m_receiverID,
+		}
+	}
 
 	messageBytes, _ := json.Marshal(&message)
 	
@@ -40,6 +48,10 @@ func BroadcastMessage(message message) {
 	broadcastTimeout := time.NewTicker(BROADCAST_TIMEOUT)
 	defer broadcastTimeout.Stop()
 
+	multicastAddr, _ := net.ResolveUDPAddr("udp4", MESSAGE_ADDR)
+
+	conn, _ := net.DialUDP("udp4", nil, multicastAddr)
+	defer conn.Close()
 
 	for {
 		conn.Write(messageBytes)
@@ -57,28 +69,12 @@ func BroadcastMessage(message message) {
 			continue
 		case <-broadcastTimeout.C:
 			fmt.Println("Broadcast timeout reached")
+			//Send orders back to master, so master can resend
 			return
 		}
 	}
 }
 
-func generateMessageID(message message) uint64 {
-	timeStamp := uint32(time.Now().Unix())
-
-	data, err := json.Marshal(&message)
-	if err != nil {
-		return 0
-	}
-
-	buffer := make([]byte, 4)
-	binary.LittleEndian.PutUint32(buffer, timeStamp)
-
-	hash := fnv.New64a()
-	hash.Write(data)
-	hash.Write(buffer)
-
-	return hash.Sum64()
-}
 
 func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
 	assignedOrdersFromMasterCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool, peerConnectedCh chan<- int) {
@@ -92,12 +88,7 @@ func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
 	buffer := make([]byte, 1024)
 
 	for {
-		n, _, err := conn.ReadFromUDP(buffer)
-
-		if err != nil {
-			fmt.Println("Error reading message:", err)
-			continue
-		}
+		n, _, _ := conn.ReadFromUDP(buffer)
 
 		var incomingMessage message
 
@@ -195,67 +186,27 @@ func TryListenForWorldView() ([config.N_ELEVATORS]*elevator.Backup, bool) {
 }
 
 func SendHallOrder(order orders.Order, senderID, receiverId int) {
-	hallOrderMessage := message{
-		m_messageType: HallOrderRequest,
-		m_senderID:    senderID,
-		m_receiverID:  receiverId,
-	}
-
 	payload, _ := json.Marshal(&order)
 
-	hallOrderMessage.m_payload = payload
-	hallOrderMessage.m_messageID = generateMessageID(hallOrderMessage)
+	fmt.Println("Sending hall order: ", order, " from ", senderID, " to ", receiverId)
 
-	fmt.Println("Sending hall order: ", order, " from ", senderID, " to ", receiverId, "message ID is: ", hallOrderMessage.m_messageID)
-
-	go BroadcastMessage(hallOrderMessage)
+	go BroadcastMessage(senderID, receiverId, HallOrderRequest, payload)
 }
 
 func SendHallOrderRedistribution(orderList [config.N_FLOORS][config.N_BUTTONS - 1]bool, senderID, receiverID int) {
-	hallOrderRedistributionMessage := message{
-		m_messageType: HallOrderRedistribution,
-		m_senderID:    senderID,
-		m_receiverID:  receiverID,
-	}
-
 	payload, _ := json.Marshal(&orderList)
 
-	hallOrderRedistributionMessage.m_payload = payload
-	hallOrderRedistributionMessage.m_messageID = generateMessageID(hallOrderRedistributionMessage)
-
-	go BroadcastMessage(hallOrderRedistributionMessage)
-
-	g_hallRedistributionUpdateCh <- redistributionUpdate{
-		m_messageID:  hallOrderRedistributionMessage.m_messageID,
-		m_receiverID: receiverID,
-	}
+	go BroadcastMessage(senderID, receiverID, HallOrderRedistribution, payload)
 }
 
 func SendWorldView(worldView [config.N_ELEVATORS]*elevator.Backup, senderID, receiverId int) {
-	worldViewMessage := message{
-		m_messageType: WorldView,
-		m_senderID:    senderID,
-		m_receiverID:  receiverId,
-	}
-
 	payload, _ := json.Marshal(worldView)
 
-	worldViewMessage.m_payload = payload
-	worldViewMessage.m_messageID = generateMessageID(worldViewMessage)
-
-	go BroadcastMessage(worldViewMessage)
+	go BroadcastMessage(senderID, receiverId, WorldView, payload)
 }
 
 func SendInitializationMessage(senderID int) {
-	initializationMessage := message{
-		m_messageType: Initialization,
-		m_senderID:    senderID,
-		m_receiverID:  0,
-	}
-
-	initializationMessage.m_messageID = generateMessageID(initializationMessage)
-
-	go BroadcastMessage(initializationMessage)
+	go BroadcastMessage(senderID, 0, Initialization, nil)
 }
 
 func SendAcknowledgement(messageID uint64, senderID, receiverID int) {

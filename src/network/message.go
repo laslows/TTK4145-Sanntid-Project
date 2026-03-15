@@ -2,6 +2,9 @@ package network
 
 import (
 	"encoding/json"
+	"hash/fnv"
+	"encoding/binary"
+	"time"
 )
 
 type messageType int
@@ -20,6 +23,24 @@ type message struct {
 	m_receiverID  int
 	m_payload     json.RawMessage
 	m_messageID   uint64
+}
+
+func generateMessageID(message message) uint64 {
+	timeStamp := uint32(time.Now().Unix())
+
+	data, err := json.Marshal(&message)
+	if err != nil {
+		return 0
+	}
+
+	buffer := make([]byte, 4)
+	binary.LittleEndian.PutUint32(buffer, timeStamp)
+
+	hash := fnv.New64a()
+	hash.Write(data)
+	hash.Write(buffer)
+
+	return hash.Sum64()
 }
 
 func (m *message) MarshalJSON() ([]byte, error) {
