@@ -131,7 +131,15 @@ TTK4145-SANNTID-PROJECT
 
 * `main.go` is the entry point of the project.
 * `src/` contains the main application logic.
-* `simulator/` contains the simulator and related files.
+* `simulator/` contains the handed out simulator and related files.
+
+---
+
+### Main Modules
+
+The project is divided into a few main modules located in the src/ folder. The most important parts are the elevator logic, the finite-state machine (FSM), and the network logic.
+
+The elevator module defines the elevator state and backup data structures. The fsm module contains the primary-backup logic between master and slave instances, handles requests, and integrates the hall request assigner executable used in the project. The network module is responsible for communication between elevators and for sharing state across the system.
 
 
 <p align="center">
