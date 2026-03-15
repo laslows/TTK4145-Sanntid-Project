@@ -12,7 +12,7 @@
 
 ---
 
-## Introduction
+# Introduction
 
 This project was developed for the **TTK4145** elevator lab and implements software for controlling **n elevators across m floors**. The goal is to build a distributed and fault-tolerant system that handles hall calls and cab calls reliably, while continuing to behave sensibly during failures.
 
@@ -70,7 +70,7 @@ sudo netimpair -p 12345,23456,34567 --loss 25
 >
 ---
 
-# Folder Structure
+## Folder Structure
 
 <p align="center">
   Overview of the project structure.
@@ -122,7 +122,7 @@ TTK4145-SANNTID-PROJECT
 
 ---
 
-## Notes
+### Notes
 
 * `main.go` is the entry point of the project.
 * `src/` contains the main application logic.
@@ -130,7 +130,7 @@ TTK4145-SANNTID-PROJECT
 
 ---
 
-### Main Modules
+## Main Modules
 
 The project is divided into a few main modules located in the `src/` folder. The most important parts are the elevator logic, the finite-state machine (FSM), and the network logic.
 
