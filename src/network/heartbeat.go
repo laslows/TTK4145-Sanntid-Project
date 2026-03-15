@@ -3,38 +3,23 @@ package network
 import (
 	"Sanntid/src/elevator"
 	"encoding/json"
-	"fmt"
 	"net"
 	"time"
 )
 
-const HEARTBEAT_PORT = "15555"
 const HEARTBEAT_ADDR = "224.0.0.1:15555"
 const HEARTBEAT_RATE = 10 * time.Millisecond
 const HEARTBEAT_TIMEOUT = 250 * time.Millisecond
 
 func ListenForHeartbeats(elev *elevator.Elevator, updateWorldViewCh chan<- elevator.Backup, peerLostCh chan<- int) {
-	//heartbeatAddrReceiver, err := net.ResolveUDPAddr("udp", ":" + HEARTBEAT_PORT)
-	heartbeatAddrReceiver, err := net.ResolveUDPAddr("udp4", HEARTBEAT_ADDR)
 
-	if err != nil {
-		fmt.Println("Error resolving UDP address:", err)
-		return
-	}
+	heartbeatAddrReceiver, _ := net.ResolveUDPAddr("udp4", HEARTBEAT_ADDR)
 
-	//conn, err := net.ListenUDP("udp", heartbeatAddrReceiver)
-	conn, err := net.ListenMulticastUDP("udp4", nil, heartbeatAddrReceiver)
-
-	if err != nil {
-		fmt.Println("Error listening for heartbeats:", err)
-		return
-	}
+	conn, _ := net.ListenMulticastUDP("udp4", nil, heartbeatAddrReceiver)
 	defer conn.Close()
 
-	//Buffer to read incoming heartbeats into
 	buffer := make([]byte, 1024)
-
-	lastSeen := make(map[int]time.Time)
+	peerLastSeen := make(map[int]time.Time)
 
 	for {
 		conn.SetReadDeadline(time.Now().Add(HEARTBEAT_TIMEOUT))
@@ -45,18 +30,17 @@ func ListenForHeartbeats(elev *elevator.Elevator, updateWorldViewCh chan<- eleva
 
 			json.Unmarshal(buffer[:n], &heartBeat)
 
-			lastSeen[heartBeat.GetID()] = time.Now()
+			peerLastSeen[heartBeat.GetID()] = time.Now()
 
+			//TODO: move this
 			if elev.TryUpdateWorldView(&heartBeat) {
 				updateWorldViewCh <- heartBeat
-
-				// Problem: how do the masters decide what backup to throw away (??)
 			}
 		}
 
-		for peer, timestamp := range lastSeen {
+		for peer, timestamp := range peerLastSeen {
 			if time.Since(timestamp) > HEARTBEAT_TIMEOUT {
-				delete(lastSeen, peer)
+				delete(peerLastSeen, peer)
 				peerLostCh <- peer
 			}
 		}
@@ -65,18 +49,13 @@ func ListenForHeartbeats(elev *elevator.Elevator, updateWorldViewCh chan<- eleva
 }
 
 func BroadcastHeartbeat(e *elevator.Elevator) {
-	//heartbeatAddrSender, err := net.ResolveUDPAddr("udp", "255.255.255.255:"+HEARTBEAT_PORT)
 	heartbeatAddrSender, err := net.ResolveUDPAddr("udp4", HEARTBEAT_ADDR)
 
-	if err != nil {
-		fmt.Println("Error resolving multicast address:", err)
-		return
-	}
-
 	conn, err := net.DialUDP("udp", nil, heartbeatAddrSender)
+
+	//TODO: maybe remove this, depending on what studass says
 	if err != nil {
-		fmt.Println("Error creating UDP connection:", err)
-		return
+		panic("Failed to create UDP connection for heartbeat")
 	}
 	defer conn.Close()
 
@@ -87,14 +66,12 @@ func BroadcastHeartbeat(e *elevator.Elevator) {
 
 		heartbeatPacket, err := json.Marshal(e.GetMyBackup())
 		if err != nil {
-			fmt.Println("Error marshaling heartbeat:", err)
 			continue
 		}
 
 		_, err = conn.Write(heartbeatPacket)
 
 		if err != nil {
-			fmt.Println("Error sending heartbeat:", err)
 			continue
 		}
 	}

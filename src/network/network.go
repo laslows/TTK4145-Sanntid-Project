@@ -12,19 +12,14 @@ import (
 	"time"
 )
 
-const MESSAGE_PORT = "16666"
-
-// Maybe change to not multicast??
 const MESSAGE_ADDR = "224.0.0.1:16666"
 
-// Maybe move this to initialization package, but that would require us to import it
 const INITIALIZATION_TIMEOUT = 1000 * time.Millisecond
-const RETRY_BROADCAST_RATE = 10 * time.Millisecond //TODO:better name
+const RETRY_BROADCAST_RATE = 10 * time.Millisecond
 const BROADCAST_TIMEOUT = 2500 * time.Millisecond
 
-var cache = newFifoCache()
-var pendingAcks = newSafePendingAcks()
-var hallRedistributionUpdateCh = make(chan redistributionUpdate)
+var g_pendingAcks = newSafePendingAcks()
+var g_hallRedistributionUpdateCh = make(chan redistributionUpdate)
 
 
 type messageType int
@@ -72,9 +67,9 @@ func BroadcastMessage(message Message) {
 	}
 
 	ackCh := make(chan bool, 1)
-	pendingAcks.insert(message.m_messageID, ackCh)
+	g_pendingAcks.insert(message.m_messageID, ackCh)
 	//Always do this when we leave broadcast
-	defer pendingAcks.delete(message.m_messageID)
+	defer g_pendingAcks.delete(message.m_messageID)
 
 	ticker := time.NewTicker(RETRY_BROADCAST_RATE)
 	defer ticker.Stop()
@@ -93,7 +88,7 @@ func BroadcastMessage(message Message) {
 		case <-ackCh:
 			return
 
-		case update := <-hallRedistributionUpdateCh:
+		case update := <-g_hallRedistributionUpdateCh:
 			if message.m_messageID != update.m_messageID && update.m_receiverID == message.m_receiverID {
 				fmt.Println("Sending newer order distribution")
 				return
@@ -129,7 +124,9 @@ func generateMessageID(message Message) uint64 {
 
 func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
 	assignedOrdersFromMasterCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool, peerConnectedCh chan<- int) {
-	//heartbeatAddrReceiver, err := net.ResolveUDPAddr("udp", ":" + HEARTBEAT_PORT)
+
+	var cache = newFifoCache()
+
 	messageAddrReceiver, err := net.ResolveUDPAddr("udp4", MESSAGE_ADDR)
 
 	if err != nil {
@@ -173,7 +170,7 @@ func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
 
 		if message.m_messageType == Acknowledgement {
 
-			ch, exists := pendingAcks.get(message.m_messageID)
+			ch, exists := g_pendingAcks.get(message.m_messageID)
 
 			if exists {
 				select {
@@ -330,7 +327,7 @@ func SendHallOrderRedistribution(orderList [config.N_FLOORS][config.N_BUTTONS - 
 
 	go BroadcastMessage(hallOrderRedistributionMessage)
 
-	hallRedistributionUpdateCh <- redistributionUpdate{
+	g_hallRedistributionUpdateCh <- redistributionUpdate{
 		m_messageID:  hallOrderRedistributionMessage.m_messageID,
 		m_receiverID: receiverID,
 	}

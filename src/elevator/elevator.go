@@ -338,9 +338,6 @@ func RequestButton(floor int, btn driver.ButtonType) bool {
 	return driver.GetButton(btn, floor)
 }
 
-func StopButton() bool {
-	return driver.GetStop()
-}
 
 func ObstructionSwitch() bool {
 	return driver.GetObstruction()
@@ -358,9 +355,6 @@ func DoorOpenLight(on bool) {
 	driver.SetDoorOpenLamp(on)
 }
 
-func StopLight(on bool) {
-	driver.SetStopLamp(on)
-}
 
 func MotorDirection(dir Direction) {
 	driver.SetMotorDirection(driver.MotorDirection(dir))
