@@ -136,7 +136,7 @@ func getIDAsInt(ip, osID string) int {
 	return idInt
 }
 
-
+//TODO: move to fsm?
 func (e *Elevator) ShouldRedistributeOrders(backup *Backup) bool {
 	//SHould redistribute if new backup changes obstruction status, or if we lose connection or if we gain connection, or if we change motorstopstatus
     for _, b := range e.m_worldView {
@@ -302,35 +302,6 @@ func (e *Elevator) GetID() int {
 	return e.m_ID
 }
 
-func FloorSensor() int {
-	return driver.GetFloor()
-}
-
-func RequestButton(floor int, btn driver.ButtonType) bool {
-	return driver.GetButton(btn, floor)
-}
-
-
-func ObstructionSwitch() bool {
-	return driver.GetObstruction()
-}
-
-func FloorIndicator(floor int) {
-	driver.SetFloorIndicator(floor)
-}
-
-func RequestButtonLight(floor int, btn driver.ButtonType, on bool) {
-	driver.SetButtonLamp(btn, floor, on)
-}
-
-func DoorOpenLight(on bool) {
-	driver.SetDoorOpenLamp(on)
-}
-
-
-func MotorDirection(dir Direction) {
-	driver.SetMotorDirection(driver.MotorDirection(dir))
-}
 
 func DirectionToString(dir Direction) string {
 	switch dir {
