@@ -9,7 +9,7 @@ type Backup struct {
 	m_ID                 int
 	m_floor              int
 	m_direction          Direction
-	m_requests           [config.N_FLOORS][config.N_BUTTONS]bool
+	m_cabRequests        [config.N_FLOORS]bool
 	m_isMaster           bool
 	m_behaviour          ElevatorBehaviour
 	m_isObstructed       bool
@@ -22,7 +22,7 @@ func (b *Backup) MarshalJSON() ([]byte, error) {
 		ID                 int
 		Floor              int
 		Direction          int
-		Requests           [config.N_FLOORS][config.N_BUTTONS]bool
+		CabRequests        [config.N_FLOORS]bool
 		IsMaster           bool
 		IsObstructed       bool
 		Version            int
@@ -34,7 +34,7 @@ func (b *Backup) MarshalJSON() ([]byte, error) {
 		ID:                 b.m_ID,
 		Floor:              b.m_floor,
 		Direction:          int(b.m_direction),
-		Requests:           b.m_requests,
+		CabRequests:        b.m_cabRequests,
 		IsMaster:           b.m_isMaster,
 		IsObstructed:       b.m_isObstructed,
 		Version:            b.m_version,
@@ -48,7 +48,7 @@ func (b *Backup) UnmarshalJSON(data []byte) error {
 		ID                 int
 		Floor              int
 		Direction          int
-		Requests           [config.N_FLOORS][config.N_BUTTONS]bool
+		CabRequests        [config.N_FLOORS]bool
 		IsMaster           bool
 		IsObstructed       bool
 		Version            int
@@ -65,7 +65,7 @@ func (b *Backup) UnmarshalJSON(data []byte) error {
 	b.m_ID = backupJSON.ID
 	b.m_floor = backupJSON.Floor
 	b.m_direction = Direction(backupJSON.Direction)
-	b.m_requests = backupJSON.Requests
+	b.m_cabRequests = backupJSON.CabRequests
 	b.m_isMaster = backupJSON.IsMaster
 	b.m_isObstructed = backupJSON.IsObstructed
 	b.m_version = backupJSON.Version
@@ -81,7 +81,7 @@ func (e *Elevator) UpdateMyBackup() {
 	e.m_myBackup.m_isMaster = e.m_isMaster
 	e.m_myBackup.m_direction = e.m_direction
 	e.m_myBackup.m_floor = e.m_floor
-	e.m_myBackup.m_requests = e.m_myRequests
+	e.m_myBackup.m_cabRequests = e.GetCabRequests()
 	e.m_myBackup.m_isObstructed = e.m_isObstructed
 	e.m_myBackup.m_connectedToNetwork = true
 	e.m_myBackup.m_behaviour = e.m_behaviour
@@ -92,7 +92,7 @@ func (e *Elevator) UpdateMyBackup() {
 func (e *Elevator) restoreMyBackup(b *Backup) {
 	e.m_myBackup.m_floor = e.m_floor
 	e.m_myBackup.m_direction = e.m_direction
-	e.m_myBackup.m_requests = e.m_myRequests
+	e.m_myBackup.m_cabRequests = e.GetCabRequests()
 	e.m_myBackup.m_isMaster = e.m_isMaster
 	e.m_myBackup.m_behaviour = e.m_behaviour
 	e.m_myBackup.m_version = b.m_version + 1
@@ -118,8 +118,8 @@ func (b *Backup) GetFloor() int {
 	return b.m_floor
 }
 
-func (b *Backup) GetRequests() [config.N_FLOORS][config.N_BUTTONS]bool {
-	return b.m_requests
+func (b *Backup) GetCabRequests() [config.N_FLOORS]bool {
+	return b.m_cabRequests
 }
 
 func (b *Backup) GetIsObstructed() bool {

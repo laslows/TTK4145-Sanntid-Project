@@ -17,7 +17,7 @@ type dirnBehaviourPair struct {
 func requestsAbove(e elevator.Elevator) bool {
 	for f := e.GetFloor() + 1; f < config.N_FLOORS; f++ {
 		for btn := 0; btn < config.N_BUTTONS; btn++ {
-			if e.GetRequestAtFloor(f, (driver.ButtonType)(btn)) {
+			if e.GetLocalRequestAtFloor(f, (driver.ButtonType)(btn)) {
 				return true
 			}
 		}
@@ -28,7 +28,7 @@ func requestsAbove(e elevator.Elevator) bool {
 func requestsBelow(e elevator.Elevator) bool {
 	for f := 0; f < e.GetFloor(); f++ {
 		for btn := 0; btn < config.N_BUTTONS; btn++ {
-			if e.GetRequestAtFloor(f, (driver.ButtonType)(btn)) {
+			if e.GetLocalRequestAtFloor(f, (driver.ButtonType)(btn)) {
 				return true
 			}
 		}
@@ -38,7 +38,7 @@ func requestsBelow(e elevator.Elevator) bool {
 
 func requestsHere(e elevator.Elevator) bool {
 	for btn := 0; btn < config.N_BUTTONS; btn++ {
-		if e.GetRequestAtFloor(e.GetFloor(), (driver.ButtonType)(btn)) {
+		if e.GetLocalRequestAtFloor(e.GetFloor(), (driver.ButtonType)(btn)) {
 			return true
 		}
 	}
@@ -47,7 +47,7 @@ func requestsHere(e elevator.Elevator) bool {
 
 func anyRequests(e elevator.Elevator) bool {
 	for floor := 0; floor < config.N_FLOORS; floor++ {
-		for _, hasRequest := range e.GetRequests()[floor] {
+		for _, hasRequest := range e.GetLocalRequests()[floor] {
 			if hasRequest {
 				return true
 			}
@@ -59,39 +59,39 @@ func anyRequests(e elevator.Elevator) bool {
 func clearAtCurrentFloor(e elevator.Elevator) (elevator.Elevator, []orders.Order) {
 	var completedHallOrders []orders.Order
 	floor := e.GetFloor()
-	hadHallUp := e.GetRequestAtFloor(floor, driver.BT_HallUp)
-	hadHallDown := e.GetRequestAtFloor(floor, driver.BT_HallDown)
+	hadHallUp := e.GetLocalRequestAtFloor(floor, driver.BT_HallUp)
+	hadHallDown := e.GetLocalRequestAtFloor(floor, driver.BT_HallDown)
 
-	e.SetRequest(floor, driver.BT_Cab, false)
+	e.SetLocalRequest(floor, driver.BT_Cab, false)
 
 	switch e.GetDirection() {
 	case elevator.Up:
 		if !requestsAbove(e) && !hadHallUp {
-			e.SetRequest(floor, driver.BT_HallDown, false)
+			e.SetLocalRequest(floor, driver.BT_HallDown, false)
 			if hadHallDown {
 				completedHallOrders = append(completedHallOrders, orders.New(floor, orders.HALL_DOWN))
 			}
 		}
-		e.SetRequest(floor, driver.BT_HallUp, false)
+		e.SetLocalRequest(floor, driver.BT_HallUp, false)
 		if hadHallUp {
 			completedHallOrders = append(completedHallOrders, orders.New(floor, orders.HALL_UP))
 		}
 
 	case elevator.Down:
 		if !requestsBelow(e) && !hadHallDown {
-			e.SetRequest(floor, driver.BT_HallUp, false)
+			e.SetLocalRequest(floor, driver.BT_HallUp, false)
 			if hadHallUp {
 				completedHallOrders = append(completedHallOrders, orders.New(floor, orders.HALL_UP))
 			}
 		}
-		e.SetRequest(floor, driver.BT_HallDown, false)
+		e.SetLocalRequest(floor, driver.BT_HallDown, false)
 		if hadHallDown {
 			completedHallOrders = append(completedHallOrders, orders.New(floor, orders.HALL_DOWN))
 		}
 
 	default:
-		e.SetRequest(floor, driver.BT_HallUp, false)
-		e.SetRequest(floor, driver.BT_HallDown, false)
+		e.SetLocalRequest(floor, driver.BT_HallUp, false)
+		e.SetLocalRequest(floor, driver.BT_HallDown, false)
 
 		if hadHallUp {
 			completedHallOrders = append(completedHallOrders, orders.New(floor, orders.HALL_UP))
@@ -111,12 +111,12 @@ func shouldStop(e elevator.Elevator) bool {
 
 	switch e.GetDirection() {
 	case elevator.Down:
-		return (e.GetRequestAtFloor(e.GetFloor(), driver.BT_HallDown) ||
-			e.GetRequestAtFloor(e.GetFloor(), driver.BT_Cab) ||
+		return (e.GetLocalRequestAtFloor(e.GetFloor(), driver.BT_HallDown) ||
+			e.GetLocalRequestAtFloor(e.GetFloor(), driver.BT_Cab) ||
 			!requestsBelow(e))
 	case elevator.Up:
-		return (e.GetRequestAtFloor(e.GetFloor(), driver.BT_HallUp) ||
-			e.GetRequestAtFloor(e.GetFloor(), driver.BT_Cab) ||
+		return (e.GetLocalRequestAtFloor(e.GetFloor(), driver.BT_HallUp) ||
+			e.GetLocalRequestAtFloor(e.GetFloor(), driver.BT_Cab) ||
 			!requestsAbove(e))
 	default:
 		return true

@@ -116,11 +116,11 @@ func onFloorArrival(e *elevator.Elevator, floor int, timer *timer.Timer, complet
 }
 
 func setAllLights(e elevator.Elevator) {
-	globalLights := e.GetGlobalLights()
+	lights := e.GetAllLights()
 
 	for floor := 0; floor < config.N_FLOORS; floor++ {
 		for btn := 0; btn < config.N_BUTTONS; btn++ {
-			elevator.RequestButtonLight(floor, (driver.ButtonType)(btn), globalLights[floor][btn])
+			elevator.RequestButtonLight(floor, (driver.ButtonType)(btn), lights[floor][btn])
 		}
 	}
 }
@@ -163,7 +163,7 @@ func insertAllHallOrders(e *elevator.Elevator, hallOrders [config.N_FLOORS][conf
 			if hallOrders[floor][btn] {
 				insertOrder(e, orders.New(floor, orders.OrderType(btn)), timer)
 			} else {
-				e.SetRequest(floor, (driver.ButtonType)(btn), false)
+				e.SetLocalRequest(floor, (driver.ButtonType)(btn), false)
 			}
 		}
 	}
@@ -176,10 +176,10 @@ func insertOrder(e *elevator.Elevator, order orders.Order, timer *timer.Timer) {
 			fmt.Printf("Clearing order immediately: floor %d, button %d\n", order.GetFloor(), order.GetOrderType())
 			timer.Start(e.GetDoorOpenDuration())
 		} else {
-			e.SetRequest(order.GetFloor(), (driver.ButtonType)(order.GetOrderType()), true)
+			e.SetLocalRequest(order.GetFloor(), (driver.ButtonType)(order.GetOrderType()), true)
 		}
 	default:
-		e.SetRequest(order.GetFloor(), (driver.ButtonType)(order.GetOrderType()), true)
+		e.SetLocalRequest(order.GetFloor(), (driver.ButtonType)(order.GetOrderType()), true)
 	}
 	e.UpdateMyBackup()
 	setAllLights(*e)

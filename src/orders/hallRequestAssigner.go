@@ -3,6 +3,7 @@ package orders
 import (
 	"Sanntid/src/config"
 	"Sanntid/src/elevator"
+	"Sanntid/src/driver"
 
 	"encoding/json"
 	"fmt"
@@ -13,7 +14,7 @@ import (
 //TODO:fix name
 
 type systemState struct {
-	HallRequests [][]bool                 `json:"hallRequests"`
+	HallRequests [config.N_FLOORS][config.N_BUTTONS - 1]bool                 `json:"hallRequests"`
 	States       map[string]elevatorState `json:"states"`
 }
 
@@ -24,18 +25,22 @@ type elevatorState struct {
 	CabRequests []bool `json:"cabRequests"`
 }
 
-func createJSONDataForHallRequestAlgorithm(e *elevator.Elevator, hallOrder *Order) string {
+func createJSONDataForHallRequestAlgorithm(e *elevator.Elevator) string {
 	states := make(map[string]elevatorState)
 
-	hallRequests := make([][]bool, config.N_FLOORS)
-
+	/*hallRequests := make([][]bool, config.N_FLOORS)
 	for i := range hallRequests {
 		hallRequests[i] = make([]bool, config.N_BUTTONS-1)
 	}
 
-	if hallOrder != nil {
-		hallRequests[hallOrder.GetFloor()][hallOrder.GetOrderType()] = true
-	}
+	globalHallRequests := e.GetGlobalRequests()
+    for floor := 0; floor < config.N_FLOORS; floor++ {
+        for btn := 0; btn < config.N_BUTTONS-1; btn++ {
+            hallRequests[floor][btn] = globalHallRequests[floor][btn]
+        }
+    }*/
+
+	hallRequests := e.GetGlobalRequests()
 
 	worldView := e.GetWorldView()
 
@@ -45,24 +50,19 @@ func createJSONDataForHallRequestAlgorithm(e *elevator.Elevator, hallOrder *Orde
 			continue
 		}
 
-		backupRequests := backup.GetRequests()
 		if backup.GetBehaviour() != elevator.MotorStop && !backup.GetIsObstructed() && backup.GetConnectedToNetwork() {
+
+			cabRequests := backup.GetCabRequests()
 
 			states[strconv.Itoa(backup.GetID())] = elevatorState{
 				Behaviour:   elevator.BehaviourToString(backup.GetBehaviour()),
 				Floor:       backup.GetFloor(),
 				Direction:   elevator.DirectionToString(backup.GetDirection()),
-				CabRequests: make([]bool, len(backupRequests)),
+				CabRequests: make([]bool, config.N_FLOORS),
 			}
-			for i, row := range backupRequests {
-				states[strconv.Itoa(backup.GetID())].CabRequests[i] = row[len(row)-1]
-			}
-		}
-
-		for floor := range hallRequests {
-			for button := range hallRequests[floor] {
-				hallRequests[floor][button] = hallRequests[floor][button] || backupRequests[floor][button]
-			}
+			for i := 0; i < config.N_FLOORS; i++ {
+                states[strconv.Itoa(backup.GetID())].CabRequests[i] = cabRequests[i]
+            }
 		}
 	}
 
@@ -78,8 +78,8 @@ func createJSONDataForHallRequestAlgorithm(e *elevator.Elevator, hallOrder *Orde
 	return string(jsonData)
 }
 
-func RunHallRequestAlgorithm(e *elevator.Elevator, hallOrder *Order) map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool {
-	input := createJSONDataForHallRequestAlgorithm(e, hallOrder)
+func RunHallRequestAlgorithm(e *elevator.Elevator) map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool {
+	input := createJSONDataForHallRequestAlgorithm(e)
 	cmd := exec.Command("./src/orders/hall_request_assigner/hall_request_assigner", "--input", input)
 	out, err := cmd.CombinedOutput()
 	hallOrderAssignmentMap := make(map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool)
@@ -106,16 +106,7 @@ func RunHallRequestAlgorithm(e *elevator.Elevator, hallOrder *Order) map[int][co
 }
 
 func CheckNewOrder(e *elevator.Elevator, hallOrder Order) bool {
-	//Check if order is already in queue, if not return true, else return false
-	for _, backup := range e.GetWorldView() {
-		if backup != nil {
-			requests := backup.GetRequests()
 
-			if requests[hallOrder.GetFloor()][hallOrder.GetOrderType()] {
-				return false
-			}
-		}
-	}
-	return true
+	return !e.GetLocalRequestAtFloor(hallOrder.GetFloor(), (driver.ButtonType)(hallOrder.GetOrderType()))
 
 }

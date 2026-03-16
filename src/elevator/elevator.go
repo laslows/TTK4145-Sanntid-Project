@@ -38,7 +38,7 @@ type Elevator struct {
 	m_floor     int
 	m_direction Direction
 	m_myRequests  [config.N_FLOORS][config.N_BUTTONS]bool
-	m_globalRequests [config.N_FLOORS][config.N_BUTTONS]bool
+	m_globalRequests [config.N_FLOORS][config.N_BUTTONS-1]bool
 	m_behaviour ElevatorBehaviour
 	m_isMaster  bool
 	m_isObstructed bool
@@ -86,17 +86,18 @@ func New(port string) *Elevator {
 	return e
 }
 
-func (e *Elevator) GetGlobalLights() [config.N_FLOORS][config.N_BUTTONS]bool {
-	lights := e.m_myRequests
+func(e *Elevator) SetGlobalRequest(floor int, btn driver.ButtonType, active bool){
+	e.m_globalRequests[floor][btn] = active
+}
 
-	for _, b := range e.m_worldView {
-		if b != nil {
-			for f := 0; f < config.N_FLOORS; f++ {
-				for btn := 0; btn < 2; btn++ {
-					lights[f][btn] = lights[f][btn] || b.m_requests[f][btn]
-				}
-			}
-		}
+// Hall lights are shared from the global hall request list, while cab lights are local.
+func (e *Elevator) GetAllLights() [config.N_FLOORS][config.N_BUTTONS]bool {
+	var lights [config.N_FLOORS][config.N_BUTTONS]bool
+
+	for floor := 0; floor < config.N_FLOORS; floor++ {
+		lights[floor][driver.BT_HallUp] = e.m_globalRequests[floor][driver.BT_HallUp]
+		lights[floor][driver.BT_HallDown] = e.m_globalRequests[floor][driver.BT_HallDown]
+		lights[floor][driver.BT_Cab] = e.m_myRequests[floor][driver.BT_Cab]
 	}
 
 	return lights
@@ -222,20 +223,23 @@ func (e *Elevator) LoseConnectionToPeer(peerID int) {
 
 func (e *Elevator) RestoreElevatorState(b *Backup) {
 
-	e.m_myRequests = b.m_requests
 	e.m_floor = b.m_floor
 	e.m_direction = b.m_direction
+
+	e.SetCabRequest(b.m_cabRequests)
 
 	e.restoreMyBackup(b)
 
 }
+
 
 func (e *Elevator) ClearDisconnectedNodeQueue(){
 	for _, b := range e.m_worldView {
 		if b != nil && !b.m_connectedToNetwork {
 			for f := 0; f < config.N_FLOORS; f++ {
 				for btn := 0; btn < config.N_BUTTONS-1; btn++ {
-					b.m_requests[f][btn] = false
+					//b.m_requests[f][btn] = false
+					fmt.Println("Fix me")
 				}
 			}
 		}
@@ -259,15 +263,39 @@ func (e *Elevator) SetFloor(f int) {
 	e.m_floor = f
 }
 
-func (e *Elevator) GetRequestAtFloor(floor int, btn driver.ButtonType) bool {
+func (e *Elevator) GetLocalRequestAtFloor(floor int, btn driver.ButtonType) bool {
 	return e.m_myRequests[floor][btn]
 }
 
-func (e *Elevator) GetRequests() [config.N_FLOORS][config.N_BUTTONS]bool {
+func (e *Elevator) GetLocalRequests() [config.N_FLOORS][config.N_BUTTONS]bool {
 	return e.m_myRequests
 }
 
-func (e *Elevator) SetRequest(floor int, btn driver.ButtonType, active bool) {
+func (e *Elevator) GetGlobalRequests() [config.N_FLOORS][config.N_BUTTONS-1]bool {
+	return e.m_globalRequests
+}
+
+func (e *Elevator) SetGlobalRequests(globalRequests [config.N_FLOORS][config.N_BUTTONS-1]bool) {
+	e.m_globalRequests = globalRequests
+}
+
+func (e *Elevator) GetCabRequests() [config.N_FLOORS]bool {
+	var cabRequests [config.N_FLOORS]bool
+
+	for floor := 0; floor < config.N_FLOORS; floor++ {
+		cabRequests[floor] = e.m_myRequests[floor][driver.BT_Cab]
+	}
+
+	return cabRequests
+}
+
+func (e *Elevator) SetCabRequest(cabRequests [config.N_FLOORS]bool) {
+	for floor := 0; floor < config.N_FLOORS; floor++ {
+		e.m_myRequests[floor][driver.BT_Cab] = cabRequests[floor]
+	}
+}
+
+func (e *Elevator) SetLocalRequest(floor int, btn driver.ButtonType, active bool) {
 	e.m_myRequests[floor][btn] = active
 }
 

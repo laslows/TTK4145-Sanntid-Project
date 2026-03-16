@@ -2,6 +2,7 @@ package fsm
 
 import (
 	"Sanntid/src/config"
+	"Sanntid/src/driver"
 	"Sanntid/src/elevator"
 	"Sanntid/src/network"
 	"Sanntid/src/orders"
@@ -22,27 +23,8 @@ func MasterFsm(e *elevator.Elevator, hallButtonCh <-chan orders.Order, completeH
 		return
 	}
 
-	redistributeHallOrders(e, nil, localAssignedHallOrdersCh)
+	redistributeHallOrders(e, localAssignedHallOrdersCh)
 	e.ClearDisconnectedNodeQueue()
-
-	//Print all known orders in worldview as [][]
-
-	hallRequests := [config.N_FLOORS][config.N_BUTTONS - 1]bool{}
-
-	for _, backup := range e.GetWorldView() {
-		if backup == nil {
-			continue
-		}
-
-		backupRequests := backup.GetRequests()
-		for i, row := range backupRequests {
-			for j, value := range row[:len(row)-1] {
-				hallRequests[i][j] = hallRequests[i][j] || value
-			}
-		}
-	}
-
-	fmt.Println("Known orders in worldview: ", hallRequests)
 
 Loop:
 	for {
@@ -50,9 +32,10 @@ Loop:
 		case hallOrder := <-hallButtonCh:
 
 			if orders.CheckNewOrder(e, hallOrder) {
-				fmt.Printf("New order received!")
+				fmt.Println("New order received! All known orders are: ", e.GetGlobalRequests())
 
-				redistributeHallOrders(e, &hallOrder, localAssignedHallOrdersCh)
+				e.SetGlobalRequest(hallOrder.GetFloor(), driver.ButtonType(hallOrder.GetOrderType()), true)
+				redistributeHallOrders(e, localAssignedHallOrdersCh)
 
 			} else {
 				fmt.Println("Order already in queue, not sending to algorithm")
@@ -61,6 +44,7 @@ Loop:
 		case completeHallOrder := <-completeHallOrderCh:
 
 			println("Completed hall order at floor ", completeHallOrder.GetFloor(), " with button ", completeHallOrder.GetOrderType())
+			e.SetGlobalRequest(completeHallOrder.GetFloor(), driver.ButtonType(completeHallOrder.GetOrderType()), false)
 
 		case heartBeat := <-tryUpdateWorldViewCh:
 
@@ -72,11 +56,11 @@ Loop:
 
 			if e.ShouldRedistributeOrders(&heartBeat) {
 				e.UpdateWorldView(&heartBeat)
-				redistributeHallOrders(e, nil, localAssignedHallOrdersCh)
+				redistributeHallOrders(e, localAssignedHallOrdersCh)
 			} else if heartBeat.GetID() == e.GetID() {
 				e.UpdateWorldView(&heartBeat)
 				//Only happens if motorstop, should maybe be moved
-				redistributeHallOrders(e, nil, localAssignedHallOrdersCh)
+				redistributeHallOrders(e, localAssignedHallOrdersCh)
 				fmt.Println("I changed obstructionstatus or motorstopstatus")
 			} else {
 				e.UpdateWorldView(&heartBeat)
@@ -95,7 +79,7 @@ Loop:
 			e.LoseConnectionToPeer(peer)
 
 			//Must redistribute when we lose connection
-			redistributeHallOrders(e, nil, localAssignedHallOrdersCh)
+			redistributeHallOrders(e, localAssignedHallOrdersCh)
 
 			e.ClearDisconnectedNodeQueue()
 
@@ -206,10 +190,11 @@ func onUpdateWorldView(e *elevator.Elevator) {
 
 }
 
-func redistributeHallOrders(e *elevator.Elevator, hallOrder *orders.Order, localAssignedHallOrdersCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool) {
+func redistributeHallOrders(e *elevator.Elevator, localAssignedHallOrdersCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool) {
 
-	globalOrderAssignments := orders.RunHallRequestAlgorithm(e, hallOrder)
+	globalOrderAssignments := orders.RunHallRequestAlgorithm(e)
 	localAssignedHallOrdersCh <- globalOrderAssignments[e.GetID()]
+
 	for id, orderList := range globalOrderAssignments {
 		if id != e.GetID() {
 			network.SendHallOrderRedistribution(orderList, e.GetID(), id)
