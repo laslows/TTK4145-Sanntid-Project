@@ -81,7 +81,7 @@ func (e *Elevator) UpdateMyBackup() {
 	e.m_myBackup.m_isMaster = e.m_isMaster
 	e.m_myBackup.m_direction = e.m_direction
 	e.m_myBackup.m_floor = e.m_floor
-	e.m_myBackup.m_requests = e.m_requests
+	e.m_myBackup.m_requests = e.m_myRequests
 	e.m_myBackup.m_isObstructed = e.m_isObstructed
 	e.m_myBackup.m_connectedToNetwork = true
 	e.m_myBackup.m_behaviour = e.m_behaviour
@@ -92,7 +92,7 @@ func (e *Elevator) UpdateMyBackup() {
 func (e *Elevator) restoreMyBackup(b *Backup) {
 	e.m_myBackup.m_floor = e.m_floor
 	e.m_myBackup.m_direction = e.m_direction
-	e.m_myBackup.m_requests = e.m_requests
+	e.m_myBackup.m_requests = e.m_myRequests
 	e.m_myBackup.m_isMaster = e.m_isMaster
 	e.m_myBackup.m_behaviour = e.m_behaviour
 	e.m_myBackup.m_version = b.m_version + 1

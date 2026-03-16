@@ -12,13 +12,13 @@ import (
 //TODO: make master redistribute orders when new peer
 //TODO: maybe use defer ?? Codequalityfix
 
-func MasterFsm(e *elevator.Elevator, hallButtonCh <-chan orders.Order, assignedOrdersFromMasterCh <-chan [config.N_FLOORS][config.N_BUTTONS - 1]bool,
+func MasterFsm(e *elevator.Elevator, hallButtonCh <-chan orders.Order, completeHallOrderCh <-chan orders.Order, assignedOrdersFromMasterCh <-chan [config.N_FLOORS][config.N_BUTTONS - 1]bool,
 	localAssignedHallOrdersCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool, tryUpdateWorldViewCh <-chan elevator.Backup, peerLostCh <-chan int,
 	peerConnectedCh <-chan int) {
 
 	if !e.GetIsMaster() {
 		fmt.Println("Immediately switching to slave")
-		go slaveFsm(e, hallButtonCh, assignedOrdersFromMasterCh, localAssignedHallOrdersCh, tryUpdateWorldViewCh, peerLostCh, peerConnectedCh)
+		go slaveFsm(e, hallButtonCh, completeHallOrderCh, assignedOrdersFromMasterCh, localAssignedHallOrdersCh, tryUpdateWorldViewCh, peerLostCh, peerConnectedCh)
 		return
 	}
 
@@ -27,7 +27,7 @@ func MasterFsm(e *elevator.Elevator, hallButtonCh <-chan orders.Order, assignedO
 
 	//Print all known orders in worldview as [][]
 
-	hallRequests := [config.N_FLOORS][config.N_BUTTONS-1]bool{}
+	hallRequests := [config.N_FLOORS][config.N_BUTTONS - 1]bool{}
 
 	for _, backup := range e.GetWorldView() {
 		if backup == nil {
@@ -38,19 +38,18 @@ func MasterFsm(e *elevator.Elevator, hallButtonCh <-chan orders.Order, assignedO
 		for i, row := range backupRequests {
 			for j, value := range row[:len(row)-1] {
 				hallRequests[i][j] = hallRequests[i][j] || value
-			}	
+			}
 		}
 	}
-	
-	fmt.Println("Known orders in worldview: ", hallRequests)
 
+	fmt.Println("Known orders in worldview: ", hallRequests)
 
 Loop:
 	for {
 		select {
 		case hallOrder := <-hallButtonCh:
 
-			if checkNewOrder(e, hallOrder) {
+			if orders.CheckNewOrder(e, hallOrder) {
 				fmt.Printf("New order received!")
 
 				redistributeHallOrders(e, &hallOrder, localAssignedHallOrdersCh)
@@ -58,6 +57,10 @@ Loop:
 			} else {
 				fmt.Println("Order already in queue, not sending to algorithm")
 			}
+
+		case completeHallOrder := <-completeHallOrderCh:
+
+			println("Completed hall order at floor ", completeHallOrder.GetFloor(), " with button ", completeHallOrder.GetOrderType())
 
 		case heartBeat := <-tryUpdateWorldViewCh:
 
@@ -117,13 +120,13 @@ Loop:
 	//Maybe make onMasterSlaveChange-function
 	e.SetIsMaster(false)
 	e.UpdateMyBackup()
-	go slaveFsm(e, hallButtonCh, assignedOrdersFromMasterCh, localAssignedHallOrdersCh, tryUpdateWorldViewCh, peerLostCh, peerConnectedCh)
+	go slaveFsm(e, hallButtonCh, completeHallOrderCh, assignedOrdersFromMasterCh, localAssignedHallOrdersCh, tryUpdateWorldViewCh, peerLostCh, peerConnectedCh)
 
 }
 
 // Kanskje vi kan returne fra masterFsm om vi bli slave, og starte denne. Og så motsatt ??
 // Idk om dette er en god løsning..
-func slaveFsm(e *elevator.Elevator, hallButtonCh <-chan orders.Order, assignedOrdersFromMasterCh <-chan [config.N_FLOORS][config.N_BUTTONS - 1]bool,
+func slaveFsm(e *elevator.Elevator, hallButtonCh <-chan orders.Order, completeHallOrderCh <-chan orders.Order, assignedOrdersFromMasterCh <-chan [config.N_FLOORS][config.N_BUTTONS - 1]bool,
 	localAssignedHallOrdersCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool, tryUpdateWorldViewCh <-chan elevator.Backup, peerLostCh <-chan int,
 	peerConnectedCh <-chan int) {
 
@@ -138,6 +141,12 @@ Loop:
 			//Give to masterHallOrderRequest
 
 			network.SendHallOrder(buttonEvent, e.GetID(), e.GetMasterID())
+
+		case completeHallOrder := <-completeHallOrderCh:
+
+			fmt.Println("Sending completed hall order to master")
+
+			network.SendHallOrderCompletion(completeHallOrder, e.GetID(), e.GetMasterID())
 
 		case heartBeat := <-tryUpdateWorldViewCh:
 
@@ -183,7 +192,7 @@ Loop:
 
 	e.SetIsMaster(true)
 	e.UpdateMyBackup()
-	go MasterFsm(e, hallButtonCh, assignedOrdersFromMasterCh, localAssignedHallOrdersCh, tryUpdateWorldViewCh, peerLostCh, peerConnectedCh)
+	go MasterFsm(e, hallButtonCh, completeHallOrderCh, assignedOrdersFromMasterCh, localAssignedHallOrdersCh, tryUpdateWorldViewCh, peerLostCh, peerConnectedCh)
 
 }
 
@@ -199,7 +208,7 @@ func onUpdateWorldView(e *elevator.Elevator) {
 
 func redistributeHallOrders(e *elevator.Elevator, hallOrder *orders.Order, localAssignedHallOrdersCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool) {
 
-	globalOrderAssignments := runHallRequestAlgorithm(e, hallOrder)
+	globalOrderAssignments := orders.RunHallRequestAlgorithm(e, hallOrder)
 	localAssignedHallOrdersCh <- globalOrderAssignments[e.GetID()]
 	for id, orderList := range globalOrderAssignments {
 		if id != e.GetID() {

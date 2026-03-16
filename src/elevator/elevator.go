@@ -37,7 +37,8 @@ type Elevator struct {
 	m_ID        int
 	m_floor     int
 	m_direction Direction
-	m_requests  [config.N_FLOORS][config.N_BUTTONS]bool
+	m_myRequests  [config.N_FLOORS][config.N_BUTTONS]bool
+	m_globalRequests [config.N_FLOORS][config.N_BUTTONS]bool
 	m_behaviour ElevatorBehaviour
 	m_isMaster  bool
 	m_isObstructed bool
@@ -86,7 +87,7 @@ func New(port string) *Elevator {
 }
 
 func (e *Elevator) GetGlobalLights() [config.N_FLOORS][config.N_BUTTONS]bool {
-	lights := e.m_requests
+	lights := e.m_myRequests
 
 	for _, b := range e.m_worldView {
 		if b != nil {
@@ -221,7 +222,7 @@ func (e *Elevator) LoseConnectionToPeer(peerID int) {
 
 func (e *Elevator) RestoreElevatorState(b *Backup) {
 
-	e.m_requests = b.m_requests
+	e.m_myRequests = b.m_requests
 	e.m_floor = b.m_floor
 	e.m_direction = b.m_direction
 
@@ -259,15 +260,15 @@ func (e *Elevator) SetFloor(f int) {
 }
 
 func (e *Elevator) GetRequestAtFloor(floor int, btn driver.ButtonType) bool {
-	return e.m_requests[floor][btn]
+	return e.m_myRequests[floor][btn]
 }
 
 func (e *Elevator) GetRequests() [config.N_FLOORS][config.N_BUTTONS]bool {
-	return e.m_requests
+	return e.m_myRequests
 }
 
 func (e *Elevator) SetRequest(floor int, btn driver.ButtonType, active bool) {
-	e.m_requests[floor][btn] = active
+	e.m_myRequests[floor][btn] = active
 }
 
 func (e *Elevator) GetDirection() Direction {

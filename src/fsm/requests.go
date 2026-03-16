@@ -58,33 +58,49 @@ func anyRequests(e elevator.Elevator) bool {
 
 func clearAtCurrentFloor(e elevator.Elevator) (elevator.Elevator, []orders.Order) {
 	var completedHallOrders []orders.Order
+	floor := e.GetFloor()
+	hadHallUp := e.GetRequestAtFloor(floor, driver.BT_HallUp)
+	hadHallDown := e.GetRequestAtFloor(floor, driver.BT_HallDown)
 
-	e.SetRequest(e.GetFloor(), driver.BT_Cab, false)
+	e.SetRequest(floor, driver.BT_Cab, false)
 
 	switch e.GetDirection() {
 	case elevator.Up:
-		if !requestsAbove(e) && !e.GetRequestAtFloor(e.GetFloor(), driver.BT_HallUp) {
-			e.SetRequest(e.GetFloor(), driver.BT_HallDown, false)
-			completedHallOrders = append(completedHallOrders, orders.New(e.GetFloor(), orders.HALL_DOWN))
+		if !requestsAbove(e) && !hadHallUp {
+			e.SetRequest(floor, driver.BT_HallDown, false)
+			if hadHallDown {
+				completedHallOrders = append(completedHallOrders, orders.New(floor, orders.HALL_DOWN))
+			}
 		}
-		e.SetRequest(e.GetFloor(), driver.BT_HallUp, false)
-		completedHallOrders = append(completedHallOrders, orders.New(e.GetFloor(), orders.HALL_UP))
+		e.SetRequest(floor, driver.BT_HallUp, false)
+		if hadHallUp {
+			completedHallOrders = append(completedHallOrders, orders.New(floor, orders.HALL_UP))
+		}
 
 	case elevator.Down:
-		if !requestsBelow(e) && !e.GetRequestAtFloor(e.GetFloor(), driver.BT_HallDown) {
-			e.SetRequest(e.GetFloor(), driver.BT_HallUp, false)
-			completedHallOrders = append(completedHallOrders, orders.New(e.GetFloor(), orders.HALL_UP))
+		if !requestsBelow(e) && !hadHallDown {
+			e.SetRequest(floor, driver.BT_HallUp, false)
+			if hadHallUp {
+				completedHallOrders = append(completedHallOrders, orders.New(floor, orders.HALL_UP))
+			}
 		}
-		e.SetRequest(e.GetFloor(), driver.BT_HallDown, false)
-		completedHallOrders = append(completedHallOrders, orders.New(e.GetFloor(), orders.HALL_DOWN))
+		e.SetRequest(floor, driver.BT_HallDown, false)
+		if hadHallDown {
+			completedHallOrders = append(completedHallOrders, orders.New(floor, orders.HALL_DOWN))
+		}
 
 	default:
-		e.SetRequest(e.GetFloor(), driver.BT_HallUp, false)
-		e.SetRequest(e.GetFloor(), driver.BT_HallDown, false)
+		e.SetRequest(floor, driver.BT_HallUp, false)
+		e.SetRequest(floor, driver.BT_HallDown, false)
 
-		completedHallOrders = append(completedHallOrders, orders.New(e.GetFloor(), orders.HALL_UP))
-		completedHallOrders = append(completedHallOrders, orders.New(e.GetFloor(), orders.HALL_DOWN))
+		if hadHallUp {
+			completedHallOrders = append(completedHallOrders, orders.New(floor, orders.HALL_UP))
+		}
+		if hadHallDown {
+			completedHallOrders = append(completedHallOrders, orders.New(floor, orders.HALL_DOWN))
+		}
 	}
+
 	return e, completedHallOrders
 }
 

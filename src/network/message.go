@@ -11,6 +11,7 @@ type messageType int
 
 const (
 	HallOrderRequest messageType = iota
+	HallOrderCompletion
 	HallOrderRedistribution
 	Initialization
 	WorldView

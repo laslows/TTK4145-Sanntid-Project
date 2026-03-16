@@ -79,7 +79,7 @@ func broadcastMessage(senderID, receiverID int, messageType messageType, payload
 	}
 }
 
-func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
+func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order, completeHallOrderCh chan<- orders.Order,
 	assignedOrdersFromMasterCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool, peerConnectedCh chan<- int) {
 
 	var messageBuffer = newFifoBuffer()
@@ -128,6 +128,12 @@ func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
 			json.Unmarshal(incomingMessage.m_payload, &hallOrderRequest)
 
 			hallButtonCh <- hallOrderRequest
+
+		case HallOrderCompletion:
+			var completeHallOrder orders.Order
+			json.Unmarshal(incomingMessage.m_payload, &completeHallOrder)
+
+			completeHallOrderCh <- completeHallOrder
 
 		case HallOrderRedistribution:
 
@@ -192,6 +198,12 @@ func SendHallOrder(order orders.Order, senderID, receiverId int) {
 	fmt.Println("Sending hall order: ", order, " from ", senderID, " to ", receiverId)
 
 	go broadcastMessage(senderID, receiverId, HallOrderRequest, payload)
+}
+
+func SendHallOrderCompletion(order orders.Order, senderID, receiverId int) {
+	payload, _ := json.Marshal(&order)
+
+	go broadcastMessage(senderID, receiverId, HallOrderCompletion, payload)
 }
 
 func SendHallOrderRedistribution(orderList [config.N_FLOORS][config.N_BUTTONS - 1]bool, senderID, receiverID int) {

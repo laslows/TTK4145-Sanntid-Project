@@ -42,11 +42,11 @@ func main() {
 	initialize.Initialize(elev)
 
 	go fsm.Fsm(elev, timetaker, cabOrderCh, completeHallOrderCh, floorCh, timerCh, motorStopCh, obstructionCh, localAssignedHallOrdersCh, tryUpdateWorldViewCh)
-	go fsm.MasterFsm(elev, hallOrderCh, assignedOrdersFromMasterCh, localAssignedHallOrdersCh, tryUpdateWorldViewCh, peerLostCh, peerConnectedCh)
+	go fsm.MasterFsm(elev, hallOrderCh, completeHallOrderCh, assignedOrdersFromMasterCh, localAssignedHallOrdersCh, tryUpdateWorldViewCh, peerLostCh, peerConnectedCh)
 	go events.InputPoller(cabOrderCh, hallOrderCh, floorCh, timerCh, motorStopCh, obstructionCh, elev, timetaker)
 	go network.ListenForHeartbeats(tryUpdateWorldViewCh, peerLostCh)
 	go network.BroadcastHeartbeat(elev)
-	go network.ListenForMessages(elev, hallOrderCh, assignedOrdersFromMasterCh, peerConnectedCh)
+	go network.ListenForMessages(elev, hallOrderCh, completeHallOrderCh, assignedOrdersFromMasterCh, peerConnectedCh)
 
 	select {}
 }

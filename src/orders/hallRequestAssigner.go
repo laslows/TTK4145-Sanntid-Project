@@ -1,9 +1,9 @@
-package fsm
+package orders
 
 import (
 	"Sanntid/src/config"
 	"Sanntid/src/elevator"
-	"Sanntid/src/orders"
+
 	"encoding/json"
 	"fmt"
 	"os/exec"
@@ -24,7 +24,7 @@ type elevatorState struct {
 	CabRequests []bool `json:"cabRequests"`
 }
 
-func createJSONDataForHallRequestAlgorithm(e *elevator.Elevator, hallOrder *orders.Order) string {
+func createJSONDataForHallRequestAlgorithm(e *elevator.Elevator, hallOrder *Order) string {
 	states := make(map[string]elevatorState)
 
 	hallRequests := make([][]bool, config.N_FLOORS)
@@ -78,9 +78,9 @@ func createJSONDataForHallRequestAlgorithm(e *elevator.Elevator, hallOrder *orde
 	return string(jsonData)
 }
 
-func runHallRequestAlgorithm(e *elevator.Elevator, hallOrder *orders.Order) map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool {
+func RunHallRequestAlgorithm(e *elevator.Elevator, hallOrder *Order) map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool {
 	input := createJSONDataForHallRequestAlgorithm(e, hallOrder)
-	cmd := exec.Command("./src/fsm/hall_request_assigner/hall_request_assigner", "--input", input)
+	cmd := exec.Command("./src/orders/hall_request_assigner/hall_request_assigner", "--input", input)
 	out, err := cmd.CombinedOutput()
 	hallOrderAssignmentMap := make(map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool)
 
@@ -105,7 +105,7 @@ func runHallRequestAlgorithm(e *elevator.Elevator, hallOrder *orders.Order) map[
 	return hallOrderAssignmentMap
 }
 
-func checkNewOrder(e *elevator.Elevator, hallOrder orders.Order) bool {
+func CheckNewOrder(e *elevator.Elevator, hallOrder Order) bool {
 	//Check if order is already in queue, if not return true, else return false
 	for _, backup := range e.GetWorldView() {
 		if backup != nil {

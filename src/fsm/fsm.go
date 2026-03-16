@@ -14,26 +14,26 @@ import (
 func Fsm(e *elevator.Elevator, timetaker *timer.Timer, cabButtonCh <-chan orders.Order, completeHallOrderCh chan<- orders.Order, floorCh <-chan int, timerCh <-chan bool,
 	motorStopCh <-chan bool, obstructionCh <-chan bool, localAssignedHallOrdersCh <-chan [config.N_FLOORS][config.N_BUTTONS - 1]bool, tryUpdateWorldViewCh chan<- elevator.Backup) {
 
-	onNewOrder(e, timetaker)
+	onNewOrder(e, timetaker, completeHallOrderCh)
 
 	for {
 		select {
 		case buttonEvent := <-cabButtonCh:
 
 			insertOrder(e, buttonEvent, timetaker)
-			onNewOrder(e, timetaker)
+			onNewOrder(e, timetaker, completeHallOrderCh)
 			fmt.Printf("New cab order: floor %d, button %d\n", buttonEvent.GetFloor(), buttonEvent.GetOrderType())
 
 		case assignedHallOrders := <-localAssignedHallOrdersCh:
 
 			insertAllHallOrders(e, assignedHallOrders, timetaker)
-			onNewOrder(e, timetaker)
+			onNewOrder(e, timetaker, completeHallOrderCh)
 
 		case floorArrival := <-floorCh:
-			onFloorArrival(e, floorArrival, timetaker)
+			onFloorArrival(e, floorArrival, timetaker, completeHallOrderCh)
 
 		case <-timerCh:
-			onDoorTimeout(e, timetaker)
+			onDoorTimeout(e, timetaker, completeHallOrderCh)
 
 		case <-motorStopCh:
 
@@ -61,10 +61,12 @@ func Fsm(e *elevator.Elevator, timetaker *timer.Timer, cabButtonCh <-chan orders
 
 }
 
-func onFloorArrival(e *elevator.Elevator, floor int, timer *timer.Timer) {
+func onFloorArrival(e *elevator.Elevator, floor int, timer *timer.Timer, completeHallOrderCh chan<- orders.Order) {
 
 	e.SetFloor(floor)
 	elevator.FloorIndicator(floor)
+
+	var completedHallOrders []orders.Order
 
 	switch e.GetBehaviour() {
 	case elevator.MotorStop:
@@ -76,7 +78,12 @@ func onFloorArrival(e *elevator.Elevator, floor int, timer *timer.Timer) {
 		} else if shouldStop(*e) {
 			elevator.MotorDirection(elevator.Stop)
 			elevator.DoorOpenLight(true)
-			*e = clearAtCurrentFloor(*e)
+			*e, completedHallOrders = clearAtCurrentFloor(*e)
+
+			for _, order := range completedHallOrders {
+				completeHallOrderCh <- order
+			}
+
 			timer.Start(e.GetDoorOpenDuration())
 			e.SetBehaviour(elevator.DoorOpen)
 			setAllLights(*e)
@@ -91,7 +98,12 @@ func onFloorArrival(e *elevator.Elevator, floor int, timer *timer.Timer) {
 		if shouldStop(*e) {
 			elevator.MotorDirection(elevator.Stop)
 			elevator.DoorOpenLight(true)
-			*e = clearAtCurrentFloor(*e)
+			*e, completedHallOrders = clearAtCurrentFloor(*e)
+
+			for _, order := range completedHallOrders {
+				completeHallOrderCh <- order
+			}
+
 			timer.Start(e.GetDoorOpenDuration())
 			e.SetBehaviour(elevator.DoorOpen)
 			e.UpdateMyBackup()
@@ -113,7 +125,7 @@ func setAllLights(e elevator.Elevator) {
 	}
 }
 
-func onDoorTimeout(e *elevator.Elevator, timer *timer.Timer) {
+func onDoorTimeout(e *elevator.Elevator, timer *timer.Timer, completeHallOrderCh chan<- orders.Order) {
 	switch e.GetBehaviour() {
 	case elevator.DoorOpen:
 		pair := chooseDirection(*e)
@@ -123,7 +135,13 @@ func onDoorTimeout(e *elevator.Elevator, timer *timer.Timer) {
 		switch e.GetBehaviour() {
 		case elevator.DoorOpen:
 			timer.Start(e.GetDoorOpenDuration())
-			*e = clearAtCurrentFloor(*e)
+			var completedHallOrders []orders.Order
+			*e, completedHallOrders = clearAtCurrentFloor(*e)
+
+			for _, order := range completedHallOrders {
+				completeHallOrderCh <- order
+			}
+
 			e.UpdateMyBackup()
 			setAllLights(*e)
 		case elevator.Moving:
@@ -167,7 +185,7 @@ func insertOrder(e *elevator.Elevator, order orders.Order, timer *timer.Timer) {
 	setAllLights(*e)
 }
 
-func onNewOrder(e *elevator.Elevator, timer *timer.Timer) {
+func onNewOrder(e *elevator.Elevator, timer *timer.Timer, completeHallOrderCh chan<- orders.Order) {
 	switch e.GetBehaviour() {
 	case elevator.Idle:
 		pair := chooseDirection(*e)
@@ -178,7 +196,12 @@ func onNewOrder(e *elevator.Elevator, timer *timer.Timer) {
 		case elevator.DoorOpen:
 			elevator.DoorOpenLight(true)
 			timer.Start(e.GetDoorOpenDuration())
-			*e = clearAtCurrentFloor(*e)
+			var completedHallOrders []orders.Order
+			*e, completedHallOrders = clearAtCurrentFloor(*e)
+
+			for _, order := range completedHallOrders {
+				completeHallOrderCh <- order
+			}
 
 		case elevator.Moving:
 			elevator.MotorDirection(pair.m_dirn)
