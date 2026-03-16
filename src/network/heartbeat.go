@@ -8,8 +8,8 @@ import (
 )
 
 const HEARTBEAT_ADDR = "224.0.0.1:15555"
-const HEARTBEAT_RATE = 10 * time.Millisecond
-const HEARTBEAT_TIMEOUT = 250 * time.Millisecond
+const HEARTBEAT_RATE = 1000 * time.Millisecond
+const HEARTBEAT_TIMEOUT = 25000 * time.Millisecond
 
 func BroadcastHeartbeat(e *elevator.Elevator) {
 	multicastAddr, _ := net.ResolveUDPAddr("udp4", HEARTBEAT_ADDR)
@@ -62,4 +62,3 @@ func ListenForHeartbeats(tryUpdateWorldViewCh chan<- elevator.Backup, peerLostCh
 
 	}
 }
-

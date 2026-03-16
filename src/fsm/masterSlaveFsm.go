@@ -22,39 +22,34 @@ func MasterFsm(e *elevator.Elevator, hallButtonCh <-chan orders.Order, assignedO
 		return
 	}
 
-	redistributeHallOrders(e, nil, localAssignedHallOrdersCh)
-	e.ClearDisconnectedNodeQueue()
-
-	//Print all known orders in worldview as [][]
-
-	hallRequests := [config.N_FLOORS][config.N_BUTTONS-1]bool{}
-
+	// Initialize pendingOrders from worldview (picks up orders confirmed before this master started)
+	pendingOrders := [config.N_FLOORS][config.N_BUTTONS - 1]bool{}
 	for _, backup := range e.GetWorldView() {
 		if backup == nil {
 			continue
 		}
-
-		backupRequests := backup.GetRequests()
-		for i, row := range backupRequests {
-			for j, value := range row[:len(row)-1] {
-				hallRequests[i][j] = hallRequests[i][j] || value
-			}	
+		requests := backup.GetRequests()
+		for f := 0; f < config.N_FLOORS; f++ {
+			for btn := 0; btn < config.N_BUTTONS-1; btn++ {
+				pendingOrders[f][btn] = pendingOrders[f][btn] || requests[f][btn]
+			}
 		}
 	}
-	
-	fmt.Println("Known orders in worldview: ", hallRequests)
+	fmt.Println("Known orders from worldview: ", pendingOrders)
 
+	redistributeHallOrders(e, pendingOrders, localAssignedHallOrdersCh)
+	e.ClearDisconnectedNodeQueue()
 
 Loop:
 	for {
 		select {
 		case hallOrder := <-hallButtonCh:
 
-			if checkNewOrder(e, hallOrder) {
+			f, btn := hallOrder.GetFloor(), hallOrder.GetOrderType()
+			if checkNewOrder(e, hallOrder) && !pendingOrders[f][btn] {
 				fmt.Printf("New order received!")
-
-				redistributeHallOrders(e, &hallOrder, localAssignedHallOrdersCh)
-
+				pendingOrders[f][btn] = true
+				redistributeHallOrders(e, pendingOrders, localAssignedHallOrdersCh)
 			} else {
 				fmt.Println("Order already in queue, not sending to algorithm")
 			}
@@ -69,14 +64,28 @@ Loop:
 
 			if e.ShouldRedistributeOrders(&heartBeat) {
 				e.UpdateWorldView(&heartBeat)
-				redistributeHallOrders(e, nil, localAssignedHallOrdersCh)
+				redistributeHallOrders(e, pendingOrders, localAssignedHallOrdersCh)
 			} else if heartBeat.GetID() == e.GetID() {
 				e.UpdateWorldView(&heartBeat)
 				//Only happens if motorstop, should maybe be moved
-				redistributeHallOrders(e, nil, localAssignedHallOrdersCh)
+				redistributeHallOrders(e, pendingOrders, localAssignedHallOrdersCh)
 				fmt.Println("I changed obstructionstatus or motorstopstatus")
 			} else {
 				e.UpdateWorldView(&heartBeat)
+			}
+
+			// Clear pending orders that worldview has now confirmed
+			for f := 0; f < config.N_FLOORS; f++ {
+				for btn := 0; btn < config.N_BUTTONS-1; btn++ {
+					if pendingOrders[f][btn] {
+						for _, b := range e.GetWorldView() {
+							if b != nil && b.GetRequests()[f][btn] {
+								pendingOrders[f][btn] = false
+								break
+							}
+						}
+					}
+				}
 			}
 
 			onUpdateWorldView(e)
@@ -92,7 +101,7 @@ Loop:
 			e.LoseConnectionToPeer(peer)
 
 			//Must redistribute when we lose connection
-			redistributeHallOrders(e, nil, localAssignedHallOrdersCh)
+			redistributeHallOrders(e, pendingOrders, localAssignedHallOrdersCh)
 
 			e.ClearDisconnectedNodeQueue()
 
@@ -197,9 +206,9 @@ func onUpdateWorldView(e *elevator.Elevator) {
 
 }
 
-func redistributeHallOrders(e *elevator.Elevator, hallOrder *orders.Order, localAssignedHallOrdersCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool) {
+func redistributeHallOrders(e *elevator.Elevator, pendingOrders [config.N_FLOORS][config.N_BUTTONS - 1]bool, localAssignedHallOrdersCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool) {
 
-	globalOrderAssignments := runHallRequestAlgorithm(e, hallOrder)
+	globalOrderAssignments := runHallRequestAlgorithm(e, pendingOrders)
 	localAssignedHallOrdersCh <- globalOrderAssignments[e.GetID()]
 	for id, orderList := range globalOrderAssignments {
 		if id != e.GetID() {
