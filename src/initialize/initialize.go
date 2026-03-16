@@ -14,7 +14,6 @@ func Initialize(e *elevator.Elevator) {
 	elevator.DoorOpenLight(false)
 
 	fmt.Println("Initialiser heisen")
-	fmt.Printf("Initial floor: %d\n", e.GetFloor())
 
 	network.SendInitializationMessage(e.GetID())
 	worldView, gotWorldView := network.TryListenForWorldView()

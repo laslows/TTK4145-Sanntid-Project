@@ -11,7 +11,7 @@ import (
 )
 
 func InputPoller(cabButtonCh chan<- orders.Order, hallButtonCh chan<- orders.Order, floorCh chan<- int,
-	timerCh chan<- bool, motorStopCh chan<- bool, obstructionCh chan<- bool, e *elevator.Elevator, timetaker *timer.Timer) {
+	doorTimeoutCh chan<- bool, motorStopCh chan<- bool, obstructionCh chan<- bool, e *elevator.Elevator, doorTimer *timer.Timer) {
 
 	var prevButtons [config.N_FLOORS][config.N_BUTTONS]bool
 	var prevFloor int = -1
@@ -55,13 +55,13 @@ func InputPoller(cabButtonCh chan<- orders.Order, hallButtonCh chan<- orders.Ord
 			motorStopCh <- true
 		}
 
-		if timetaker.TimedOut() {
-			timetaker.Stop()
-			timerCh <- true
+		if doorTimer.TimedOut() {
+			doorTimer.Stop()
+			doorTimeoutCh <- true
 		}
 
 		if e.GetBehaviour() == elevator.DoorOpen && elevator.ObstructionSwitch() {
-			timetaker.Start(e.GetDoorOpenDuration())
+			doorTimer.Start(e.GetDoorOpenDuration())
 
 			if !obstruction {
 				obstruction = true
