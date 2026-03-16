@@ -10,6 +10,7 @@ type Backup struct {
 	m_floor              int
 	m_direction          Direction
 	m_cabRequests        [config.N_FLOORS]bool
+	m_globalRequests     [config.N_FLOORS][config.N_BUTTONS-1]bool
 	m_isMaster           bool
 	m_behaviour          ElevatorBehaviour
 	m_isObstructed       bool
@@ -23,6 +24,7 @@ func (b *Backup) MarshalJSON() ([]byte, error) {
 		Floor              int
 		Direction          int
 		CabRequests        [config.N_FLOORS]bool
+		GlobalRequests     [config.N_FLOORS][config.N_BUTTONS-1]bool
 		IsMaster           bool
 		IsObstructed       bool
 		Version            int
@@ -35,6 +37,7 @@ func (b *Backup) MarshalJSON() ([]byte, error) {
 		Floor:              b.m_floor,
 		Direction:          int(b.m_direction),
 		CabRequests:        b.m_cabRequests,
+		GlobalRequests:     b.m_globalRequests,
 		IsMaster:           b.m_isMaster,
 		IsObstructed:       b.m_isObstructed,
 		Version:            b.m_version,
@@ -49,6 +52,7 @@ func (b *Backup) UnmarshalJSON(data []byte) error {
 		Floor              int
 		Direction          int
 		CabRequests        [config.N_FLOORS]bool
+		GlobalRequests     [config.N_FLOORS][config.N_BUTTONS-1]bool
 		IsMaster           bool
 		IsObstructed       bool
 		Version            int
@@ -66,6 +70,7 @@ func (b *Backup) UnmarshalJSON(data []byte) error {
 	b.m_floor = backupJSON.Floor
 	b.m_direction = Direction(backupJSON.Direction)
 	b.m_cabRequests = backupJSON.CabRequests
+	b.m_globalRequests = backupJSON.GlobalRequests
 	b.m_isMaster = backupJSON.IsMaster
 	b.m_isObstructed = backupJSON.IsObstructed
 	b.m_version = backupJSON.Version
@@ -82,6 +87,7 @@ func (e *Elevator) UpdateMyBackup() {
 	e.m_myBackup.m_direction = e.m_direction
 	e.m_myBackup.m_floor = e.m_floor
 	e.m_myBackup.m_cabRequests = e.GetCabRequests()
+	e.m_myBackup.m_globalRequests = e.m_globalRequests
 	e.m_myBackup.m_isObstructed = e.m_isObstructed
 	e.m_myBackup.m_connectedToNetwork = true
 	e.m_myBackup.m_behaviour = e.m_behaviour
@@ -93,6 +99,7 @@ func (e *Elevator) restoreMyBackup(b *Backup) {
 	e.m_myBackup.m_floor = e.m_floor
 	e.m_myBackup.m_direction = e.m_direction
 	e.m_myBackup.m_cabRequests = e.GetCabRequests()
+	//Restore global requests?? How to do this
 	e.m_myBackup.m_isMaster = e.m_isMaster
 	e.m_myBackup.m_behaviour = e.m_behaviour
 	e.m_myBackup.m_version = b.m_version + 1

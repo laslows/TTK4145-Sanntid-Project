@@ -3,7 +3,6 @@ package orders
 import (
 	"Sanntid/src/config"
 	"Sanntid/src/elevator"
-	"Sanntid/src/driver"
 
 	"encoding/json"
 	"fmt"
@@ -107,6 +106,6 @@ func RunHallRequestAlgorithm(e *elevator.Elevator) map[int][config.N_FLOORS][con
 
 func CheckNewOrder(e *elevator.Elevator, hallOrder Order) bool {
 
-	return !e.GetLocalRequestAtFloor(hallOrder.GetFloor(), (driver.ButtonType)(hallOrder.GetOrderType()))
+	return !e.GetGlobalRequests()[hallOrder.GetFloor()][hallOrder.GetOrderType()]
 
 }

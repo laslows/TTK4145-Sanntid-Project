@@ -43,8 +43,10 @@ Loop:
 
 		case completeHallOrder := <-completeHallOrderCh:
 
-			println("Completed hall order at floor ", completeHallOrder.GetFloor(), " with button ", completeHallOrder.GetOrderType())
+			fmt.Println("Completed hall order. Known orders are: ", e.GetGlobalRequests())
 			e.SetGlobalRequest(completeHallOrder.GetFloor(), driver.ButtonType(completeHallOrder.GetOrderType()), false)
+			e.UpdateMyBackup()
+			setAllLights(*e)
 
 		case heartBeat := <-tryUpdateWorldViewCh:
 
@@ -129,6 +131,9 @@ Loop:
 		case completeHallOrder := <-completeHallOrderCh:
 
 			fmt.Println("Sending completed hall order to master")
+			e.SetGlobalRequest(completeHallOrder.GetFloor(), driver.ButtonType(completeHallOrder.GetOrderType()), false)
+			e.UpdateMyBackup()
+			setAllLights(*e)
 
 			network.SendHallOrderCompletion(completeHallOrder, e.GetID(), e.GetMasterID())
 
@@ -139,6 +144,7 @@ Loop:
 			}
 
 			e.UpdateWorldView(&heartBeat)
+			e.UpdateGlobalRequests(&heartBeat)
 			onUpdateWorldView(e)
 
 			if e.GetIsMaster() {
@@ -166,6 +172,8 @@ Loop:
 
 		case orderList := <-assignedOrdersFromMasterCh:
 
+			fmt.Println("Global orders: ", e.GetGlobalRequests())
+
 			localAssignedHallOrdersCh <- orderList
 
 		}
@@ -184,9 +192,6 @@ func onUpdateWorldView(e *elevator.Elevator) {
 
 	e.TryUpdateIsMaster()
 	setAllLights(*e)
-
-	//Also check motorstop
-	//Also check other stuff
 
 }
 

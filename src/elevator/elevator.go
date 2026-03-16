@@ -103,19 +103,18 @@ func (e *Elevator) GetAllLights() [config.N_FLOORS][config.N_BUTTONS]bool {
 	return lights
 }
 
-// Maybe this is all we need, and we dont need a function that cheks if new backup == old backup
-// Should maybe use a message id instead, to check if we have already received the message
+
 func (e *Elevator) UpdateWorldView(incomingBackup *Backup) {
 	for i, b := range e.m_worldView {
 		if b == nil || (b.m_ID == incomingBackup.m_ID) {
 			e.m_worldView[i] = incomingBackup
+
 			return
 		}
 	}
 }
 
 func (e *Elevator) TryUpdateWorldView(incomingBackup *Backup) bool {
-	// Update if new elevator, or if the incoming backup is newer, or if backup has reconnected.
 
 	for _, b := range e.m_worldView {
 		if b != nil && b.m_ID == incomingBackup.m_ID {
@@ -123,6 +122,12 @@ func (e *Elevator) TryUpdateWorldView(incomingBackup *Backup) bool {
 		}
 	}
 	return true
+}
+
+func (e *Elevator) UpdateGlobalRequests(incomingBackup *Backup) {
+	if incomingBackup.m_isMaster {
+		e.m_globalRequests = incomingBackup.m_globalRequests
+	}
 }
 
 func getIDAsInt(ip, osID string) int {
@@ -225,6 +230,7 @@ func (e *Elevator) RestoreElevatorState(b *Backup) {
 
 	e.m_floor = b.m_floor
 	e.m_direction = b.m_direction
+	//Restore global requests?? How to do this
 
 	e.SetCabRequest(b.m_cabRequests)
 
