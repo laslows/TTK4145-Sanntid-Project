@@ -56,7 +56,8 @@ func anyRequests(e elevator.Elevator) bool {
 	return false
 }
 
-func clearAtCurrentFloor(e elevator.Elevator) elevator.Elevator {
+func clearAtCurrentFloor(e elevator.Elevator) (elevator.Elevator, []orders.Order) {
+	var completedHallOrders []orders.Order
 
 	e.SetRequest(e.GetFloor(), driver.BT_Cab, false)
 
@@ -64,20 +65,27 @@ func clearAtCurrentFloor(e elevator.Elevator) elevator.Elevator {
 	case elevator.Up:
 		if !requestsAbove(e) && !e.GetRequestAtFloor(e.GetFloor(), driver.BT_HallUp) {
 			e.SetRequest(e.GetFloor(), driver.BT_HallDown, false)
+			completedHallOrders = append(completedHallOrders, orders.New(e.GetFloor(), orders.HALL_DOWN))
 		}
 		e.SetRequest(e.GetFloor(), driver.BT_HallUp, false)
+		completedHallOrders = append(completedHallOrders, orders.New(e.GetFloor(), orders.HALL_UP))
 
 	case elevator.Down:
 		if !requestsBelow(e) && !e.GetRequestAtFloor(e.GetFloor(), driver.BT_HallDown) {
 			e.SetRequest(e.GetFloor(), driver.BT_HallUp, false)
+			completedHallOrders = append(completedHallOrders, orders.New(e.GetFloor(), orders.HALL_UP))
 		}
 		e.SetRequest(e.GetFloor(), driver.BT_HallDown, false)
+		completedHallOrders = append(completedHallOrders, orders.New(e.GetFloor(), orders.HALL_DOWN))
 
 	default:
 		e.SetRequest(e.GetFloor(), driver.BT_HallUp, false)
 		e.SetRequest(e.GetFloor(), driver.BT_HallDown, false)
+
+		completedHallOrders = append(completedHallOrders, orders.New(e.GetFloor(), orders.HALL_UP))
+		completedHallOrders = append(completedHallOrders, orders.New(e.GetFloor(), orders.HALL_DOWN))
 	}
-	return e
+	return e, completedHallOrders
 }
 
 func shouldStop(e elevator.Elevator) bool {

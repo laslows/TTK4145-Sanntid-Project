@@ -11,7 +11,7 @@ import (
 
 //TODO: Fix naming conventions
 
-func Fsm(e *elevator.Elevator, timetaker *timer.Timer, cabButtonCh <-chan orders.Order, floorCh <-chan int, timerCh <-chan bool,
+func Fsm(e *elevator.Elevator, timetaker *timer.Timer, cabButtonCh <-chan orders.Order, completeHallOrderCh chan<- orders.Order, floorCh <-chan int, timerCh <-chan bool,
 	motorStopCh <-chan bool, obstructionCh <-chan bool, localAssignedHallOrdersCh <-chan [config.N_FLOORS][config.N_BUTTONS - 1]bool, tryUpdateWorldViewCh chan<- elevator.Backup) {
 
 	onNewOrder(e, timetaker)

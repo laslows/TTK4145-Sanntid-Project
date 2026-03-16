@@ -26,8 +26,9 @@ func main() {
 	elev := elevator.New(*elevatorPort)
 	timetaker := timer.New()
 
-	cabButtonCh := make(chan orders.Order)
-	hallButtonCh := make(chan orders.Order)
+	cabOrderCh := make(chan orders.Order)
+	hallOrderCh := make(chan orders.Order)
+	completeHallOrderCh := make(chan orders.Order)
 	assignedOrdersFromMasterCh := make(chan [config.N_FLOORS][config.N_BUTTONS - 1]bool)
 	localAssignedHallOrdersCh := make(chan [config.N_FLOORS][config.N_BUTTONS - 1]bool)
 	floorCh := make(chan int)
@@ -40,12 +41,12 @@ func main() {
 
 	initialize.Initialize(elev)
 
-	go fsm.Fsm(elev, timetaker, cabButtonCh, floorCh, timerCh, motorStopCh, obstructionCh, localAssignedHallOrdersCh, tryUpdateWorldViewCh)
-	go fsm.MasterFsm(elev, hallButtonCh, assignedOrdersFromMasterCh, localAssignedHallOrdersCh, tryUpdateWorldViewCh, peerLostCh, peerConnectedCh)
-	go events.InputPoller(cabButtonCh, hallButtonCh, floorCh, timerCh, motorStopCh, obstructionCh, elev, timetaker)
+	go fsm.Fsm(elev, timetaker, cabOrderCh, completeHallOrderCh, floorCh, timerCh, motorStopCh, obstructionCh, localAssignedHallOrdersCh, tryUpdateWorldViewCh)
+	go fsm.MasterFsm(elev, hallOrderCh, assignedOrdersFromMasterCh, localAssignedHallOrdersCh, tryUpdateWorldViewCh, peerLostCh, peerConnectedCh)
+	go events.InputPoller(cabOrderCh, hallOrderCh, floorCh, timerCh, motorStopCh, obstructionCh, elev, timetaker)
 	go network.ListenForHeartbeats(tryUpdateWorldViewCh, peerLostCh)
 	go network.BroadcastHeartbeat(elev)
-	go network.ListenForMessages(elev, hallButtonCh, assignedOrdersFromMasterCh, peerConnectedCh)
+	go network.ListenForMessages(elev, hallOrderCh, assignedOrdersFromMasterCh, peerConnectedCh)
 
 	select {}
 }
