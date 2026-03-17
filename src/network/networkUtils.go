@@ -72,6 +72,7 @@ func (buffer *fifoBuffer) contains(messageID uint64) bool {
 	return false
 }
 
+//TODO
 type redistributionUpdate struct {
     m_messageID  uint64
     m_receiverID int

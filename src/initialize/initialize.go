@@ -44,6 +44,7 @@ func initOnFloor(e *elevator.Elevator) {
 	//TODO: spør studass om dette er nødvendig. 
 	// Problemet oppstår kun dersom heisen flyttes manuelt mens den står stille, og så drepes den..
 	initDirection := (int)(e.GetDirection())
+	
 	if initDirection == 0 && elevator.FloorSensor() == -1 {
 		initDirection = -1
 	}
