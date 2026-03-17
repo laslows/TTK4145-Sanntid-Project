@@ -35,10 +35,13 @@ Loop:
 		case hallOrder := <-hallButtonCh:
 
 			f, btn := hallOrder.GetFloor(), hallOrder.GetOrderType()
+
+			pendingOrders[f][btn] = true
+			redistributeHallOrders(e, pendingOrders, localAssignedHallOrdersCh)
+			
 			if checkNewOrder(e, hallOrder) && !pendingOrders[f][btn] {
 				fmt.Printf("New order received!")
-				pendingOrders[f][btn] = true
-				redistributeHallOrders(e, pendingOrders, localAssignedHallOrdersCh)
+
 			} else {
 				fmt.Println("Order already in queue, not sending to algorithm")
 			}
