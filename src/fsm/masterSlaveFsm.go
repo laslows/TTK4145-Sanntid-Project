@@ -23,18 +23,7 @@ func MasterFsm(e *elevator.Elevator, hallButtonCh <-chan orders.Order, assignedO
 	}
 
 	// Initialize pendingOrders from worldview (picks up orders confirmed before this master started)
-	pendingOrders := [config.N_FLOORS][config.N_BUTTONS - 1]bool{}
-	for _, backup := range e.GetWorldView() {
-		if backup == nil {
-			continue
-		}
-		requests := backup.GetRequests()
-		for f := 0; f < config.N_FLOORS; f++ {
-			for btn := 0; btn < config.N_BUTTONS-1; btn++ {
-				pendingOrders[f][btn] = pendingOrders[f][btn] || requests[f][btn]
-			}
-		}
-	}
+	pendingOrders := initPendingOrdersFromWorldView(e)
 	fmt.Println("Known orders from worldview: ", pendingOrders)
 
 	redistributeHallOrders(e, pendingOrders, localAssignedHallOrdersCh)
@@ -216,4 +205,20 @@ func redistributeHallOrders(e *elevator.Elevator, pendingOrders [config.N_FLOORS
 		}
 	}
 
+}
+
+func initPendingOrdersFromWorldView(e *elevator.Elevator) [config.N_FLOORS][config.N_BUTTONS - 1]bool {
+	pendingOrders := [config.N_FLOORS][config.N_BUTTONS - 1]bool{}
+	for _, backup := range e.GetWorldView() {
+		if backup == nil {
+			continue
+		}
+		requests := backup.GetRequests()
+		for f := 0; f < config.N_FLOORS; f++ {
+			for btn := 0; btn < config.N_BUTTONS-1; btn++ {
+				pendingOrders[f][btn] = pendingOrders[f][btn] || requests[f][btn]
+			}
+		}
+	}
+	return pendingOrders
 }
