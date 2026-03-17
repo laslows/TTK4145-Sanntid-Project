@@ -10,40 +10,21 @@ import (
 )
 
 //TODO: make master redistribute orders when new peer
-//TODO: maybe use defer ?? Codequalityfix
 
 func MasterFsm(e *elevator.Elevator, hallButtonCh <-chan orders.Order, assignedOrdersFromMasterCh <-chan [config.N_FLOORS][config.N_BUTTONS - 1]bool,
-	localAssignedHallOrdersCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool, tryUpdateWorldViewCh <-chan elevator.Backup, peerLostCh <-chan int,
-	peerConnectedCh <-chan int) {
+	localAssignedHallOrdersCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool, tryUpdateWorldViewCh <-chan elevator.Backup, requestRedistributionCh <-chan struct{},
+	peerLostCh <-chan int, peerConnectedCh <-chan int) {
 
 	if !e.GetIsMaster() {
 		fmt.Println("Immediately switching to slave")
-		go slaveFsm(e, hallButtonCh, assignedOrdersFromMasterCh, localAssignedHallOrdersCh, tryUpdateWorldViewCh, peerLostCh, peerConnectedCh)
+		go slaveFsm(e, hallButtonCh, assignedOrdersFromMasterCh, localAssignedHallOrdersCh, tryUpdateWorldViewCh, requestRedistributionCh, peerLostCh, peerConnectedCh)
 		return
 	}
 
 	redistributeHallOrders(e, nil, localAssignedHallOrdersCh)
 	e.ClearDisconnectedNodeQueue()
 
-	//Print all known orders in worldview as [][]
-
-	hallRequests := [config.N_FLOORS][config.N_BUTTONS-1]bool{}
-
-	for _, backup := range e.GetWorldView() {
-		if backup == nil {
-			continue
-		}
-
-		backupRequests := backup.GetRequests()
-		for i, row := range backupRequests {
-			for j, value := range row[:len(row)-1] {
-				hallRequests[i][j] = hallRequests[i][j] || value
-			}	
-		}
-	}
-	
-	fmt.Println("Known orders in worldview: ", hallRequests)
-
+	printOrders(e)
 
 Loop:
 	for {
@@ -52,11 +33,7 @@ Loop:
 
 			if checkNewOrder(e, hallOrder) {
 				fmt.Printf("New order received!")
-
 				redistributeHallOrders(e, &hallOrder, localAssignedHallOrdersCh)
-
-			} else {
-				fmt.Println("Order already in queue, not sending to algorithm")
 			}
 
 		case heartBeat := <-tryUpdateWorldViewCh:
@@ -70,11 +47,7 @@ Loop:
 			if e.ShouldRedistributeOrders(&heartBeat) {
 				e.UpdateWorldView(&heartBeat)
 				redistributeHallOrders(e, nil, localAssignedHallOrdersCh)
-			} else if heartBeat.GetID() == e.GetID() {
-				e.UpdateWorldView(&heartBeat)
-				//Only happens if motorstop, should maybe be moved
-				redistributeHallOrders(e, nil, localAssignedHallOrdersCh)
-				fmt.Println("I changed obstructionstatus or motorstopstatus")
+				fmt.Println("Redistributing orders because of change in obstruction or motorstop status")
 			} else {
 				e.UpdateWorldView(&heartBeat)
 			}
@@ -86,19 +59,19 @@ Loop:
 				break Loop
 			}
 
+		case <-requestRedistributionCh:
+
+			redistributeHallOrders(e, nil, localAssignedHallOrdersCh)
+			fmt.Println("Redistributing orders because of motorstop or obstruction")
+
 		case peer := <-peerLostCh:
 			fmt.Println("We lost peer ", peer)
 
 			e.LoseConnectionToPeer(peer)
-
-			//Must redistribute when we lose connection
 			redistributeHallOrders(e, nil, localAssignedHallOrdersCh)
-
 			e.ClearDisconnectedNodeQueue()
 
 		case peer := <-peerConnectedCh:
-			fmt.Println("We gained peer ", peer)
-
 			fmt.Println("Gained connection to peer. Sending worldview")
 			network.SendWorldView(e.GetWorldView(), e.GetID(), peer)
 			//redistributeHallOrders(e, nil, localAssignedHallOrdersCh)
@@ -116,16 +89,14 @@ Loop:
 
 	//Maybe make onMasterSlaveChange-function
 	e.SetIsMaster(false)
-	e.UpdateMyBackup()
-	go slaveFsm(e, hallButtonCh, assignedOrdersFromMasterCh, localAssignedHallOrdersCh, tryUpdateWorldViewCh, peerLostCh, peerConnectedCh)
+	e.UpdateMyBackupAndWorldView()
+	go slaveFsm(e, hallButtonCh, assignedOrdersFromMasterCh, localAssignedHallOrdersCh, tryUpdateWorldViewCh, requestRedistributionCh, peerLostCh, peerConnectedCh)
 
 }
 
-// Kanskje vi kan returne fra masterFsm om vi bli slave, og starte denne. Og så motsatt ??
-// Idk om dette er en god løsning..
 func slaveFsm(e *elevator.Elevator, hallButtonCh <-chan orders.Order, assignedOrdersFromMasterCh <-chan [config.N_FLOORS][config.N_BUTTONS - 1]bool,
-	localAssignedHallOrdersCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool, tryUpdateWorldViewCh <-chan elevator.Backup, peerLostCh <-chan int,
-	peerConnectedCh <-chan int) {
+	localAssignedHallOrdersCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool, tryUpdateWorldViewCh <-chan elevator.Backup, requestRedistributionCh <-chan struct{},
+	peerLostCh <-chan int, peerConnectedCh <-chan int) {
 
 	fmt.Println("I am slave")
 	fmt.Printf("Master is: %d \n", e.GetMasterID())
@@ -135,7 +106,6 @@ Loop:
 
 		select {
 		case buttonEvent := <-hallButtonCh:
-			//Give to masterHallOrderRequest
 
 			network.SendHallOrder(buttonEvent, e.GetID(), e.GetMasterID())
 
@@ -154,22 +124,19 @@ Loop:
 			}
 
 		case peer := <-peerLostCh:
-			fmt.Println("We lost peer ", peer)
 
 			e.LoseConnectionToPeer(peer)
 
 			e.TryUpdateIsMaster()
 			if e.GetIsMaster() {
-				fmt.Println("Switching to master because I lost connection to everyone")
+				fmt.Println("Switching to master because I lost connection to master")
 				break Loop
 			} else {
 				e.ClearDisconnectedNodeQueue()
 			}
 
-		case peer := <-peerConnectedCh:
-			fmt.Println("We gained peer ", peer)
-
-			fmt.Println("Gained connection to peer. I am slave, so will not send message.")
+		case <-peerConnectedCh:
+			continue
 
 		case orderList := <-assignedOrdersFromMasterCh:
 
@@ -182,8 +149,8 @@ Loop:
 	}
 
 	e.SetIsMaster(true)
-	e.UpdateMyBackup()
-	go MasterFsm(e, hallButtonCh, assignedOrdersFromMasterCh, localAssignedHallOrdersCh, tryUpdateWorldViewCh, peerLostCh, peerConnectedCh)
+	e.UpdateMyBackupAndWorldView()
+	go MasterFsm(e, hallButtonCh, assignedOrdersFromMasterCh, localAssignedHallOrdersCh, tryUpdateWorldViewCh, requestRedistributionCh, peerLostCh, peerConnectedCh)
 
 }
 
@@ -191,9 +158,6 @@ func onUpdateWorldView(e *elevator.Elevator) {
 
 	e.TryUpdateIsMaster()
 	setAllLights(*e)
-
-	//Also check motorstop
-	//Also check other stuff
 
 }
 
@@ -207,4 +171,28 @@ func redistributeHallOrders(e *elevator.Elevator, hallOrder *orders.Order, local
 		}
 	}
 
+	fmt.Println("Redistributed orders: ", globalOrderAssignments)
+
+}
+
+// TODO: delete
+func printOrders(e *elevator.Elevator) {
+	//Print all known orders in worldview as [][]
+
+	hallRequests := [config.N_FLOORS][config.N_BUTTONS - 1]bool{}
+
+	for _, backup := range e.GetWorldView() {
+		if backup == nil {
+			continue
+		}
+
+		backupRequests := backup.GetRequests()
+		for i, row := range backupRequests {
+			for j, value := range row[:len(row)-1] {
+				hallRequests[i][j] = hallRequests[i][j] || value
+			}
+		}
+	}
+
+	fmt.Println("Known orders in worldview: ", hallRequests)
 }

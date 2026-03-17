@@ -76,7 +76,7 @@ func (b *Backup) UnmarshalJSON(data []byte) error {
 }
 
 
-func (e *Elevator) UpdateMyBackup() {
+func (e *Elevator) UpdateMyBackupAndWorldView() {
 	e.m_myBackup.m_version++
 	e.m_myBackup.m_isMaster = e.m_isMaster
 	e.m_myBackup.m_direction = e.m_direction

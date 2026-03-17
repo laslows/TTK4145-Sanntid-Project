@@ -29,6 +29,7 @@ func broadcastMessage(senderID, receiverID int, messageType messageType, payload
 
 	message.m_messageID = generateMessageID(message)
 
+	//TODO: delete or fix
 	if message.m_messageType == HallOrderRedistribution {
 		g_hallRedistributionUpdateCh <- redistributionUpdate{
 			m_messageID:  message.m_messageID,

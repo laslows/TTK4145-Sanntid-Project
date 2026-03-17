@@ -88,7 +88,6 @@ func runHallRequestAlgorithm(e *elevator.Elevator, hallOrder *orders.Order) map[
 		fmt.Printf("running hall request algorithm failed: %v; output: %s\n", err, string(out))
 		return hallOrderAssignmentMap
 	}
-	fmt.Print(string(out))
 
 	err = json.Unmarshal(out, &hallOrderAssignmentMap)
 	if err != nil {

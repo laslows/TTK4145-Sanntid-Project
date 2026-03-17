@@ -12,7 +12,8 @@ import (
 //TODO: Fix naming conventions
 
 func Fsm(e *elevator.Elevator, doorTimer *timer.Timer, cabButtonCh <-chan orders.Order, floorCh <-chan int, doorTimeoutCh <-chan bool,
-	motorStopCh <-chan bool, obstructionCh <-chan bool, localAssignedHallOrdersCh <-chan [config.N_FLOORS][config.N_BUTTONS - 1]bool, tryUpdateWorldViewCh chan<- elevator.Backup) {
+	motorStopCh <-chan bool, obstructionCh <-chan bool, localAssignedHallOrdersCh <-chan [config.N_FLOORS][config.N_BUTTONS - 1]bool, 
+	tryUpdateWorldViewCh chan<- elevator.Backup, requestRedistributionCh chan<- struct{}) {
 
 	onNewOrder(e, doorTimer)
 
@@ -35,10 +36,10 @@ func Fsm(e *elevator.Elevator, doorTimer *timer.Timer, cabButtonCh <-chan orders
 		case <-motorStopCh:
 
 			e.SetBehaviour(elevator.MotorStop)
-			e.UpdateMyBackup()
+			e.UpdateMyBackupAndWorldView()
 
 			if e.GetIsMaster() {
-				tryUpdateWorldViewCh <- *e.GetMyBackup()
+				requestRedistributionCh <- struct{}{}
 			}
 
 		case obstruction := <-obstructionCh:
@@ -47,10 +48,10 @@ func Fsm(e *elevator.Elevator, doorTimer *timer.Timer, cabButtonCh <-chan orders
 			if obstruction {
 				e.SetDirection(elevator.Stop)
 			}
-			e.UpdateMyBackup()
+			e.UpdateMyBackupAndWorldView()
 
 			if e.GetIsMaster() {
-				tryUpdateWorldViewCh <- *e.GetMyBackup()
+				requestRedistributionCh <- struct{}{}
 			}
 		}
 
@@ -82,7 +83,7 @@ func onFloorArrival(e *elevator.Elevator, floor int, doorTimer *timer.Timer) {
 			e.SetBehaviour(elevator.Moving)
 		}
 
-		e.UpdateMyBackup()
+		e.UpdateMyBackupAndWorldView()
 
 	case elevator.Moving:
 		if shouldStop(*e) {
@@ -91,7 +92,7 @@ func onFloorArrival(e *elevator.Elevator, floor int, doorTimer *timer.Timer) {
 			*e = clearAtCurrentFloor(*e)
 			doorTimer.Start(e.GetDoorOpenDuration())
 			e.SetBehaviour(elevator.DoorOpen)
-			e.UpdateMyBackup()
+			e.UpdateMyBackupAndWorldView()
 			setAllLights(*e)
 
 		}
@@ -121,14 +122,14 @@ func onDoorTimeout(e *elevator.Elevator, doorTimer *timer.Timer) {
 		case elevator.DoorOpen:
 			doorTimer.Start(e.GetDoorOpenDuration())
 			*e = clearAtCurrentFloor(*e)
-			e.UpdateMyBackup()
+			e.UpdateMyBackupAndWorldView()
 			setAllLights(*e)
 		case elevator.Moving:
 			fallthrough
 		case elevator.Idle:
 			elevator.DoorOpenLight(false)
 			elevator.MotorDirection(e.GetDirection())
-			e.UpdateMyBackup()
+			e.UpdateMyBackupAndWorldView()
 		}
 
 	default:
@@ -160,7 +161,7 @@ func insertOrder(e *elevator.Elevator, order orders.Order, doorTimer *timer.Time
 	default:
 		e.SetRequest(order.GetFloor(), (driver.ButtonType)(order.GetOrderType()), true)
 	}
-	e.UpdateMyBackup()
+	e.UpdateMyBackupAndWorldView()
 	setAllLights(*e)
 }
 
@@ -188,7 +189,7 @@ func onNewOrder(e *elevator.Elevator, doorTimer *timer.Timer) {
 		break
 	}
 
-	e.UpdateMyBackup()
+	e.UpdateMyBackupAndWorldView()
 	setAllLights(*e)
 
 }

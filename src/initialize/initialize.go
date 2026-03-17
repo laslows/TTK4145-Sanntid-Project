@@ -35,7 +35,7 @@ func Initialize(e *elevator.Elevator) {
 	initOnFloor(e)
 
 	e.TryUpdateIsMaster()
-	e.UpdateMyBackup()
+	e.UpdateMyBackupAndWorldView()
 
 }
 

@@ -138,7 +138,6 @@ func getIDAsInt(ip, osID string) int {
 
 //TODO: move to fsm?
 func (e *Elevator) ShouldRedistributeOrders(incomingBackup *Backup) bool {
-	//SHould redistribute if new backup changes obstruction status, or if we lose connection or if we gain connection, or if we change motorstopstatus
     for _, b := range e.m_worldView {
 		if b != nil && b.m_ID == incomingBackup.m_ID {
 			return (b.m_isObstructed != incomingBackup.m_isObstructed || b.GetHasMotorstop() != incomingBackup.GetHasMotorstop())
