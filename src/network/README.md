@@ -25,7 +25,7 @@
 ---
 
 The network module is divided into four parts: 
-* `heartbeat`, which uses Multicast UDP to listen to and broadcast heartbeats (`I'm alive!`) with a read deadline for the heartbeats to arrive to recipients. If a heartbeat from an elevator is missed, the peer is marked as lost and removed from the system.
+* `heartbeat`, which uses Multicast UDP to listen to and broadcast heartbeats (`I'm alive!`) with a read deadline for the heartbeats to arrive to recipients. If a heartbeat from an elevator is missed, the peer is ignored from further distrubtions until it's regained as a peer.
 * `network`, which handles sending/receiving messages, tracking acknowledgements, and updating the global worldview.
 * `networkUtils`, which uses mutex locks to safely track pending acknowledgements and maintains FIFO caches for message ordering.
 * `message`, which creates messagetypes and JSON for generating message IDS.
