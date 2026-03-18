@@ -23,7 +23,7 @@
 │   ├── hallRequestAssigner.go
 │   ├── masterSlaveFsm.go
 │   ├── requests.go
-│   └── `README.md`
+│   └── `README.md` <------- You're here! <3
 ```
 ---
 
