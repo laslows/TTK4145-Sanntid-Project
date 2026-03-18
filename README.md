@@ -193,12 +193,12 @@ The system is split into cohesive modules under `src/`, each with a clear respon
 
 These smaller modules provide supporting functionality used by the core modules and main function:
 
-- `src/config`: command-line flags and runtime configuration parsing.
+- `src/config`: command-line flags and runtime const configuration parsing.
 - `src/driver`: abstracts the output interface to the simulator/physical elevator (motors, lights, buttons, sensors).
-- `src/events`: internal event types and pub/sub patterns for communicating between modules.
-- `src/initialize`: startup initialization logic (connecting to the simulator, setting initial state, starting goroutines).
-- `src/orders`: local ordering logic and bookkeeping for cab/hall requests that belong to a single elevator.
-- `src/timer`: timeouts and periodic task scheduling (e.g., door timing, retry loops).
+- `src/events`: internal event types and patterns for communicating between modules (polling).
+- `src/initialize`: startup initialization logic (connecting to the simulator, setting initial state).
+- `src/orders`: local ordering logic and bookkeeping for cab/hall requests that belong to a elevator.
+- `src/timer`: timer.
 
 For more details, each module contains its own [`README.md`](src/README.md).
 
