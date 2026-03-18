@@ -103,6 +103,7 @@ TTK4145-SANNTID-PROJECT
 │   ├── elevator/
 │   │   ├── backup.go
 │   │   ├── elevator.go
+│   │   ├── hardware.go
 │   │   └── README.md
 │   ├── events/
 │   │   └── events.go
@@ -146,7 +147,7 @@ Our system is built as a **hybrid Primary-Backup + Peer-to-Peer architecture** t
 
 - **Primary/Backup coordination**
   - Each elevator instance runs the same code and participates in a distributed group.
-  - The **master (primary)** is elected dynamically: the alive elevator with the highest ID becomes master.
+  - The **master (primary)** is elected dynamically, where the alive elevator with the highest ID becomes master.
   - The master is responsible for assigning *hall calls* to elevators using the outsourced hall-request assigner algorithm.
   - **Backups (slaves)** continuously receive state updates from the master (and each other) so they can take over immediately if the master fails.
 
@@ -163,19 +164,13 @@ Our system is built as a **hybrid Primary-Backup + Peer-to-Peer architecture** t
   - Hall calls are assigned using the course-provided `hall_request_assigner` executable (written in D) that computes an optimal assignment based on current elevator states and pending requests.
   - The master gathers the current worldview, serializes it to JSON, runs the assigner, and then distributes the resulting plan to all elevators.
 
-This hybrid approach gives us the simplicity of a primary–backup system (easy master failover, consistent assignment decisions) while still keeping the overall system **decentralized** (every elevator can become master and every elevator has the same view of the world).
+This hybrid approach gives us the simplicity of a primary–backup system (easy master failover, consistent assignment decisions) while still keeping the overall system decentralized (every elevator can become master and every elevator has the same worldview).
 
 ---
 
 ## Main Modules
 
 The system is split into cohesive modules under `src/`, each with a clear responsibility. The three most important modules are:
-
-- **`elevator/`** (state & backups): tracks per-elevator state, active orders, and provides the serialization/replication primitives used by the distributed algorithm.
-- **`fsm/`** (master/backup coordination): orchestrates the elevator state machine, performs master election, detects failures, and drives request assignment via the hall request assigner.
-- **`network/`** (messaging & heartbeat): provides reliable message delivery, peer discovery, and failure detection so the system can stay consistent across multiple running instances.
-
-### Key modules (high level)
 
 #### [`src/elevator`](src/elevator/README.md)
 - Contains the core elevator model (position, direction, door status, request queues).
@@ -196,7 +191,7 @@ The system is split into cohesive modules under `src/`, each with a clear respon
 
 ### Supporting modules
 
-These smaller modules provide supporting functionality used by the core three:
+These smaller modules provide supporting functionality used by the core modules and main function:
 
 - `src/config`: command-line flags and runtime configuration parsing.
 - `src/driver`: abstracts the output interface to the simulator/physical elevator (motors, lights, buttons, sensors).
