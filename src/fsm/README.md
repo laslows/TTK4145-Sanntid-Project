@@ -33,7 +33,7 @@ This module implements the elevator state machine, master/backup coordination, a
 * **Local FSM** (`fsm.go`): process sensor/button events, manage state transitions (idle, moving, door open), and issue motor/light commands via the driver.
 * **Master/backup election** (`masterSlaveFsm.go`): track peer heartbeats, elect a primary elevator, and promote backups when the primary fails.
 * **Hall request assignment** (`hallRequestAssigner.go`): collect local state and active requests, call the external assigner, and apply returned assignments to the local order queue.
-* **Shared request types** (`requests.go`): defines request structs used throughout the FSM and assigner logic.
+* **Shared request types** (`requests.go`): defines request structs used throughout the FSM and movement logic for own elevator.
 
 ### Hall request assigner helper
 The `hall_request_assigner/` folder contains a small D program that computes optimal hall-call assignments. It is built via the included `build.sh` script and invoked from Go via JSON. 
