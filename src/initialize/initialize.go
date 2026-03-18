@@ -41,7 +41,6 @@ func Initialize(e *elevator.Elevator) {
 
 func initOnFloor(e *elevator.Elevator) {
 
-	// TODO
 	initDirection := (int)(e.GetDirection())
 	
 	if initDirection == 0 && elevator.FloorSensor() == -1 {

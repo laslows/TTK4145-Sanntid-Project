@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 )
 
-
 type OrderType int
 
 const (

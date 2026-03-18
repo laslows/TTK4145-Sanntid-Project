@@ -130,6 +130,6 @@ func (b *Backup) GetHasMotorstop() bool {
 	return b.m_behaviour == MotorStop
 }
 
-func (b *Backup) GetConnectedToNetwork() bool {
+func (b *Backup) GetIsConnectedToNetwork() bool {
 	return b.m_connectedToNetwork
 }
