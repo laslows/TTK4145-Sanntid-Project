@@ -49,8 +49,8 @@ func broadcastMessage(senderID, receiverID int, messageType messageType, payload
 		conn.Write(messageBytes)
 
 		select {
-		/*case <-ackCh:
-			return*/
+		case <-ackCh:
+			return
 
 		case <-cancelCh:
 			fmt.Println("Canceling hall order redistribution to ", receiverID)
