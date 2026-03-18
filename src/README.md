@@ -85,6 +85,6 @@ These packages are small and/or self-contained, so their documentation lives her
 
 ## Main modules - look here for more detail
 
-- [`elevator/README.md`](src/elevator/README.md) — elevator state machine and backup behavior.
-- [`fsm/README.md`](src/fsm/README.md) — master/slave FSM logic and hall request assignment.
-- [`network/README.md`](src/network/README.md) — messaging, peer discovery, and heartbeat logic.
+- [`elevator/README.md`](elevator/README.md) — elevator state machine and backup behavior.
+- [`fsm/README.md`](fsm/README.md) — master/slave FSM logic and hall request assignment.
+- [`network/README.md`](network/README.md) — messaging, peer discovery, and heartbeat logic.
