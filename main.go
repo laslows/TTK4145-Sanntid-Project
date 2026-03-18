@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 
 	"Sanntid/src/config"
 	"Sanntid/src/driver"
@@ -13,7 +14,8 @@ import (
 	"Sanntid/src/orders"
 	"Sanntid/src/timer"
 )
-//TODO: maybe fix very long argument lists
+
+
 func main() {
 	elevatorPort := flag.String("port", "15657", "port number of the elevator server")
 	elevatorID := flag.String("id", "", "elevator id")
@@ -40,7 +42,10 @@ func main() {
 
 	initialize.Initialize(elev)
 
-	go fsm.Fsm(elev, doorTimer, cabButtonCh, floorCh, doorTimeoutCh, motorStopCh, obstructionCh, localAssignedHallOrdersCh, tryUpdateWorldViewCh, requestRedistributionCh)
+	fmt.Printf("Initialization complete. My ID: %d; isMaster: %t\n", elev.GetID(), elev.GetIsMaster())
+
+	go fsm.Fsm(elev, doorTimer, cabButtonCh, floorCh, doorTimeoutCh, motorStopCh, obstructionCh, localAssignedHallOrdersCh, 
+		tryUpdateWorldViewCh, requestRedistributionCh)
 	go fsm.MasterFsm(elev, hallButtonCh, assignedOrdersFromMasterCh, localAssignedHallOrdersCh, mergeOrdersOnBroadcastTimeoutCh, 
 		tryUpdateWorldViewCh, requestRedistributionCh, peerLostCh, peerConnectedCh)
 	go events.InputPoller(cabButtonCh, hallButtonCh, floorCh, doorTimeoutCh, motorStopCh, obstructionCh, elev, doorTimer)
