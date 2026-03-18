@@ -24,6 +24,7 @@
 │   ├── elevator/
 │   │   ├── backup.go
 │   │   ├── elevator.go
+│   │   ├── hardware.go
 │   │   └── README.md
 │   ├── events/
 │   │   └── events.go
@@ -52,9 +53,9 @@
 
 ---
 
-## What this README covers
+## src
 
-This file gives a quick overview of the main packages in `src/` and points to more detailed documentation when it exists (submodule READMEs).
+This file gives a quick overview of the main packages in `src/`
 
 ## Packages without a dedicated README
 
