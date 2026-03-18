@@ -21,16 +21,12 @@ func BroadcastHeartbeat(e *elevator.Elevator) {
 	defer ticker.Stop()
 
 	for range ticker.C {
-
 		heartbeatPacket, _ := json.Marshal(e.GetMyBackup())
-
 		conn.Write(heartbeatPacket)
-
 	}
 }
 
 func ListenForHeartbeats(tryUpdateWorldViewCh chan<- elevator.Backup, peerLostCh chan<- int) {
-
 	multicastAddr, _ := net.ResolveUDPAddr("udp4", HEARTBEAT_ADDR)
 
 	conn, _ := net.ListenMulticastUDP("udp4", nil, multicastAddr)
@@ -59,7 +55,6 @@ func ListenForHeartbeats(tryUpdateWorldViewCh chan<- elevator.Backup, peerLostCh
 				peerLostCh <- peer
 			}
 		}
-
 	}
 }
 

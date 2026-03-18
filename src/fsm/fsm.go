@@ -31,7 +31,6 @@ func Fsm(e *elevator.Elevator, doorTimer *timer.Timer, cabButtonCh <-chan orders
 			onDoorTimeout(e, doorTimer)
 
 		case <-motorStopCh:
-
 			e.SetBehaviour(elevator.MotorStop)
 			e.UpdateMyBackupAndWorldView()
 
@@ -40,11 +39,12 @@ func Fsm(e *elevator.Elevator, doorTimer *timer.Timer, cabButtonCh <-chan orders
 			}
 
 		case obstruction := <-obstructionCh:
-
 			e.SetIsObstructed(obstruction)
+
 			if obstruction {
 				e.SetDirection(elevator.Stop)
 			}
+
 			e.UpdateMyBackupAndWorldView()
 
 			if e.GetIsMaster() {
@@ -57,13 +57,11 @@ func Fsm(e *elevator.Elevator, doorTimer *timer.Timer, cabButtonCh <-chan orders
 }
 
 func onFloorArrival(e *elevator.Elevator, floor int, doorTimer *timer.Timer) {
-
 	e.SetFloor(floor)
 	elevator.FloorIndicator(floor)
 
 	switch e.GetBehaviour() {
 	case elevator.MotorStop:
-
 		if !anyRequests(*e) {
 			e.SetBehaviour(elevator.Idle)
 			elevator.MotorDirection(elevator.Stop)
@@ -91,7 +89,6 @@ func onFloorArrival(e *elevator.Elevator, floor int, doorTimer *timer.Timer) {
 			e.SetBehaviour(elevator.DoorOpen)
 			e.UpdateMyBackupAndWorldView()
 			setAllLights(*e)
-
 		}
 	default:
 		break
@@ -154,9 +151,11 @@ func insertOrder(e *elevator.Elevator, order orders.Order, doorTimer *timer.Time
 		} else {
 			e.SetRequest(order.GetFloor(), (driver.ButtonType)(order.GetOrderType()), true)
 		}
+
 	default:
 		e.SetRequest(order.GetFloor(), (driver.ButtonType)(order.GetOrderType()), true)
 	}
+
 	e.UpdateMyBackupAndWorldView()
 	setAllLights(*e)
 }
@@ -187,5 +186,4 @@ func onNewOrder(e *elevator.Elevator, doorTimer *timer.Timer) {
 
 	e.UpdateMyBackupAndWorldView()
 	setAllLights(*e)
-
 }

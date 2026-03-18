@@ -25,7 +25,6 @@ type elevatorState struct {
 
 func createJSONDataForHallRequestAlgorithm(e *elevator.Elevator, hallOrder *orders.Order) string {
 	states := make(map[string]elevatorState)
-
 	hallRequests := [config.N_FLOORS][config.N_BUTTONS - 1]bool{}
 
 	if hallOrder != nil {
@@ -42,7 +41,6 @@ func createJSONDataForHallRequestAlgorithm(e *elevator.Elevator, hallOrder *orde
 
 		backupRequests := backup.GetRequests()
 		if backup.GetBehaviour() != elevator.MotorStop && !backup.GetIsObstructed() && backup.GetIsConnectedToNetwork() {
-
 			states[strconv.Itoa(backup.GetID())] = elevatorState{
 				M_behaviour:   elevator.BehaviourToString(backup.GetBehaviour()),
 				M_floor:       backup.GetFloor(),
@@ -65,10 +63,8 @@ func createJSONDataForHallRequestAlgorithm(e *elevator.Elevator, hallOrder *orde
 		M_hallRequests: hallRequests,
 		M_states:       states,
 	}
-	jsonData, err := json.Marshal(system)
-	if err != nil {
-		panic(err)
-	}
+
+	jsonData, _ := json.Marshal(system)
 
 	return string(jsonData)
 }
@@ -83,10 +79,7 @@ func runHallRequestAlgorithm(e *elevator.Elevator, hallOrder *orders.Order) map[
 		return hallOrderAssignmentMap
 	}
 
-	err = json.Unmarshal(out, &hallOrderAssignmentMap)
-	if err != nil {
-		return hallOrderAssignmentMap
-	}
+	json.Unmarshal(out, &hallOrderAssignmentMap)
 
 	for _, backup := range e.GetWorldView() {
 		if backup != nil && (backup.GetIsObstructed() || backup.GetHasMotorstop()) {
@@ -108,5 +101,4 @@ func checkNewOrder(e *elevator.Elevator, hallOrder orders.Order) bool {
 		}
 	}
 	return true
-
 }

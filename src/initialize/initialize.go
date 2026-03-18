@@ -8,15 +8,12 @@ import (
 )
 
 func Initialize(e *elevator.Elevator) {
-
 	clearAllLights()
 	elevator.DoorOpenLight(false)
-
 	network.SendInitializationMessage(e.GetID())
 	worldView, gotWorldView := network.TryListenForWorldView()
 
 	if gotWorldView {
-
 		for _, b := range worldView {
 			if b != nil && b.GetID() == e.GetID() {
 				e.RestoreElevatorState(b)
@@ -24,18 +21,15 @@ func Initialize(e *elevator.Elevator) {
 				e.UpdateWorldView(b)
 			}
 		}
-
 	}
 
 	initOnFloor(e)
-
 	e.TryUpdateIsMaster()
 	e.UpdateMyBackupAndWorldView()
 
 }
 
 func initOnFloor(e *elevator.Elevator) {
-
 	initDirection := (int)(e.GetDirection())
 	
 	if initDirection == 0 && elevator.FloorSensor() == -1 {
@@ -51,7 +45,6 @@ func initOnFloor(e *elevator.Elevator) {
 	e.SetBehaviour(elevator.Idle)
 	e.SetDirection(elevator.Stop)
 	e.SetFloor(elevator.FloorSensor())
-
 }
 
 func clearAllLights() {

@@ -57,7 +57,6 @@ func anyRequests(e elevator.Elevator) bool {
 }
 
 func clearAtCurrentFloor(e elevator.Elevator) elevator.Elevator {
-
 	e.SetRequest(e.GetFloor(), driver.BT_Cab, false)
 
 	switch e.GetDirection() {
@@ -118,6 +117,7 @@ func chooseDirection(e elevator.Elevator) dirnBehaviourPair {
 			return dirnBehaviourPair{elevator.Down, elevator.Moving}
 		}
 		return dirnBehaviourPair{elevator.Stop, elevator.Idle}
+
 	case elevator.Down:
 		if requestsBelow(e) {
 			return dirnBehaviourPair{elevator.Down, elevator.Moving}
@@ -127,6 +127,7 @@ func chooseDirection(e elevator.Elevator) dirnBehaviourPair {
 			return dirnBehaviourPair{elevator.Up, elevator.Moving}
 		}
 		return dirnBehaviourPair{elevator.Stop, elevator.Idle}
+
 	case elevator.Stop:
 		if requestsHere(e) {
 			return dirnBehaviourPair{elevator.Stop, elevator.DoorOpen}
@@ -136,6 +137,7 @@ func chooseDirection(e elevator.Elevator) dirnBehaviourPair {
 		} else if requestsBelow(e) {
 			return dirnBehaviourPair{elevator.Down, elevator.Moving}
 		}
+		
 	default:
 		return dirnBehaviourPair{elevator.Stop, elevator.Idle}
 	}

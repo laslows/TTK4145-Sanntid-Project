@@ -13,9 +13,8 @@ import (
 	"Sanntid/src/orders"
 	"Sanntid/src/timer"
 )
-
+//TODO: maybe fix very long argument lists
 func main() {
-
 	elevatorPort := flag.String("port", "15657", "port number of the elevator server")
 	elevatorID := flag.String("id", "", "elevator id")
 	flag.Parse()

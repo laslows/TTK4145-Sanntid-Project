@@ -26,19 +26,14 @@ Loop:
 	for {
 		select {
 		case hallOrder := <-hallButtonCh:
-
 			if checkNewOrder(e, hallOrder) {
 				redistributeHallOrders(e, &hallOrder, localAssignedHallOrdersCh, mergeOrdersOnBroadcastTimeoutCh)
 			}
 
 		case incomingOrders := <- mergeOrdersOnBroadcastTimeoutCh:
-
 			localAssignedHallOrdersCh <- mergeHallOrders(*e, incomingOrders)
 
 		case heartBeat := <-tryUpdateWorldViewCh:
-
-			//TODO: maybe fix that disonnected node gets overwritten with zero when connecting again
-
 			if !e.TryUpdateWorldView(&heartBeat) {
 				continue
 			}
@@ -57,18 +52,15 @@ Loop:
 			}
 
 		case <-requestRedistributionCh:
-
 			redistributeHallOrders(e, nil, localAssignedHallOrdersCh, mergeOrdersOnBroadcastTimeoutCh)
 
 		case peer := <-peerLostCh:
-
 			e.LoseConnectionToPeer(peer)
 			redistributeHallOrders(e, nil, localAssignedHallOrdersCh, mergeOrdersOnBroadcastTimeoutCh)
 			e.ClearDisconnectedNodeQueue()
 
 		case peer := <-peerConnectedCh:
 			network.SendWorldView(e.GetWorldView(), e.GetID(), peer)
-			//redistributeHallOrders(e, nil, localAssignedHallOrdersCh)
 
 			e.TryUpdateIsMaster()
 			if !e.GetIsMaster() {
@@ -84,27 +76,21 @@ Loop:
 	e.UpdateMyBackupAndWorldView()
 	go slaveFsm(e, hallButtonCh, assignedOrdersFromMasterCh, localAssignedHallOrdersCh, mergeOrdersOnBroadcastTimeoutCh, 
 		tryUpdateWorldViewCh, requestRedistributionCh, peerLostCh, peerConnectedCh)
-
 }
 
 func slaveFsm(e *elevator.Elevator, hallButtonCh <-chan orders.Order, assignedOrdersFromMasterCh <-chan [config.N_FLOORS][config.N_BUTTONS - 1]bool,
 	localAssignedHallOrdersCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool, mergeOrdersOnBroadcastTimeoutCh chan [config.N_FLOORS][config.N_BUTTONS - 1]bool, 
 	tryUpdateWorldViewCh <-chan elevator.Backup, requestRedistributionCh <-chan struct{}, peerLostCh <-chan int, peerConnectedCh <-chan int) {
-
 Loop:
 	for {
-
 		select {
 		case buttonEvent := <-hallButtonCh:
-
 			network.SendHallOrder(buttonEvent, e.GetID(), e.GetMasterID())
 
 		case incomingOrders := <- mergeOrdersOnBroadcastTimeoutCh:
-
 			localAssignedHallOrdersCh <- mergeHallOrders(*e, incomingOrders)
 
 		case heartBeat := <-tryUpdateWorldViewCh:
-
 			if !e.TryUpdateWorldView(&heartBeat) {
 				continue
 			}
@@ -117,7 +103,6 @@ Loop:
 			}
 
 		case peer := <-peerLostCh:
-
 			e.LoseConnectionToPeer(peer)
 
 			e.TryUpdateIsMaster()
@@ -131,27 +116,22 @@ Loop:
 			continue
 
 		case orderList := <-assignedOrdersFromMasterCh:
-
 			localAssignedHallOrdersCh <- orderList
 
 		}
 
 		time.Sleep(10 * time.Millisecond)
-
 	}
 
 	e.SetIsMaster(true)
 	e.UpdateMyBackupAndWorldView()
 	go MasterFsm(e, hallButtonCh, assignedOrdersFromMasterCh, localAssignedHallOrdersCh, mergeOrdersOnBroadcastTimeoutCh, 
 		tryUpdateWorldViewCh, requestRedistributionCh, peerLostCh, peerConnectedCh)
-
 }
 
 func onUpdateWorldView(e *elevator.Elevator) {
-
 	e.TryUpdateIsMaster()
 	setAllLights(*e)
-
 }
 
 func shouldRedistributeOrders(e *elevator.Elevator, incomingBackup *elevator.Backup) bool {
@@ -165,13 +145,12 @@ func shouldRedistributeOrders(e *elevator.Elevator, incomingBackup *elevator.Bac
 
 func redistributeHallOrders(e *elevator.Elevator, hallOrder *orders.Order, localAssignedHallOrdersCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool, 
 	mergeOrdersOnBroadcastTimeoutCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool) {
-
 	globalOrderAssignments := runHallRequestAlgorithm(e, hallOrder)
 	localAssignedHallOrdersCh <- globalOrderAssignments[e.GetID()]
+
 	for id, orderList := range globalOrderAssignments {
 		if id != e.GetID() {
 			network.SendHallOrderRedistribution(orderList, e.GetID(), id, mergeOrdersOnBroadcastTimeoutCh)
-
 			e.OverwriteHallRequestsInMasterWorldview(id, orderList)
 		}
 	}
