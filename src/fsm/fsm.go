@@ -51,9 +51,7 @@ func Fsm(e *elevator.Elevator, doorTimer *timer.Timer, cabButtonCh <-chan orders
 				requestRedistributionCh <- struct{}{}
 			}
 		}
-
 	}
-
 }
 
 func onFloorArrival(e *elevator.Elevator, floor int, doorTimer *timer.Timer) {
