@@ -193,11 +193,11 @@ The system is split into cohesive modules under `src/`, each with a clear respon
 
 These smaller modules provide supporting functionality used by the core modules and main function:
 
-- `src/config`: command-line flags and runtime const configuration parsing.
-- `src/driver`: abstracts the output interface to the simulator/physical elevator (motors, lights, buttons, sensors).
-- `src/events`: internal event types and patterns for communicating between modules (polling).
-- `src/initialize`: startup initialization logic (connecting to the simulator, setting initial state).
-- `src/orders`: local ordering logic and bookkeeping for cab/hall requests that belong to a elevator.
+- `src/config`: runtime const configuration/magic numbers.
+- `src/driver`: output interface --> simulator/physical elevator (motors, lights, buttons, sensors).
+- `src/events`: internal event types (polling).
+- `src/initialize`: startup initialization logic (listen for worldview, setting initial state).
+- `src/orders`: creates ordertypes.
 - `src/timer`: timer.
 
 For more details, each module contains its own [`README.md`](src/README.md).
