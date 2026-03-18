@@ -17,8 +17,9 @@
 ```text
 ├── network/
 │   ├── heartbeat.go
+│   ├── message.go
 │   ├── network.go
-│   ├── networkHandler.go
+│   ├── networkUtils.go
 │   └── `README.md`
 ```
 ---
