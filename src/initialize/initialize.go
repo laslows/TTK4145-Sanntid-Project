@@ -5,15 +5,12 @@ import (
 	"Sanntid/src/driver"
 	"Sanntid/src/elevator"
 	"Sanntid/src/network"
-	"fmt"
 )
 
 func Initialize(e *elevator.Elevator) {
 
 	clearAllLights()
 	elevator.DoorOpenLight(false)
-
-	fmt.Println("Initialiser heisen")
 
 	network.SendInitializationMessage(e.GetID())
 	worldView, gotWorldView := network.TryListenForWorldView()
@@ -30,8 +27,6 @@ func Initialize(e *elevator.Elevator) {
 
 	}
 
-	fmt.Println("Floor is: ", e.GetFloor())
-	fmt.Println("Direction is: ", e.GetDirection())
 	initOnFloor(e)
 
 	e.TryUpdateIsMaster()

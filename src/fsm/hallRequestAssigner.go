@@ -5,7 +5,6 @@ import (
 	"Sanntid/src/elevator"
 	"Sanntid/src/orders"
 	"encoding/json"
-	"fmt"
 	"os/exec"
 	"strconv"
 )
@@ -81,13 +80,11 @@ func runHallRequestAlgorithm(e *elevator.Elevator, hallOrder *orders.Order) map[
 	hallOrderAssignmentMap := make(map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool)
 
 	if err != nil {
-		fmt.Printf("running hall request algorithm failed: %v; output: %s\n", err, string(out))
 		return hallOrderAssignmentMap
 	}
 
 	err = json.Unmarshal(out, &hallOrderAssignmentMap)
 	if err != nil {
-		fmt.Printf("Json unmarshal failed: %v\n", err)
 		return hallOrderAssignmentMap
 	}
 

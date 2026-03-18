@@ -6,10 +6,7 @@ import (
 	"Sanntid/src/elevator"
 	"Sanntid/src/orders"
 	"Sanntid/src/timer"
-	"fmt"
 )
-
-//TODO: Fix naming conventions
 
 func Fsm(e *elevator.Elevator, doorTimer *timer.Timer, cabButtonCh <-chan orders.Order, floorCh <-chan int, doorTimeoutCh <-chan bool,
 	motorStopCh <-chan bool, obstructionCh <-chan bool, localAssignedHallOrdersCh <-chan [config.N_FLOORS][config.N_BUTTONS - 1]bool, 
@@ -153,7 +150,6 @@ func insertOrder(e *elevator.Elevator, order orders.Order, doorTimer *timer.Time
 	switch e.GetBehaviour() {
 	case elevator.DoorOpen:
 		if shouldClearImmediately(*e, order.GetFloor(), order.GetOrderType()) {
-			fmt.Printf("Clearing order immediately: floor %d, button %d\n", order.GetFloor(), order.GetOrderType())
 			doorTimer.Start(e.GetDoorOpenDuration())
 		} else {
 			e.SetRequest(order.GetFloor(), (driver.ButtonType)(order.GetOrderType()), true)

@@ -5,7 +5,6 @@ import (
 	"Sanntid/src/elevator"
 	"Sanntid/src/orders"
 	"encoding/json"
-	"fmt"
 	"net"
 	"time"
 )
@@ -53,18 +52,17 @@ func broadcastMessage(senderID, receiverID int, messageType messageType, payload
 			return
 
 		case <-cancelCh:
-			fmt.Println("Canceling hall order redistribution to ", receiverID)
 			return
+
 		case <-retryTicker.C:
 			continue
+
 		case <-broadcastTimeout.C:
-			fmt.Println("Broadcast timeout reached")
 			if message.m_messageType == HallOrderRedistribution {
 			
 				hallOrders := [config.N_FLOORS][config.N_BUTTONS - 1]bool{}
 				json.Unmarshal(message.m_payload, &hallOrders)
 
-				fmt.Println("Doing the dirty work myself")
 				mergeOrdersOnBroadcastTimeoutCh <- hallOrders
 			}
 			return
@@ -155,12 +153,6 @@ func TryListenForWorldView() ([config.N_ELEVATORS]*elevator.Backup, bool) {
 	for {
 		n, _, err := conn.ReadFromUDP(buffer)
 		if err != nil {
-			//Timeout reached
-
-			//maybe should make peer receive worldView even if not new peer. We could get some weird behaviour where you become master and then slave
-			// immediately after, depending on what heartbeats you receive first
-
-			fmt.Println("Didn't receive worldView, I am probably first peer.")
 			return worldView, false
 		}
 
@@ -173,7 +165,6 @@ func TryListenForWorldView() ([config.N_ELEVATORS]*elevator.Backup, bool) {
 
 		json.Unmarshal(message.m_payload, &worldView)
 
-		fmt.Println("Got worldView.")
 		return worldView, true
 	}
 
@@ -181,8 +172,6 @@ func TryListenForWorldView() ([config.N_ELEVATORS]*elevator.Backup, bool) {
 
 func SendHallOrder(order orders.Order, senderID, receiverId int) {
 	payload, _ := json.Marshal(&order)
-
-	fmt.Println("Sending hall order: ", order, " from ", senderID, " to ", receiverId)
 
 	go broadcastMessage(senderID, receiverId, HallOrderRequest, payload, nil, nil)
 }
@@ -192,10 +181,8 @@ func SendHallOrderRedistribution(orderList [config.N_FLOORS][config.N_BUTTONS - 
 	payload, _ := json.Marshal(&orderList)
 	cancelCh := g_hallRedistributionCancels.replace(receiverID)
 
-	//Basically do broadcastmessage as a goroutine, but with some added functionality
 	go func(ch chan struct{}) {
 		defer g_hallRedistributionCancels.clearIfCurrent(receiverID, ch)
-		fmt.Println("Sending hall distribution")
 		broadcastMessage(senderID, receiverID, HallOrderRedistribution, payload, mergeOrdersOnBroadcastTimeoutCh, ch)
 	}(cancelCh)
 }

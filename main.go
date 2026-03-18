@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 
 	"Sanntid/src/config"
 	"Sanntid/src/driver"
@@ -20,8 +19,6 @@ func main() {
 	elevatorPort := flag.String("port", "15657", "port number of the elevator server")
 	elevatorID := flag.String("id", "", "elevator id")
 	flag.Parse()
-
-	fmt.Println(*elevatorID)
 
 	driver.Init("localhost:"+*elevatorPort, config.N_FLOORS)
 
