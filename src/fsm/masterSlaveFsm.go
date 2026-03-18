@@ -12,16 +12,16 @@ import (
 //TODO: make master redistribute orders when new peer
 
 func MasterFsm(e *elevator.Elevator, hallButtonCh <-chan orders.Order, assignedOrdersFromMasterCh <-chan [config.N_FLOORS][config.N_BUTTONS - 1]bool,
-	localAssignedHallOrdersCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool, tryUpdateWorldViewCh <-chan elevator.Backup, requestRedistributionCh <-chan struct{},
-	peerLostCh <-chan int, peerConnectedCh <-chan int) {
+	localAssignedHallOrdersCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool, mergeOrdersOnBroadcastTimeoutCh chan [config.N_FLOORS][config.N_BUTTONS - 1]bool, 
+	tryUpdateWorldViewCh <-chan elevator.Backup, requestRedistributionCh <-chan struct{}, peerLostCh <-chan int, peerConnectedCh <-chan int) {
 
 	if !e.GetIsMaster() {
 		fmt.Println("Immediately switching to slave")
-		go slaveFsm(e, hallButtonCh, assignedOrdersFromMasterCh, localAssignedHallOrdersCh, tryUpdateWorldViewCh, requestRedistributionCh, peerLostCh, peerConnectedCh)
+		go slaveFsm(e, hallButtonCh, assignedOrdersFromMasterCh, localAssignedHallOrdersCh, mergeOrdersOnBroadcastTimeoutCh, tryUpdateWorldViewCh, requestRedistributionCh, peerLostCh, peerConnectedCh)
 		return
 	}
 
-	redistributeHallOrders(e, nil, localAssignedHallOrdersCh)
+	redistributeHallOrders(e, nil, localAssignedHallOrdersCh, mergeOrdersOnBroadcastTimeoutCh)
 	e.ClearDisconnectedNodeQueue()
 
 	printOrders(e)
@@ -33,8 +33,12 @@ Loop:
 
 			if checkNewOrder(e, hallOrder) {
 				fmt.Printf("New order received!")
-				redistributeHallOrders(e, &hallOrder, localAssignedHallOrdersCh)
+				redistributeHallOrders(e, &hallOrder, localAssignedHallOrdersCh, mergeOrdersOnBroadcastTimeoutCh)
 			}
+
+		case incomingOrders := <- mergeOrdersOnBroadcastTimeoutCh:
+
+			localAssignedHallOrdersCh <- mergeHallOrders(*e, incomingOrders)
 
 		case heartBeat := <-tryUpdateWorldViewCh:
 
@@ -46,7 +50,7 @@ Loop:
 
 			if e.ShouldRedistributeOrders(&heartBeat) {
 				e.UpdateWorldView(&heartBeat)
-				redistributeHallOrders(e, nil, localAssignedHallOrdersCh)
+				redistributeHallOrders(e, nil, localAssignedHallOrdersCh, mergeOrdersOnBroadcastTimeoutCh)
 				fmt.Println("Redistributing orders because of change in obstruction or motorstop status")
 			} else {
 				e.UpdateWorldView(&heartBeat)
@@ -61,14 +65,14 @@ Loop:
 
 		case <-requestRedistributionCh:
 
-			redistributeHallOrders(e, nil, localAssignedHallOrdersCh)
+			redistributeHallOrders(e, nil, localAssignedHallOrdersCh, mergeOrdersOnBroadcastTimeoutCh)
 			fmt.Println("Redistributing orders because of motorstop or obstruction")
 
 		case peer := <-peerLostCh:
 			fmt.Println("We lost peer ", peer)
 
 			e.LoseConnectionToPeer(peer)
-			redistributeHallOrders(e, nil, localAssignedHallOrdersCh)
+			redistributeHallOrders(e, nil, localAssignedHallOrdersCh, mergeOrdersOnBroadcastTimeoutCh)
 			e.ClearDisconnectedNodeQueue()
 
 		case peer := <-peerConnectedCh:
@@ -90,13 +94,14 @@ Loop:
 	//Maybe make onMasterSlaveChange-function
 	e.SetIsMaster(false)
 	e.UpdateMyBackupAndWorldView()
-	go slaveFsm(e, hallButtonCh, assignedOrdersFromMasterCh, localAssignedHallOrdersCh, tryUpdateWorldViewCh, requestRedistributionCh, peerLostCh, peerConnectedCh)
+	go slaveFsm(e, hallButtonCh, assignedOrdersFromMasterCh, localAssignedHallOrdersCh, mergeOrdersOnBroadcastTimeoutCh, 
+		tryUpdateWorldViewCh, requestRedistributionCh, peerLostCh, peerConnectedCh)
 
 }
 
 func slaveFsm(e *elevator.Elevator, hallButtonCh <-chan orders.Order, assignedOrdersFromMasterCh <-chan [config.N_FLOORS][config.N_BUTTONS - 1]bool,
-	localAssignedHallOrdersCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool, tryUpdateWorldViewCh <-chan elevator.Backup, requestRedistributionCh <-chan struct{},
-	peerLostCh <-chan int, peerConnectedCh <-chan int) {
+	localAssignedHallOrdersCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool, mergeOrdersOnBroadcastTimeoutCh chan [config.N_FLOORS][config.N_BUTTONS - 1]bool, 
+	tryUpdateWorldViewCh <-chan elevator.Backup, requestRedistributionCh <-chan struct{}, peerLostCh <-chan int, peerConnectedCh <-chan int) {
 
 	fmt.Println("I am slave")
 	fmt.Printf("Master is: %d \n", e.GetMasterID())
@@ -108,6 +113,10 @@ Loop:
 		case buttonEvent := <-hallButtonCh:
 
 			network.SendHallOrder(buttonEvent, e.GetID(), e.GetMasterID())
+
+		case incomingOrders := <- mergeOrdersOnBroadcastTimeoutCh:
+
+			localAssignedHallOrdersCh <- mergeHallOrders(*e, incomingOrders)
 
 		case heartBeat := <-tryUpdateWorldViewCh:
 
@@ -150,7 +159,8 @@ Loop:
 
 	e.SetIsMaster(true)
 	e.UpdateMyBackupAndWorldView()
-	go MasterFsm(e, hallButtonCh, assignedOrdersFromMasterCh, localAssignedHallOrdersCh, tryUpdateWorldViewCh, requestRedistributionCh, peerLostCh, peerConnectedCh)
+	go MasterFsm(e, hallButtonCh, assignedOrdersFromMasterCh, localAssignedHallOrdersCh, mergeOrdersOnBroadcastTimeoutCh, 
+		tryUpdateWorldViewCh, requestRedistributionCh, peerLostCh, peerConnectedCh)
 
 }
 
@@ -161,13 +171,14 @@ func onUpdateWorldView(e *elevator.Elevator) {
 
 }
 
-func redistributeHallOrders(e *elevator.Elevator, hallOrder *orders.Order, localAssignedHallOrdersCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool) {
+func redistributeHallOrders(e *elevator.Elevator, hallOrder *orders.Order, localAssignedHallOrdersCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool, 
+	mergeOrdersOnBroadcastTimeoutCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool) {
 
 	globalOrderAssignments := runHallRequestAlgorithm(e, hallOrder)
 	localAssignedHallOrdersCh <- globalOrderAssignments[e.GetID()]
 	for id, orderList := range globalOrderAssignments {
 		if id != e.GetID() {
-			network.SendHallOrderRedistribution(orderList, e.GetID(), id)
+			network.SendHallOrderRedistribution(orderList, e.GetID(), id, mergeOrdersOnBroadcastTimeoutCh)
 
 			e.OverwriteHallRequestsInMasterWorldview(id, orderList)
 		}
@@ -175,6 +186,19 @@ func redistributeHallOrders(e *elevator.Elevator, hallOrder *orders.Order, local
 
 	fmt.Println("Redistributed orders: ", globalOrderAssignments)
 
+}
+
+func mergeHallOrders(e elevator.Elevator, incomingOrderList [config.N_FLOORS][config.N_BUTTONS-1]bool) [config.N_FLOORS][config.N_BUTTONS - 1]bool {
+	currentRequests := e.GetRequests()
+	mergedHallRequests := [config.N_FLOORS][config.N_BUTTONS - 1]bool{}
+
+	for floor := 0; floor < config.N_FLOORS; floor++ {
+		for button := 0; button < config.N_BUTTONS-1; button++ {
+			mergedHallRequests[floor][button] = currentRequests[floor][button] || incomingOrderList[floor][button]
+		}
+	}
+
+	return mergedHallRequests
 }
 
 // TODO: delete

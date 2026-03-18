@@ -13,8 +13,8 @@ import (
 //TODO:fix name
 
 type systemState struct {
-	HallRequests [][]bool                 `json:"hallRequests"`
-	States       map[string]elevatorState `json:"states"`
+	HallRequests [config.N_FLOORS][config.N_BUTTONS-1]bool                 `json:"hallRequests"`
+	States       map[string]elevatorState 									`json:"states"`
 }
 
 type elevatorState struct {
@@ -27,11 +27,7 @@ type elevatorState struct {
 func createJSONDataForHallRequestAlgorithm(e *elevator.Elevator, hallOrder *orders.Order) string {
 	states := make(map[string]elevatorState)
 
-	hallRequests := make([][]bool, config.N_FLOORS)
-
-	for i := range hallRequests {
-		hallRequests[i] = make([]bool, config.N_BUTTONS-1)
-	}
+	hallRequests := [config.N_FLOORS][config.N_BUTTONS - 1]bool{}
 
 	if hallOrder != nil {
 		hallRequests[hallOrder.GetFloor()][hallOrder.GetOrderType()] = true

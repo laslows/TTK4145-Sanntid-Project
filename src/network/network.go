@@ -19,7 +19,7 @@ const BROADCAST_TIMEOUT = 250 * time.Millisecond
 var g_pendingAcks = newSafePendingAcks()
 var g_hallRedistributionUpdateCh = make(chan redistributionUpdate, 1)
 
-func broadcastMessage(senderID, receiverID int, messageType messageType, payload json.RawMessage) {
+func broadcastMessage(senderID, receiverID int, messageType messageType, payload json.RawMessage, mergeOrdersOnBroadcastTimeoutCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool) {
 	message := message{
 		m_messageType: messageType,
 		m_senderID:    senderID,
@@ -71,18 +71,21 @@ func broadcastMessage(senderID, receiverID int, messageType messageType, payload
 			continue
 		case <-broadcastTimeout.C:
 			fmt.Println("Broadcast timeout reached")
-			//TODO:
-			//Send orders back to master, so master can resend
+			if message.m_messageType == HallOrderRedistribution {
+			
+				hallOrders := [config.N_FLOORS][config.N_BUTTONS - 1]bool{}
+				json.Unmarshal(message.m_payload, &hallOrders)
 
-			//If master, redistribute
-			//if slave, give to myself (???). Or iterate and send to master
+				fmt.Println("Doing the dirty work myself")
+				mergeOrdersOnBroadcastTimeoutCh <- hallOrders
+			}
 			return
 		}
 	}
 }
 
 func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
-	assignedOrdersFromMasterCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool, peerConnectedCh chan<- int) {
+	mergeOrdersOnBroadcastTimeoutCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool, peerConnectedCh chan<- int) {
 
 	var messageBuffer = newFifoBuffer()
 
@@ -140,7 +143,7 @@ func ListenForMessages(e *elevator.Elevator, hallButtonCh chan<- orders.Order,
 			var hallOrderAssignments [config.N_FLOORS][config.N_BUTTONS - 1]bool
 			json.Unmarshal(incomingMessage.m_payload, &hallOrderAssignments)
 
-			assignedOrdersFromMasterCh <- hallOrderAssignments
+			mergeOrdersOnBroadcastTimeoutCh <- hallOrderAssignments
 
 		case Initialization:
 
@@ -193,22 +196,23 @@ func SendHallOrder(order orders.Order, senderID, receiverId int) {
 
 	fmt.Println("Sending hall order: ", order, " from ", senderID, " to ", receiverId)
 
-	go broadcastMessage(senderID, receiverId, HallOrderRequest, payload)
+	go broadcastMessage(senderID, receiverId, HallOrderRequest, payload, nil)
 }
 
-func SendHallOrderRedistribution(orderList [config.N_FLOORS][config.N_BUTTONS - 1]bool, senderID, receiverID int) {
+func SendHallOrderRedistribution(orderList [config.N_FLOORS][config.N_BUTTONS - 1]bool, senderID, receiverID int, 
+	mergeOrdersOnBroadcastTimeoutCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool) {
 	payload, _ := json.Marshal(&orderList)
-	go broadcastMessage(senderID, receiverID, HallOrderRedistribution, payload)
+	go broadcastMessage(senderID, receiverID, HallOrderRedistribution, payload, mergeOrdersOnBroadcastTimeoutCh)
 }
 
 func SendWorldView(worldView [config.N_ELEVATORS]*elevator.Backup, senderID, receiverId int) {
 	payload, _ := json.Marshal(worldView)
 
-	go broadcastMessage(senderID, receiverId, WorldView, payload)
+	go broadcastMessage(senderID, receiverId, WorldView, payload, nil)
 }
 
 func SendInitializationMessage(senderID int) {
-	go broadcastMessage(senderID, 0, Initialization, nil)
+	go broadcastMessage(senderID, 0, Initialization, nil, nil)
 }
 
 func sendAcknowledgement(messageID uint64, senderID, receiverID int) {
