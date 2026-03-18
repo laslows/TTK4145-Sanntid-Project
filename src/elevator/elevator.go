@@ -68,7 +68,7 @@ func New(id string) *Elevator {
 		m_isMaster:           e.m_isMaster,
 		m_version:            0,
 		m_behaviour:          Idle,
-		m_connectedToNetwork: true,
+		m_isConnectedToNetwork: true,
 		m_isObstructed:       false,
 	}
 
@@ -105,7 +105,7 @@ func (e *Elevator) UpdateWorldView(incomingBackup *Backup) {
 func (e *Elevator) TryUpdateWorldView(incomingBackup *Backup) bool {
 	for _, b := range e.m_worldView {
 		if b != nil && b.m_ID == incomingBackup.m_ID {
-			return incomingBackup.m_version > b.m_version || !b.m_connectedToNetwork
+			return incomingBackup.m_version > b.m_version || !b.m_isConnectedToNetwork
 		}
 	}
 	return true
@@ -125,7 +125,7 @@ func checkIsMaster(e Elevator) bool {
 	isMaster := true
 
 	for _, b := range e.m_worldView {
-		if b != nil && b.m_connectedToNetwork {
+		if b != nil && b.m_isConnectedToNetwork {
 			isMaster = isMaster && (e.GetID() >= b.GetID())
 		}
 	}
@@ -155,7 +155,7 @@ func (e *Elevator) GetMasterID() int {
 func (e *Elevator) LoseConnectionToPeer(peerID int) {
 	for i, b := range e.m_worldView {
 		if b != nil && b.m_ID == peerID && e.m_ID != peerID {
-			e.m_worldView[i].m_connectedToNetwork = false
+			e.m_worldView[i].m_isConnectedToNetwork = false
 			return
 		}
 	}
@@ -173,7 +173,7 @@ func (e *Elevator) RestoreElevatorState(b *Backup) {
 
 func (e *Elevator) ClearDisconnectedNodeQueue(){
 	for _, b := range e.m_worldView {
-		if b != nil && !b.m_connectedToNetwork {
+		if b != nil && !b.m_isConnectedToNetwork {
 			for f := 0; f < config.N_FLOORS; f++ {
 				for btn := 0; btn < config.N_BUTTONS-1; btn++ {
 					b.m_requests[f][btn] = false
