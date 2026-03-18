@@ -168,6 +168,8 @@ func redistributeHallOrders(e *elevator.Elevator, hallOrder *orders.Order, local
 	for id, orderList := range globalOrderAssignments {
 		if id != e.GetID() {
 			network.SendHallOrderRedistribution(orderList, e.GetID(), id)
+
+			e.OverwriteHallRequestsInMasterWorldview(id, orderList)
 		}
 	}
 

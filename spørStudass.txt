@@ -1,3 +1,0 @@
-- Er det mulig at heisen starter mens nettverkskabelen er dratt ut?
-- Starte med obstruksjon?
-- Kan heisen flyttes mens den er skrudd av?

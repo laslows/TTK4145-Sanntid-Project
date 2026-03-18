@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 
 	"Sanntid/src/config"
 	"Sanntid/src/driver"
@@ -17,11 +18,14 @@ import (
 func main() {
 
 	elevatorPort := flag.String("port", "15657", "port number of the elevator server")
+	elevatorID := flag.String("id", "", "elevator id")
 	flag.Parse()
+
+	fmt.Println(*elevatorID)
 
 	driver.Init("localhost:"+*elevatorPort, config.N_FLOORS)
 
-	elev := elevator.New(*elevatorPort)
+	elev := elevator.New(*elevatorID)
 	doorTimer := timer.New()
 
 	cabButtonCh := make(chan orders.Order)
@@ -40,7 +44,7 @@ func main() {
 	initialize.Initialize(elev)
 
 	go fsm.Fsm(elev, doorTimer, cabButtonCh, floorCh, doorTimeoutCh, motorStopCh, obstructionCh, localAssignedHallOrdersCh, tryUpdateWorldViewCh, requestRedistributionCh)
-	go fsm.MasterFsm(elev, hallButtonCh, assignedOrdersFromMasterCh, localAssignedHallOrdersCh, tryUpdateWorldViewCh, 
+	go fsm.MasterFsm(elev, hallButtonCh, assignedOrdersFromMasterCh, localAssignedHallOrdersCh, tryUpdateWorldViewCh,
 		requestRedistributionCh, peerLostCh, peerConnectedCh)
 	go events.InputPoller(cabButtonCh, hallButtonCh, floorCh, doorTimeoutCh, motorStopCh, obstructionCh, elev, doorTimer)
 	go network.ListenForHeartbeats(tryUpdateWorldViewCh, peerLostCh)

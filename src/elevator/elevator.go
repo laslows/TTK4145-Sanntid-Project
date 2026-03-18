@@ -4,9 +4,7 @@ import (
 	"Sanntid/src/config"
 	"Sanntid/src/driver"
 	"fmt"
-	"net"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -50,7 +48,8 @@ type Elevator struct {
 	}
 }
 
-func New(port string) *Elevator {
+func New(id string) *Elevator {
+
 	e := &Elevator{
 		m_floor:     -1,
 		m_direction: Down,
@@ -67,7 +66,7 @@ func New(port string) *Elevator {
 		},
 	}
 
-	e.m_ID = getIDAsInt(getLocalIP(), port)
+	e.m_ID, _ = strconv.Atoi(id)
 
 	e.m_myBackup = &Backup{
 		m_ID:                 e.m_ID,
@@ -123,19 +122,6 @@ func (e *Elevator) TryUpdateWorldView(incomingBackup *Backup) bool {
 	return true
 }
 
-func getIDAsInt(ip, osID string) int {
-	ipString := strings.ReplaceAll(ip, ".", "")
-	iDString := ipString + osID
-	idInt, err := strconv.Atoi(iDString)
-
-	if err != nil {
-		fmt.Println(iDString)
-		panic(fmt.Sprintf("Failed to convert IP to int: %v", err))
-	}
-
-	return idInt
-}
-
 //TODO: move to fsm?
 func (e *Elevator) ShouldRedistributeOrders(incomingBackup *Backup) bool {
     for _, b := range e.m_worldView {
@@ -170,18 +156,6 @@ func checkIsMaster(e Elevator) bool {
 	}
 
 	return master
-}
-
-func getLocalIP() string {
-	conn, err := net.Dial("udp", "8.8.8.8:80")
-	if err != nil {
-		panic("Failed to get local IP address")
-	}
-	defer conn.Close()
-
-	localAddress := conn.LocalAddr().(*net.UDPAddr)
-	fmt.Printf("Found IP address: %s\n", localAddress.IP.String())
-	return localAddress.IP.String()
 }
 
 //TODO: maybe not return pointer.. Whuuups
@@ -234,6 +208,18 @@ func (e *Elevator) ClearDisconnectedNodeQueue(){
 			for f := 0; f < config.N_FLOORS; f++ {
 				for btn := 0; btn < config.N_BUTTONS-1; btn++ {
 					b.m_requests[f][btn] = false
+				}
+			}
+		}
+	}
+}
+
+func (e *Elevator) OverwriteHallRequestsInMasterWorldview(id int, assignedHallRequests [config.N_FLOORS][config.N_BUTTONS-1]bool) {
+	for _, b := range e.m_worldView {
+		if b != nil && b.m_ID == id {
+			for floor := 0; floor < config.N_FLOORS; floor++ {
+				for button := 0; button < config.N_BUTTONS-1; button++ {
+					b.m_requests[floor][button] = assignedHallRequests[floor][button]
 				}
 			}
 		}
