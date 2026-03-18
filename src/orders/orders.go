@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 )
 
-//TODO: FIx naming conventions
 
 type OrderType int
 

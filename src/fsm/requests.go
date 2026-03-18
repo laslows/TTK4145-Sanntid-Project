@@ -9,7 +9,7 @@ import (
 
 //TODO: not pass whole elevator struct?
 
-type DirnBehaviourPair struct {
+type dirnBehaviourPair struct {
 	m_dirn      elevator.Direction
 	m_behaviour elevator.ElevatorBehaviour
 }
@@ -56,7 +56,7 @@ func anyRequests(e elevator.Elevator) bool {
 	return false
 }
 
-func ClearAtCurrentFloor(e elevator.Elevator) elevator.Elevator {
+func clearAtCurrentFloor(e elevator.Elevator) elevator.Elevator {
 
 	e.SetRequest(e.GetFloor(), driver.BT_Cab, false)
 
@@ -80,7 +80,7 @@ func ClearAtCurrentFloor(e elevator.Elevator) elevator.Elevator {
 	return e
 }
 
-func ShouldStop(e elevator.Elevator) bool {
+func shouldStop(e elevator.Elevator) bool {
 	if e.GetFloor() == 0 || e.GetFloor() == config.N_FLOORS-1 {
 		return true
 	}
@@ -99,7 +99,7 @@ func ShouldStop(e elevator.Elevator) bool {
 	}
 }
 
-func ShouldClearImmediately(e elevator.Elevator, btn_floor int, order_type orders.OrderType) bool {
+func shouldClearImmediately(e elevator.Elevator, btn_floor int, order_type orders.OrderType) bool {
 	return (e.GetFloor() == btn_floor &&
 		((e.GetDirection() == elevator.Up && order_type == orders.HALL_UP) ||
 			(e.GetDirection() == elevator.Down && order_type == orders.HALL_DOWN) ||
@@ -107,38 +107,38 @@ func ShouldClearImmediately(e elevator.Elevator, btn_floor int, order_type order
 			order_type == orders.CAB))
 }
 
-func ChooseDirection(e elevator.Elevator) DirnBehaviourPair {
+func chooseDirection(e elevator.Elevator) dirnBehaviourPair {
 	switch e.GetDirection() {
 	case elevator.Up:
 		if requestsAbove(e) {
-			return DirnBehaviourPair{elevator.Up, elevator.Moving}
+			return dirnBehaviourPair{elevator.Up, elevator.Moving}
 		} else if requestsHere(e) {
-			return DirnBehaviourPair{elevator.Down, elevator.DoorOpen}
+			return dirnBehaviourPair{elevator.Down, elevator.DoorOpen}
 		} else if requestsBelow(e) {
-			return DirnBehaviourPair{elevator.Down, elevator.Moving}
+			return dirnBehaviourPair{elevator.Down, elevator.Moving}
 		}
-		return DirnBehaviourPair{elevator.Stop, elevator.Idle}
+		return dirnBehaviourPair{elevator.Stop, elevator.Idle}
 	case elevator.Down:
 		if requestsBelow(e) {
-			return DirnBehaviourPair{elevator.Down, elevator.Moving}
+			return dirnBehaviourPair{elevator.Down, elevator.Moving}
 		} else if requestsHere(e) {
-			return DirnBehaviourPair{elevator.Up, elevator.DoorOpen}
+			return dirnBehaviourPair{elevator.Up, elevator.DoorOpen}
 		} else if requestsAbove(e) {
-			return DirnBehaviourPair{elevator.Up, elevator.Moving}
+			return dirnBehaviourPair{elevator.Up, elevator.Moving}
 		}
-		return DirnBehaviourPair{elevator.Stop, elevator.Idle}
+		return dirnBehaviourPair{elevator.Stop, elevator.Idle}
 	case elevator.Stop:
 		if requestsHere(e) {
-			return DirnBehaviourPair{elevator.Stop, elevator.DoorOpen}
+			return dirnBehaviourPair{elevator.Stop, elevator.DoorOpen}
 		}
 		if requestsAbove(e) {
-			return DirnBehaviourPair{elevator.Up, elevator.Moving}
+			return dirnBehaviourPair{elevator.Up, elevator.Moving}
 		} else if requestsBelow(e) {
-			return DirnBehaviourPair{elevator.Down, elevator.Moving}
+			return dirnBehaviourPair{elevator.Down, elevator.Moving}
 		}
 	default:
-		return DirnBehaviourPair{elevator.Stop, elevator.Idle}
+		return dirnBehaviourPair{elevator.Stop, elevator.Idle}
 	}
 
-	return DirnBehaviourPair{elevator.Stop, elevator.Idle}
+	return dirnBehaviourPair{elevator.Stop, elevator.Idle}
 }

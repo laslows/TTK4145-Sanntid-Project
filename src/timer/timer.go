@@ -18,11 +18,6 @@ func (t *Timer) Start(duration time.Duration) {
 	t.m_timerActive = true
 }
 
-func (t *Timer) RequestReset(duration time.Duration) {
-	t.m_endTime = time.Now().Add(duration)
-	t.m_timerActive = true
-}
-
 func (t *Timer) Stop() {
 	t.m_timerActive = false
 }

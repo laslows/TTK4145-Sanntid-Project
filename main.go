@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 
 	"Sanntid/src/config"
 	"Sanntid/src/driver"
@@ -16,38 +17,40 @@ import (
 
 func main() {
 
-	//Run program with "go run main.go -port=##### (default is 15657)"
-	//Run simulator with "./SimElevatorServer --port #####"
 	elevatorPort := flag.String("port", "15657", "port number of the elevator server")
+	elevatorID := flag.String("id", "", "elevator id")
 	flag.Parse()
+
+	fmt.Println(*elevatorID)
 
 	driver.Init("localhost:"+*elevatorPort, config.N_FLOORS)
 
-	elev := elevator.New(*elevatorPort)
-	timetaker := timer.New()
+	elev := elevator.New(*elevatorID)
+	doorTimer := timer.New()
 
 	cabButtonCh := make(chan orders.Order)
 	hallButtonCh := make(chan orders.Order)
 	assignedOrdersFromMasterCh := make(chan [config.N_FLOORS][config.N_BUTTONS - 1]bool)
 	localAssignedHallOrdersCh := make(chan [config.N_FLOORS][config.N_BUTTONS - 1]bool)
+	mergeOrdersOnBroadcastTimeoutCh := make(chan [config.N_FLOORS][config.N_BUTTONS - 1]bool)
+	requestRedistributionCh := make(chan struct{})
 	floorCh := make(chan int)
-	timerCh := make(chan bool)
+	doorTimeoutCh := make(chan bool)
 	motorStopCh := make(chan bool)
 	obstructionCh := make(chan bool)
-	updateWorldViewCh := make(chan elevator.Backup)
+	tryUpdateWorldViewCh := make(chan elevator.Backup)
 	peerLostCh := make(chan int)
 	peerConnectedCh := make(chan int)
 
 	initialize.Initialize(elev)
 
-	go fsm.Fsm(elev, timetaker, cabButtonCh, floorCh, timerCh, motorStopCh, obstructionCh, localAssignedHallOrdersCh, updateWorldViewCh)
-	go fsm.MasterFsm(elev, hallButtonCh, assignedOrdersFromMasterCh, localAssignedHallOrdersCh, updateWorldViewCh, peerLostCh, peerConnectedCh)
-	go events.InputPoller(cabButtonCh, hallButtonCh, floorCh, timerCh, motorStopCh, obstructionCh, elev, timetaker)
-	go network.ListenForHeartbeats(elev, updateWorldViewCh, peerLostCh)
+	go fsm.Fsm(elev, doorTimer, cabButtonCh, floorCh, doorTimeoutCh, motorStopCh, obstructionCh, localAssignedHallOrdersCh, tryUpdateWorldViewCh, requestRedistributionCh)
+	go fsm.MasterFsm(elev, hallButtonCh, assignedOrdersFromMasterCh, localAssignedHallOrdersCh, mergeOrdersOnBroadcastTimeoutCh, 
+		tryUpdateWorldViewCh, requestRedistributionCh, peerLostCh, peerConnectedCh)
+	go events.InputPoller(cabButtonCh, hallButtonCh, floorCh, doorTimeoutCh, motorStopCh, obstructionCh, elev, doorTimer)
+	go network.ListenForHeartbeats(tryUpdateWorldViewCh, peerLostCh)
 	go network.BroadcastHeartbeat(elev)
 	go network.ListenForMessages(elev, hallButtonCh, assignedOrdersFromMasterCh, peerConnectedCh)
 
-	select {
-	// Keep main alive
-	}
+	select {}
 }

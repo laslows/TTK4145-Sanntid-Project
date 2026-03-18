@@ -12,12 +12,12 @@ import (
 
 //TODO:fix name
 
-type SystemState struct {
-	HallRequests [][]bool                 `json:"hallRequests"`
-	States       map[string]ElevatorState `json:"states"`
+type systemState struct {
+	HallRequests [config.N_FLOORS][config.N_BUTTONS-1]bool                 `json:"hallRequests"`
+	States       map[string]elevatorState 									`json:"states"`
 }
 
-type ElevatorState struct {
+type elevatorState struct {
 	Behaviour   string `json:"behaviour"`
 	Floor       int    `json:"floor"`
 	Direction   string `json:"direction"`
@@ -25,13 +25,9 @@ type ElevatorState struct {
 }
 
 func createJSONDataForHallRequestAlgorithm(e *elevator.Elevator, hallOrder *orders.Order) string {
-	states := make(map[string]ElevatorState)
+	states := make(map[string]elevatorState)
 
-	hallRequests := make([][]bool, config.N_FLOORS)
-
-	for i := range hallRequests {
-		hallRequests[i] = make([]bool, config.N_BUTTONS-1)
-	}
+	hallRequests := [config.N_FLOORS][config.N_BUTTONS - 1]bool{}
 
 	if hallOrder != nil {
 		hallRequests[hallOrder.GetFloor()][hallOrder.GetOrderType()] = true
@@ -48,7 +44,7 @@ func createJSONDataForHallRequestAlgorithm(e *elevator.Elevator, hallOrder *orde
 		backupRequests := backup.GetRequests()
 		if backup.GetBehaviour() != elevator.MotorStop && !backup.GetIsObstructed() && backup.GetConnectedToNetwork() {
 
-			states[strconv.Itoa(backup.GetID())] = ElevatorState{
+			states[strconv.Itoa(backup.GetID())] = elevatorState{
 				Behaviour:   elevator.BehaviourToString(backup.GetBehaviour()),
 				Floor:       backup.GetFloor(),
 				Direction:   elevator.DirectionToString(backup.GetDirection()),
@@ -66,7 +62,7 @@ func createJSONDataForHallRequestAlgorithm(e *elevator.Elevator, hallOrder *orde
 		}
 	}
 
-	system := SystemState{
+	system := systemState{
 		HallRequests: hallRequests,
 		States:       states,
 	}
@@ -88,7 +84,6 @@ func runHallRequestAlgorithm(e *elevator.Elevator, hallOrder *orders.Order) map[
 		fmt.Printf("running hall request algorithm failed: %v; output: %s\n", err, string(out))
 		return hallOrderAssignmentMap
 	}
-	fmt.Print(string(out))
 
 	err = json.Unmarshal(out, &hallOrderAssignmentMap)
 	if err != nil {

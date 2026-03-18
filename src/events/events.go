@@ -11,8 +11,7 @@ import (
 )
 
 func InputPoller(cabButtonCh chan<- orders.Order, hallButtonCh chan<- orders.Order, floorCh chan<- int,
-	timerCh chan<- bool, motorStopCh chan<- bool, obstructionCh chan<- bool, e *elevator.Elevator, timetaker *timer.Timer) {
-	//Can only send on channels, not receive.
+	doorTimeoutCh chan<- bool, motorStopCh chan<- bool, obstructionCh chan<- bool, e *elevator.Elevator, doorTimer *timer.Timer) {
 
 	var prevButtons [config.N_FLOORS][config.N_BUTTONS]bool
 	var prevFloor int = -1
@@ -23,25 +22,21 @@ func InputPoller(cabButtonCh chan<- orders.Order, hallButtonCh chan<- orders.Ord
 	var obstruction = false
 
 	for {
-		// Check new button pressed
 		for f := 0; f < config.N_FLOORS; f++ {
 			for btn := 0; btn < config.N_BUTTONS; btn++ {
 				v := elevator.RequestButton(f, (driver.ButtonType)(btn))
 				if v && v != prevButtons[f][btn] {
 
-					if btn == int(elevator.Cab) {
+					if btn == int(driver.BT_Cab) {
 						cabButtonCh <- orders.New(f, (orders.OrderType)(btn))
 					} else {
 						hallButtonCh <- orders.New(f, (orders.OrderType)(btn))
 					}
-					//Should trigger OnRequestButtonPress
-					//fmt.Printf("Button %d on floor %d pressed\n", btn, f)
 				}
 				prevButtons[f][btn] = v
 			}
 		}
 
-		//Check new floor arrival
 		f := elevator.FloorSensor()
 		if f != -1 && f != prevFloor {
 			floorCh <- f
@@ -49,7 +44,6 @@ func InputPoller(cabButtonCh chan<- orders.Order, hallButtonCh chan<- orders.Ord
 			requestResetWatchdog = true
 			motorStopWatchdog.Stop()
 
-			//Should trigger OnFloorArrival
 		} else if f == -1 && requestResetWatchdog {
 			motorStopWatchdog.Start(time.Duration(config.MOTOR_STOP_TIMEOUT) * time.Second)
 			requestResetWatchdog = false
@@ -61,14 +55,13 @@ func InputPoller(cabButtonCh chan<- orders.Order, hallButtonCh chan<- orders.Ord
 			motorStopCh <- true
 		}
 
-		if timetaker.TimedOut() {
-			timetaker.Stop()
-			//Can make timerEvent struct if we later find out that we need it
-			timerCh <- true
+		if doorTimer.TimedOut() {
+			doorTimer.Stop()
+			doorTimeoutCh <- true
 		}
 
 		if e.GetBehaviour() == elevator.DoorOpen && elevator.ObstructionSwitch() {
-			timetaker.Start(e.GetDoorOpenDuration())
+			doorTimer.Start(e.GetDoorOpenDuration())
 
 			if !obstruction {
 				obstruction = true

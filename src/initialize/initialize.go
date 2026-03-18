@@ -14,7 +14,6 @@ func Initialize(e *elevator.Elevator) {
 	elevator.DoorOpenLight(false)
 
 	fmt.Println("Initialiser heisen")
-	fmt.Printf("Initial floor: %d\n", e.GetFloor())
 
 	network.SendInitializationMessage(e.GetID())
 	worldView, gotWorldView := network.TryListenForWorldView()
@@ -31,18 +30,26 @@ func Initialize(e *elevator.Elevator) {
 
 	}
 
+	fmt.Println("Floor is: ", e.GetFloor())
 	fmt.Println("Direction is: ", e.GetDirection())
 	initOnFloor(e)
 
 	e.TryUpdateIsMaster()
-	e.UpdateMyBackup()
+	e.UpdateMyBackupAndWorldView()
 
 }
 
 func initOnFloor(e *elevator.Elevator) {
 
+	// TODO
+	initDirection := (int)(e.GetDirection())
+	
+	if initDirection == 0 && elevator.FloorSensor() == -1 {
+		initDirection = -1
+	}
+
 	for elevator.FloorSensor() == -1 {
-		driver.SetMotorDirection((driver.MotorDirection)(e.GetDirection()))
+		driver.SetMotorDirection((driver.MotorDirection)(initDirection))
 		e.SetBehaviour(elevator.Moving)
 	}
 
