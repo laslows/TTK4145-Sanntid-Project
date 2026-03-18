@@ -19,6 +19,7 @@
 ├── elevator/
 │   ├── backup.go
 │   ├── elevator.go
+│   ├── hardware.go
 │   └── `README.md`
 ```
 ---
@@ -30,7 +31,7 @@ It has two main pieces:
 - **Elevator state:** tracks current floor, direction, active requests, and behavior.
 - **Backup state:** a serializable snapshot of elevator state used for network synchronization and fault tolerance.
 
-The module also maintains a **worldview**: a shared view of all elevators' backups used for master election and order distribution.
+The module also maintains a **worldview**, which is a shared view of all elevators' backups used for master election and order distribution.
 
 ---
 
