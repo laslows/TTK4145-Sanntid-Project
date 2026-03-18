@@ -67,7 +67,7 @@ These packages are small and/or self-contained, so their documentation lives her
 
 ### `driver`
 - Wraps the low-level elevator hardware interface (buttons, lights, motor commands, sensors).
-- Provides a small API used by higher-level packages like `fsm` and `elevator`.
+- Provides a small API used by higher-level packages like `fsm` and `elevator`, which was provided for the project.
 
 ### `events`
 - Defines shared event types used across components (e.g., state changes, order events).
@@ -80,7 +80,7 @@ These packages are small and/or self-contained, so their documentation lives her
 - Provides JSON serialization helpers so orders can be sent over the network or persisted.
 
 ### `timer`
-- Provides a simple timer abstraction used for timeouts and periodic checks.
+- Provides a simple timer abstraction used for door timeouts and checks for motorstop.
 
 ---
 
