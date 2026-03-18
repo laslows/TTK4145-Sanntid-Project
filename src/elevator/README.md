@@ -39,7 +39,7 @@ The module also maintains a **worldview**, which is a shared view of all elevato
 
 - `elevator.go`: elevator state machine helpers, request tracking, and world-view management
 - `backup.go`: backup (serialized state) struct + JSON serialization helpers
-
+- `hardware.go`: gets functions for controlling hardware from driver files
 ---
 
 > Quick notes
