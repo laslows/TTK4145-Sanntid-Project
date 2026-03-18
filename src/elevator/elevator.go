@@ -133,7 +133,6 @@ func checkIsMaster(e Elevator) bool {
 }
 
 func (e *Elevator) GetMyBackup() *Backup {
-
 	for _, b := range e.m_worldView {
 		if b != nil && b.m_ID == e.m_ID {
 			return b
@@ -148,7 +147,6 @@ func (e *Elevator) GetMasterID() int {
 			return b.GetID()
 		}
 	}
-
 	return -1
 }
 
@@ -162,13 +160,11 @@ func (e *Elevator) LoseConnectionToPeer(peerID int) {
 }
 
 func (e *Elevator) RestoreElevatorState(b *Backup) {
-
 	e.m_requests = b.m_requests
 	e.m_floor = b.m_floor
 	e.m_direction = b.m_direction
 
 	e.restoreMyBackup(b)
-
 }
 
 func (e *Elevator) ClearDisconnectedNodeQueue(){
@@ -208,8 +204,8 @@ func (e *Elevator) GetFloor() int {
 	return e.m_floor
 }
 
-func (e *Elevator) SetFloor(f int) {
-	e.m_floor = f
+func (e *Elevator) SetFloor(floor int) {
+	e.m_floor = floor
 }
 
 func (e *Elevator) GetRequestAtFloor(floor int, btn driver.ButtonType) bool {
@@ -228,16 +224,16 @@ func (e *Elevator) GetDirection() Direction {
 	return e.m_direction
 }
 
-func (e *Elevator) SetDirection(d Direction) {
-	e.m_direction = d
+func (e *Elevator) SetDirection(dir Direction) {
+	e.m_direction = dir
 }
 
 func (e *Elevator) GetBehaviour() ElevatorBehaviour {
 	return e.m_behaviour
 }
 
-func (e *Elevator) SetBehaviour(b ElevatorBehaviour) {
-	e.m_behaviour = b
+func (e *Elevator) SetBehaviour(behaviour ElevatorBehaviour) {
+	e.m_behaviour = behaviour
 }
 
 func (e *Elevator) GetDoorOpenDuration() time.Duration {
