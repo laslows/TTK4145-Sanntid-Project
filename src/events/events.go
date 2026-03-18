@@ -1,6 +1,7 @@
 package events
 
 import (
+	"fmt"
 	"time"
 
 	"Sanntid/src/config"
@@ -40,18 +41,28 @@ func InputPoller(cabButtonCh chan<- orders.Order, hallButtonCh chan<- orders.Ord
 		floor := driver.GetFloor()
 		if floor != -1 && floor != prevFloor {
 			floorCh <- floor
+		}
 
-			requestResetWatchdog = true
-			motorStopWatchdog.Stop()
+		//hasAnyRequests := e.GetHasAnyRequests()
+		// If we are between floors or if we are on a floor and should move to another floor. Count 4 seconds
+		// from when elevator.moving is set to true
+		// NOt sure if this works, test tomorrow :)
+		// WIll only get state elevator.moving when we have requests
+		watchForMotorStop := floor == -1 || (floor != -1 && floor == prevFloor && e.GetBehaviour() == elevator.Moving /*&& hasAnyRequests*/)
 
-		} else if floor == -1 && requestResetWatchdog {
+		if watchForMotorStop && requestResetWatchdog {
 			motorStopWatchdog.Start(time.Duration(config.MOTOR_STOP_TIMEOUT) * time.Second)
 			requestResetWatchdog = false
+		} else if !watchForMotorStop {
+			requestResetWatchdog = true
+			motorStopWatchdog.Stop()
 		}
+
 		prevFloor = floor
 
 		if motorStopWatchdog.TimedOut() {
 			motorStopWatchdog.Stop()
+			fmt.Println("Motor stop timeout")
 			motorStopCh <- true
 		}
 
