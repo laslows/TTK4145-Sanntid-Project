@@ -17,9 +17,9 @@ const RETRY_BROADCAST_RATE = 10 * time.Millisecond
 const BROADCAST_TIMEOUT = 250 * time.Millisecond
 
 var g_pendingAcks = newSafePendingAcks()
-var g_hallRedistributionUpdateCh = make(chan redistributionUpdate, 1)
+var g_hallRedistributionCancels = newSafeRedistributionCancels()
 
-func broadcastMessage(senderID, receiverID int, messageType messageType, payload json.RawMessage, mergeOrdersOnBroadcastTimeoutCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool) {
+func broadcastMessage(senderID, receiverID int, messageType messageType, payload json.RawMessage, mergeOrdersOnBroadcastTimeoutCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool, cancelCh <-chan struct{}) {
 	message := message{
 		m_messageType: messageType,
 		m_senderID:    senderID,
@@ -28,14 +28,6 @@ func broadcastMessage(senderID, receiverID int, messageType messageType, payload
 	}
 
 	message.m_messageID = generateMessageID(message)
-
-	//TODO: delete or fix
-	if message.m_messageType == HallOrderRedistribution {
-		g_hallRedistributionUpdateCh <- redistributionUpdate{
-			m_messageID:  message.m_messageID,
-			m_receiverID: message.m_receiverID,
-		}
-	}
 
 	messageBytes, _ := json.Marshal(&message)
 
@@ -57,16 +49,12 @@ func broadcastMessage(senderID, receiverID int, messageType messageType, payload
 		conn.Write(messageBytes)
 
 		select {
-		case <-ackCh:
-			return
+		/*case <-ackCh:
+			return*/
 
-		//TODO: this does not work
-		case update := <-g_hallRedistributionUpdateCh:
-			if message.m_messageID != update.m_messageID && update.m_receiverID == message.m_receiverID {
-				fmt.Println("Sending newer order distribution")
-				return
-			}
-			fmt.Println("Extracted my own message")
+		case <-cancelCh:
+			fmt.Println("Canceling hall order redistribution to ", receiverID)
+			return
 		case <-retryTicker.C:
 			continue
 		case <-broadcastTimeout.C:
@@ -196,23 +184,30 @@ func SendHallOrder(order orders.Order, senderID, receiverId int) {
 
 	fmt.Println("Sending hall order: ", order, " from ", senderID, " to ", receiverId)
 
-	go broadcastMessage(senderID, receiverId, HallOrderRequest, payload, nil)
+	go broadcastMessage(senderID, receiverId, HallOrderRequest, payload, nil, nil)
 }
 
 func SendHallOrderRedistribution(orderList [config.N_FLOORS][config.N_BUTTONS - 1]bool, senderID, receiverID int, 
 	mergeOrdersOnBroadcastTimeoutCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool) {
 	payload, _ := json.Marshal(&orderList)
-	go broadcastMessage(senderID, receiverID, HallOrderRedistribution, payload, mergeOrdersOnBroadcastTimeoutCh)
+	cancelCh := g_hallRedistributionCancels.replace(receiverID)
+
+	//Basically do broadcastmessage as a goroutine, but with some added functionality
+	go func(ch chan struct{}) {
+		defer g_hallRedistributionCancels.clearIfCurrent(receiverID, ch)
+		fmt.Println("Sending hall distribution")
+		broadcastMessage(senderID, receiverID, HallOrderRedistribution, payload, mergeOrdersOnBroadcastTimeoutCh, ch)
+	}(cancelCh)
 }
 
 func SendWorldView(worldView [config.N_ELEVATORS]*elevator.Backup, senderID, receiverId int) {
 	payload, _ := json.Marshal(worldView)
 
-	go broadcastMessage(senderID, receiverId, WorldView, payload, nil)
+	go broadcastMessage(senderID, receiverId, WorldView, payload, nil, nil)
 }
 
 func SendInitializationMessage(senderID int) {
-	go broadcastMessage(senderID, 0, Initialization, nil, nil)
+	go broadcastMessage(senderID, 0, Initialization, nil, nil, nil)
 }
 
 func sendAcknowledgement(messageID uint64, senderID, receiverID int) {
