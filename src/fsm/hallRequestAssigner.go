@@ -1,32 +1,29 @@
 package fsm
 
 import (
+	"encoding/json"
+	"os/exec"
+	"strconv"
+
 	"Sanntid/src/config"
 	"Sanntid/src/elevator"
 	"Sanntid/src/orders"
-	"encoding/json"
-	"fmt"
-	"os/exec"
-	"strconv"
 )
 
-//TODO:fix name
-
 type systemState struct {
-	HallRequests [config.N_FLOORS][config.N_BUTTONS-1]bool                 `json:"hallRequests"`
-	States       map[string]elevatorState 									`json:"states"`
+	M_hallRequests [config.N_FLOORS][config.N_BUTTONS - 1]bool `json:"hallRequests"`
+	M_states       map[string]elevatorState                    `json:"states"`
 }
 
 type elevatorState struct {
-	Behaviour   string `json:"behaviour"`
-	Floor       int    `json:"floor"`
-	Direction   string `json:"direction"`
-	CabRequests []bool `json:"cabRequests"`
+	M_behaviour   string `json:"behaviour"`
+	M_floor       int    `json:"floor"`
+	M_direction   string `json:"direction"`
+	M_cabRequests []bool `json:"cabRequests"`
 }
 
 func createJSONDataForHallRequestAlgorithm(e *elevator.Elevator, hallOrder *orders.Order) string {
 	states := make(map[string]elevatorState)
-
 	hallRequests := [config.N_FLOORS][config.N_BUTTONS - 1]bool{}
 
 	if hallOrder != nil {
@@ -42,16 +39,15 @@ func createJSONDataForHallRequestAlgorithm(e *elevator.Elevator, hallOrder *orde
 		}
 
 		backupRequests := backup.GetRequests()
-		if backup.GetBehaviour() != elevator.MotorStop && !backup.GetIsObstructed() && backup.GetConnectedToNetwork() {
-
+		if backup.GetBehaviour() != elevator.MotorStop && !backup.GetIsObstructed() && backup.GetIsConnectedToNetwork() {
 			states[strconv.Itoa(backup.GetID())] = elevatorState{
-				Behaviour:   elevator.BehaviourToString(backup.GetBehaviour()),
-				Floor:       backup.GetFloor(),
-				Direction:   elevator.DirectionToString(backup.GetDirection()),
-				CabRequests: make([]bool, len(backupRequests)),
+				M_behaviour:   elevator.BehaviourToString(backup.GetBehaviour()),
+				M_floor:       backup.GetFloor(),
+				M_direction:   elevator.DirectionToString(backup.GetDirection()),
+				M_cabRequests: make([]bool, len(backupRequests)),
 			}
 			for i, row := range backupRequests {
-				states[strconv.Itoa(backup.GetID())].CabRequests[i] = row[len(row)-1]
+				states[strconv.Itoa(backup.GetID())].M_cabRequests[i] = row[len(row)-1]
 			}
 		}
 
@@ -63,13 +59,11 @@ func createJSONDataForHallRequestAlgorithm(e *elevator.Elevator, hallOrder *orde
 	}
 
 	system := systemState{
-		HallRequests: hallRequests,
-		States:       states,
+		M_hallRequests: hallRequests,
+		M_states:       states,
 	}
-	jsonData, err := json.Marshal(system)
-	if err != nil {
-		panic(err)
-	}
+
+	jsonData, _ := json.Marshal(system)
 
 	return string(jsonData)
 }
@@ -81,15 +75,10 @@ func runHallRequestAlgorithm(e *elevator.Elevator, hallOrder *orders.Order) map[
 	hallOrderAssignmentMap := make(map[int][config.N_FLOORS][config.N_BUTTONS - 1]bool)
 
 	if err != nil {
-		fmt.Printf("running hall request algorithm failed: %v; output: %s\n", err, string(out))
 		return hallOrderAssignmentMap
 	}
 
-	err = json.Unmarshal(out, &hallOrderAssignmentMap)
-	if err != nil {
-		fmt.Printf("Json unmarshal failed: %v\n", err)
-		return hallOrderAssignmentMap
-	}
+	json.Unmarshal(out, &hallOrderAssignmentMap)
 
 	for _, backup := range e.GetWorldView() {
 		if backup != nil && (backup.GetIsObstructed() || backup.GetHasMotorstop()) {
@@ -101,7 +90,6 @@ func runHallRequestAlgorithm(e *elevator.Elevator, hallOrder *orders.Order) map[
 }
 
 func checkNewOrder(e *elevator.Elevator, hallOrder orders.Order) bool {
-	//Check if order is already in queue, if not return true, else return false
 	for _, backup := range e.GetWorldView() {
 		if backup != nil {
 			requests := backup.GetRequests()
@@ -112,5 +100,4 @@ func checkNewOrder(e *elevator.Elevator, hallOrder orders.Order) bool {
 		}
 	}
 	return true
-
 }

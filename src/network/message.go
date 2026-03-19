@@ -28,10 +28,7 @@ type message struct {
 func generateMessageID(message message) uint64 {
 	timeStamp := uint64(time.Now().UnixMilli())
 
-	data, err := json.Marshal(&message)
-	if err != nil {
-		return 0
-	}
+	data, _ := json.Marshal(&message)
 
 	buffer := make([]byte, 8)
 	binary.LittleEndian.PutUint64(buffer, timeStamp)

@@ -22,33 +22,37 @@ func InputPoller(cabButtonCh chan<- orders.Order, hallButtonCh chan<- orders.Ord
 	var obstruction = false
 
 	for {
-		for f := 0; f < config.N_FLOORS; f++ {
+		for floor := 0; floor < config.N_FLOORS; floor++ {
 			for btn := 0; btn < config.N_BUTTONS; btn++ {
-				v := elevator.RequestButton(f, (driver.ButtonType)(btn))
-				if v && v != prevButtons[f][btn] {
+				req := elevator.RequestButton(floor, (driver.ButtonType)(btn))
+				if req && req != prevButtons[floor][btn] {
 
 					if btn == int(driver.BT_Cab) {
-						cabButtonCh <- orders.New(f, (orders.OrderType)(btn))
+						cabButtonCh <- orders.New(floor, (orders.OrderType)(btn))
 					} else {
-						hallButtonCh <- orders.New(f, (orders.OrderType)(btn))
+						hallButtonCh <- orders.New(floor, (orders.OrderType)(btn))
 					}
 				}
-				prevButtons[f][btn] = v
+				prevButtons[floor][btn] = req
 			}
 		}
 
-		f := elevator.FloorSensor()
-		if f != -1 && f != prevFloor {
-			floorCh <- f
+		floor := driver.GetFloor()
+		if floor != -1 && floor != prevFloor {
+			floorCh <- floor
+		}
 
-			requestResetWatchdog = true
-			motorStopWatchdog.Stop()
+		watchForMotorStop := floor == -1 || (floor == prevFloor && e.GetBehaviour() == elevator.Moving)
 
-		} else if f == -1 && requestResetWatchdog {
+		if watchForMotorStop && requestResetWatchdog {
 			motorStopWatchdog.Start(time.Duration(config.MOTOR_STOP_TIMEOUT) * time.Second)
 			requestResetWatchdog = false
+		} else if !watchForMotorStop {
+			requestResetWatchdog = true
+			motorStopWatchdog.Stop()
 		}
-		prevFloor = f
+
+		prevFloor = floor
 
 		if motorStopWatchdog.TimedOut() {
 			motorStopWatchdog.Stop()

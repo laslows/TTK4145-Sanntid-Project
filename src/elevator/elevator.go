@@ -1,18 +1,12 @@
 package elevator
 
 import (
-	"Sanntid/src/config"
-	"Sanntid/src/driver"
-	"fmt"
 	"strconv"
 	"time"
+
+	"Sanntid/src/config"
+	"Sanntid/src/driver"
 )
-
-//Should tidy up this file a lot. Maybe separate the get/set-functions, the driver functions and
-// the smart functions
-
-//TODO: differ between backup and b with better namings..
-//TODO: maybe mutex?
 
 type Direction int
 
@@ -75,7 +69,7 @@ func New(id string) *Elevator {
 		m_isMaster:           e.m_isMaster,
 		m_version:            0,
 		m_behaviour:          Idle,
-		m_connectedToNetwork: true,
+		m_isConnectedToNetwork: true,
 		m_isObstructed:       false,
 	}
 
@@ -96,12 +90,10 @@ func (e *Elevator) GetGlobalLights() [config.N_FLOORS][config.N_BUTTONS]bool {
 			}
 		}
 	}
-
 	return lights
 }
 
-// Maybe this is all we need, and we dont need a function that cheks if new backup == old backup
-// Should maybe use a message id instead, to check if we have already received the message
+
 func (e *Elevator) UpdateWorldView(incomingBackup *Backup) {
 	for i, b := range e.m_worldView {
 		if b == nil || (b.m_ID == incomingBackup.m_ID) {
@@ -112,25 +104,14 @@ func (e *Elevator) UpdateWorldView(incomingBackup *Backup) {
 }
 
 func (e *Elevator) TryUpdateWorldView(incomingBackup *Backup) bool {
-	// Update if new elevator, or if the incoming backup is newer, or if backup has reconnected.
-
 	for _, b := range e.m_worldView {
 		if b != nil && b.m_ID == incomingBackup.m_ID {
-			return incomingBackup.m_version > b.m_version || !b.m_connectedToNetwork
+			return incomingBackup.m_version > b.m_version || !b.m_isConnectedToNetwork
 		}
 	}
 	return true
 }
 
-//TODO: move to fsm?
-func (e *Elevator) ShouldRedistributeOrders(incomingBackup *Backup) bool {
-    for _, b := range e.m_worldView {
-		if b != nil && b.m_ID == incomingBackup.m_ID {
-			return (b.m_isObstructed != incomingBackup.m_isObstructed || b.GetHasMotorstop() != incomingBackup.GetHasMotorstop())
-		}
-	}
-	return false
-}
 
 func (e *Elevator) TryUpdateIsMaster() bool {
 	shouldBeMaster := checkIsMaster(*e)
@@ -142,27 +123,17 @@ func (e *Elevator) TryUpdateIsMaster() bool {
 }
 
 func checkIsMaster(e Elevator) bool {
-	master := true
+	isMaster := true
 
 	for _, b := range e.m_worldView {
-		if b != nil && b.m_connectedToNetwork {
-			master = master && (e.GetID() >= b.GetID())
+		if b != nil && b.m_isConnectedToNetwork {
+			isMaster = isMaster && (e.GetID() >= b.GetID())
 		}
 	}
-
-	//Remove this lol
-	if master {
-		fmt.Println("I am master!")
-	}
-
-	return master
+	return isMaster
 }
 
-//TODO: maybe not return pointer.. Whuuups
-//TODO: fix whole weird backup/worldview thing. Mybackup-pointer should be
-//same as pointer in worldview
 func (e *Elevator) GetMyBackup() *Backup {
-
 	for _, b := range e.m_worldView {
 		if b != nil && b.m_ID == e.m_ID {
 			return b
@@ -171,40 +142,35 @@ func (e *Elevator) GetMyBackup() *Backup {
 	return nil
 }
 
-
 func (e *Elevator) GetMasterID() int {
 	for _, b := range e.m_worldView {
 		if b != nil && b.m_isMaster {
 			return b.GetID()
 		}
 	}
-
-	fmt.Println("No master found in worldview")
 	return -1
 }
 
 func (e *Elevator) LoseConnectionToPeer(peerID int) {
 	for i, b := range e.m_worldView {
 		if b != nil && b.m_ID == peerID && e.m_ID != peerID {
-			e.m_worldView[i].m_connectedToNetwork = false
+			e.m_worldView[i].m_isConnectedToNetwork = false
 			return
 		}
 	}
 }
 
 func (e *Elevator) RestoreElevatorState(b *Backup) {
-
 	e.m_requests = b.m_requests
 	e.m_floor = b.m_floor
 	e.m_direction = b.m_direction
 
 	e.restoreMyBackup(b)
-
 }
 
 func (e *Elevator) ClearDisconnectedNodeQueue(){
 	for _, b := range e.m_worldView {
-		if b != nil && !b.m_connectedToNetwork {
+		if b != nil && !b.m_isConnectedToNetwork {
 			for f := 0; f < config.N_FLOORS; f++ {
 				for btn := 0; btn < config.N_BUTTONS-1; btn++ {
 					b.m_requests[f][btn] = false
@@ -230,7 +196,6 @@ func (e *Elevator) SetIsObstructed(isObstructed bool) {
 	e.m_isObstructed = isObstructed
 }
 
-//TODO: Maybe not return pointers
 func (e *Elevator) GetWorldView() [config.N_ELEVATORS]*Backup {
 	return e.m_worldView
 }
@@ -239,8 +204,8 @@ func (e *Elevator) GetFloor() int {
 	return e.m_floor
 }
 
-func (e *Elevator) SetFloor(f int) {
-	e.m_floor = f
+func (e *Elevator) SetFloor(floor int) {
+	e.m_floor = floor
 }
 
 func (e *Elevator) GetRequestAtFloor(floor int, btn driver.ButtonType) bool {
@@ -259,16 +224,16 @@ func (e *Elevator) GetDirection() Direction {
 	return e.m_direction
 }
 
-func (e *Elevator) SetDirection(d Direction) {
-	e.m_direction = d
+func (e *Elevator) SetDirection(dir Direction) {
+	e.m_direction = dir
 }
 
 func (e *Elevator) GetBehaviour() ElevatorBehaviour {
 	return e.m_behaviour
 }
 
-func (e *Elevator) SetBehaviour(b ElevatorBehaviour) {
-	e.m_behaviour = b
+func (e *Elevator) SetBehaviour(behaviour ElevatorBehaviour) {
+	e.m_behaviour = behaviour
 }
 
 func (e *Elevator) GetDoorOpenDuration() time.Duration {

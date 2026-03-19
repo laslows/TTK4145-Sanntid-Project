@@ -15,13 +15,11 @@ import (
 	"Sanntid/src/timer"
 )
 
-func main() {
 
+func main() {
 	elevatorPort := flag.String("port", "15657", "port number of the elevator server")
 	elevatorID := flag.String("id", "", "elevator id")
 	flag.Parse()
-
-	fmt.Println(*elevatorID)
 
 	driver.Init("localhost:"+*elevatorPort, config.N_FLOORS)
 
@@ -44,7 +42,10 @@ func main() {
 
 	initialize.Initialize(elev)
 
-	go fsm.Fsm(elev, doorTimer, cabButtonCh, floorCh, doorTimeoutCh, motorStopCh, obstructionCh, localAssignedHallOrdersCh, tryUpdateWorldViewCh, requestRedistributionCh)
+	fmt.Printf("Initialization complete. My ID: %d; isMaster: %t\n", elev.GetID(), elev.GetIsMaster())
+
+	go fsm.Fsm(elev, doorTimer, cabButtonCh, floorCh, doorTimeoutCh, motorStopCh, obstructionCh, localAssignedHallOrdersCh, 
+		tryUpdateWorldViewCh, requestRedistributionCh)
 	go fsm.MasterFsm(elev, hallButtonCh, assignedOrdersFromMasterCh, localAssignedHallOrdersCh, mergeOrdersOnBroadcastTimeoutCh, 
 		tryUpdateWorldViewCh, requestRedistributionCh, peerLostCh, peerConnectedCh)
 	go events.InputPoller(cabButtonCh, hallButtonCh, floorCh, doorTimeoutCh, motorStopCh, obstructionCh, elev, doorTimer)

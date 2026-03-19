@@ -1,8 +1,9 @@
 package elevator
 
 import (
-	"Sanntid/src/config"
 	"encoding/json"
+	
+	"Sanntid/src/config"
 )
 
 type Backup struct {
@@ -14,7 +15,7 @@ type Backup struct {
 	m_behaviour          ElevatorBehaviour
 	m_isObstructed       bool
 	m_version            int
-	m_connectedToNetwork bool
+	m_isConnectedToNetwork bool
 }
 
 func (b *Backup) MarshalJSON() ([]byte, error) {
@@ -26,7 +27,7 @@ func (b *Backup) MarshalJSON() ([]byte, error) {
 		IsMaster           bool
 		IsObstructed       bool
 		Version            int
-		ConnectedToNetwork bool
+		IsConnectedToNetwork bool
 		Behaviour          int
 	}
 
@@ -38,7 +39,7 @@ func (b *Backup) MarshalJSON() ([]byte, error) {
 		IsMaster:           b.m_isMaster,
 		IsObstructed:       b.m_isObstructed,
 		Version:            b.m_version,
-		ConnectedToNetwork: b.m_connectedToNetwork,
+		IsConnectedToNetwork: b.m_isConnectedToNetwork,
 		Behaviour:          int(b.m_behaviour),
 	})
 }
@@ -53,7 +54,7 @@ func (b *Backup) UnmarshalJSON(data []byte) error {
 		IsObstructed       bool
 		Version            int
 		Behaviour          int
-		ConnectedToNetwork bool
+		IsConnectedToNetwork bool
 	}
 
 	var backupJSON BackupJSON
@@ -69,7 +70,7 @@ func (b *Backup) UnmarshalJSON(data []byte) error {
 	b.m_isMaster = backupJSON.IsMaster
 	b.m_isObstructed = backupJSON.IsObstructed
 	b.m_version = backupJSON.Version
-	b.m_connectedToNetwork = backupJSON.ConnectedToNetwork
+	b.m_isConnectedToNetwork = backupJSON.IsConnectedToNetwork
 	b.m_behaviour = ElevatorBehaviour(backupJSON.Behaviour)
 
 	return nil
@@ -83,7 +84,7 @@ func (e *Elevator) UpdateMyBackupAndWorldView() {
 	e.m_myBackup.m_floor = e.m_floor
 	e.m_myBackup.m_requests = e.m_requests
 	e.m_myBackup.m_isObstructed = e.m_isObstructed
-	e.m_myBackup.m_connectedToNetwork = true
+	e.m_myBackup.m_isConnectedToNetwork = true
 	e.m_myBackup.m_behaviour = e.m_behaviour
 
 	e.UpdateWorldView(e.m_myBackup)
@@ -97,7 +98,7 @@ func (e *Elevator) restoreMyBackup(b *Backup) {
 	e.m_myBackup.m_behaviour = e.m_behaviour
 	e.m_myBackup.m_version = b.m_version + 1
 	e.m_myBackup.m_isObstructed = e.m_isObstructed
-	e.m_myBackup.m_connectedToNetwork = true
+	e.m_myBackup.m_isConnectedToNetwork = true
 
 	e.UpdateWorldView(e.m_myBackup)
 }
@@ -130,6 +131,6 @@ func (b *Backup) GetHasMotorstop() bool {
 	return b.m_behaviour == MotorStop
 }
 
-func (b *Backup) GetConnectedToNetwork() bool {
-	return b.m_connectedToNetwork
+func (b *Backup) GetIsConnectedToNetwork() bool {
+	return b.m_isConnectedToNetwork
 }

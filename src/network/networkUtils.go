@@ -1,6 +1,8 @@
 package network
 
-import "sync"
+import (
+	"sync"
+)
 
 const FIFO_CAPACITY = 100
 
