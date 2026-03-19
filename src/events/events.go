@@ -48,7 +48,7 @@ func InputPoller(cabButtonCh chan<- orders.Order, hallButtonCh chan<- orders.Ord
 		// from when elevator.moving is set to true
 		// NOt sure if this works, test tomorrow :)
 		// WIll only get state elevator.moving when we have requests
-		watchForMotorStop := floor == -1 || (floor != -1 && floor == prevFloor && e.GetBehaviour() == elevator.Moving /*&& hasAnyRequests*/)
+		watchForMotorStop := floor == -1 || (floor == prevFloor && e.GetBehaviour() == elevator.Moving /*&& hasAnyRequests*/)
 
 		if watchForMotorStop && requestResetWatchdog {
 			motorStopWatchdog.Start(time.Duration(config.MOTOR_STOP_TIMEOUT) * time.Second)
@@ -76,6 +76,7 @@ func InputPoller(cabButtonCh chan<- orders.Order, hallButtonCh chan<- orders.Ord
 
 			if !obstruction {
 				obstruction = true
+				fmt.Println("Obstruction")
 				obstructionCh <- true
 			}
 		} else if obstruction && !elevator.ObstructionSwitch() {
