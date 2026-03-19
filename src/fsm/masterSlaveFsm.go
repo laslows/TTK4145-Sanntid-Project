@@ -1,14 +1,14 @@
 package fsm
 
 import (
+	"fmt"
+	"time"
+	
 	"Sanntid/src/config"
 	"Sanntid/src/elevator"
 	"Sanntid/src/network"
 	"Sanntid/src/orders"
-	"time"
 )
-
-//TODO: make master redistribute orders when new peer
 
 func MasterFsm(e *elevator.Elevator, hallButtonCh <-chan orders.Order, assignedOrdersFromMasterCh <-chan [config.N_FLOORS][config.N_BUTTONS - 1]bool,
 	localAssignedHallOrdersCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool, mergeOrdersOnBroadcastTimeoutCh chan [config.N_FLOORS][config.N_BUTTONS - 1]bool, 
@@ -74,6 +74,7 @@ Loop:
 
 	e.SetIsMaster(false)
 	e.UpdateMyBackupAndWorldView()
+	fmt.Println("Switching to slave ... ")
 	go slaveFsm(e, hallButtonCh, assignedOrdersFromMasterCh, localAssignedHallOrdersCh, mergeOrdersOnBroadcastTimeoutCh, 
 		tryUpdateWorldViewCh, requestRedistributionCh, peerLostCh, peerConnectedCh)
 }
@@ -125,6 +126,7 @@ Loop:
 
 	e.SetIsMaster(true)
 	e.UpdateMyBackupAndWorldView()
+	fmt.Println("Switchig to master ... ")
 	go MasterFsm(e, hallButtonCh, assignedOrdersFromMasterCh, localAssignedHallOrdersCh, mergeOrdersOnBroadcastTimeoutCh, 
 		tryUpdateWorldViewCh, requestRedistributionCh, peerLostCh, peerConnectedCh)
 }

@@ -1,19 +1,20 @@
 package network
 
 import (
-	"Sanntid/src/config"
-	"Sanntid/src/elevator"
-	"Sanntid/src/orders"
 	"encoding/json"
 	"net"
 	"time"
+	
+	"Sanntid/src/config"
+	"Sanntid/src/elevator"
+	"Sanntid/src/orders"
 )
 
 const MESSAGE_ADDR = "224.0.0.1:16666"
 
 const INITIALIZATION_TIMEOUT = 1000 * time.Millisecond
 const RETRY_BROADCAST_RATE = 10 * time.Millisecond
-const BROADCAST_TIMEOUT = 250 * time.Millisecond
+const BROADCAST_TIMEOUT = 500 * time.Millisecond
 
 var g_pendingAcks = newSafePendingAcks()
 var g_hallRedistributionCancels = newSafeRedistributionCancels()

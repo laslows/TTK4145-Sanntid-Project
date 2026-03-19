@@ -1,10 +1,11 @@
 package network
 
 import (
-	"Sanntid/src/elevator"
 	"encoding/json"
 	"net"
 	"time"
+	
+	"Sanntid/src/elevator"
 )
 
 const HEARTBEAT_ADDR = "224.0.0.1:15555"

@@ -1,15 +1,14 @@
 package fsm
 
 import (
-	"Sanntid/src/config"
-	"Sanntid/src/elevator"
-	"Sanntid/src/orders"
 	"encoding/json"
 	"os/exec"
 	"strconv"
-)
 
-//TODO:fix name
+	"Sanntid/src/config"
+	"Sanntid/src/elevator"
+	"Sanntid/src/orders"
+)
 
 type systemState struct {
 	M_hallRequests [config.N_FLOORS][config.N_BUTTONS - 1]bool `json:"hallRequests"`

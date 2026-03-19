@@ -1,10 +1,11 @@
 package elevator
 
 import (
-	"Sanntid/src/config"
-	"Sanntid/src/driver"
 	"strconv"
 	"time"
+
+	"Sanntid/src/config"
+	"Sanntid/src/driver"
 )
 
 type Direction int
@@ -195,7 +196,6 @@ func (e *Elevator) SetIsObstructed(isObstructed bool) {
 	e.m_isObstructed = isObstructed
 }
 
-//TODO: maybe fix pointer
 func (e *Elevator) GetWorldView() [config.N_ELEVATORS]*Backup {
 	return e.m_worldView
 }

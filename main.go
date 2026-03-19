@@ -44,10 +44,6 @@ func main() {
 
 	fmt.Printf("Initialization complete. My ID: %d; isMaster: %t\n", elev.GetID(), elev.GetIsMaster())
 
-	//TODO: print when we change elevatorstate ??
-	//TODO: delete packetloss / not include in ZIP
-	// Also delete simulator
-
 	go fsm.Fsm(elev, doorTimer, cabButtonCh, floorCh, doorTimeoutCh, motorStopCh, obstructionCh, localAssignedHallOrdersCh, 
 		tryUpdateWorldViewCh, requestRedistributionCh)
 	go fsm.MasterFsm(elev, hallButtonCh, assignedOrdersFromMasterCh, localAssignedHallOrdersCh, mergeOrdersOnBroadcastTimeoutCh, 

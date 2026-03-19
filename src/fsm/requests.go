@@ -7,8 +7,6 @@ import (
 	"Sanntid/src/orders"
 )
 
-//TODO: not pass whole elevator struct?
-
 type dirnBehaviourPair struct {
 	m_dirn      elevator.Direction
 	m_behaviour elevator.ElevatorBehaviour

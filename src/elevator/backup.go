@@ -1,8 +1,9 @@
 package elevator
 
 import (
-	"Sanntid/src/config"
 	"encoding/json"
+	
+	"Sanntid/src/config"
 )
 
 type Backup struct {
